@@ -56,7 +56,6 @@ const ImportLeads = () => {
                 createdAt: normalized["registered on"] ? new Date(normalized["registered on"]) : (normalized["createdat"] ? new Date(normalized["createdat"]) : new Date()),
                 phone: normalized["phone no"] || normalized["phone"] || "",
                 status: normalized["status"] || "",
-                branch: normalized["branch"] || "",
                 assigned: normalized["assigned to"] || ""
             };
         };

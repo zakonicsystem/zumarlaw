@@ -569,7 +569,7 @@ const ConvertedService = () => {
                         toast.success('Invoice downloaded successfully');
                       }}
                     >
-                      Download Invoice
+                      Download Details
                     </button>
                     <button
                       className="w-full border border-[#57123f] text-[#57123f] rounded-lg py-2 font-semibold hover:bg-[#f7f0f5] transition"

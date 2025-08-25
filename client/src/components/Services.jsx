@@ -28,8 +28,6 @@ const categories = [
 ];
 
 const services = [
-
-
   // NTN Services
   {
     title: "NTN Registration - Salaried",
@@ -132,6 +130,21 @@ const services = [
     category: "Company Reg",
     icon: company
   },
+  {
+    title: "Company Transfer",
+    category: "Company Reg",
+    icon: company
+  },
+  {
+    title: "Company Close",
+    category: "Company Reg",
+    icon: company
+  },
+  {
+    title: "SECP Company Filing",
+    category: "Company Reg",
+    icon: company
+  },
 
   // Arms License
   {
@@ -166,6 +179,11 @@ const services = [
     category: "NPO / NGO",
     icon: NTNNGO
   },
+  {
+    title: "Registration of NGOs/ Charities/ Trusts with Sindh Charity Commission",
+    category: "NPO / NGO",
+    icon: NTNNGO
+  },
 
   // PSEB Services
   {
@@ -180,6 +198,11 @@ const services = [
   },
   {
     title: "New Call Center Registration",
+    category: "PSEB Reg",
+    icon: company
+  },
+  {
+    title: "Call Center Renewal Registration",
     category: "PSEB Reg",
     icon: company
   },
@@ -227,7 +250,50 @@ const services = [
     category: "Import Export",
     icon: impoort
   },
+  {
+    title: "Import Export License",
+    category: "Import Export",
+    icon: impoort
+  },
+
+  // Miscellaneous / Other Services
+  {
+    title: "Newspaper Registration",
+    category: "Company Reg",
+    icon: company
+  },
+  {
+    title: "RTO Password Recovery",
+    category: "Income Tax",
+    icon: tax
+  },
+  {
+    title: "PSDA License",
+    category: "Company Reg",
+    icon: company
+  },
+  {
+    title: "Food Authority License",
+    category: "Company Reg",
+    icon: company
+  },
+  {
+    title: "ZGO License",
+    category: "Company Reg",
+    icon: company
+  },
+  {
+    title: "DTS License",
+    category: "Company Reg",
+    icon: company
+  },
+  {
+    title: "Medical Store License",
+    category: "Company Reg",
+    icon: company
+  }
 ];
+
 
 const Services = () => {
   const [selectedTab, setSelectedTab] = useState("All");

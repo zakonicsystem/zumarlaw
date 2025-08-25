@@ -360,6 +360,18 @@ const FollowupLeads = () => {
                 <div><span className="font-semibold">Name:</span> {convertModal.lead.name}</div>
                 <div><span className="font-semibold">Phone:</span> {convertModal.lead.phone}</div>
                 <div><span className="font-semibold">Service:</span> {convertModal.lead.service}</div>
+               <div>
+                  <label className="font-semibold">Price:</label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={convertFields.price || ''}
+                    onChange={handleConvertFieldChange}
+                    className="border rounded px-2 py-1 w-full"
+                    placeholder="Enter price for this service"
+                    required
+                  />
+                </div>
               </div>
               <hr className="my-2" />
               <div className="font-semibold mb-2">Required Documents/Fields:</div>

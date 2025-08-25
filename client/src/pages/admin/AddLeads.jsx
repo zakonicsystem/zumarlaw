@@ -85,8 +85,19 @@ const AddLeads = () => {
         'Freelancer Renewal',
         'Sole Proprietor',
         'Partnership firm',
-        'Private Limited Company (PVT)'
-    ];
+        'Private Limited Company (PVT)',
+        'Newspaper Registration',
+  'RTO Password Recovery',
+  'Company Transfer',
+  'SECP Company Filing',
+  'PSDA License',
+  'Food Authority License',
+  'Company Close',
+  'ZGO License',
+  'DTS License',
+  'Medical Store License',
+  'Import Export License'
+];
 
     const leadSources = [
         'Website',

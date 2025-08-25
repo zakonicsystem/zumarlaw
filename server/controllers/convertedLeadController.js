@@ -34,13 +34,13 @@ function extractFilesFromReq(req) {
 export const createConvertedLead = async (req, res) => {
   try {
     // Basic fields
-    const { name, phone, email, assigned, service, status, originalLeadId, ...rest } = req.body;
+    const { name, phone, email, assigned, service, price, status, originalLeadId, ...rest } = req.body;
     // Dynamic fields (non-file)
     const fields = { ...rest };
     // File fields
     const files = extractFilesFromReq(req);
     const lead = new ConvertedLead({
-      name, phone, email, assigned, service, status,
+      name, phone, email, assigned, service, price: price ? Number(price) : undefined, status,
       fields,
       files,
     });

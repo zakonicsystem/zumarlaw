@@ -332,6 +332,130 @@ const serviceFields = {
     { name: 'phone', label: 'Phone No', type: 'text' },
     { name: 'incorporation_certificate', label: 'Incorporation Certificate', type: 'file' }
   ],
+'Newspaper Registration': [
+  { name: 'newspaper_name', label: 'Newspaper Name', type: 'text' },
+  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+  { name: 'master_degree', label: 'Master Degree Copy', type: 'file' },
+  { name: 'experience_certificate', label: 'Experience Certificate', type: 'file' },
+  { name: 'bank_statement', label: 'Bank Statement', type: 'file' }
+],
+
+'RTO Password Recovery': [
+  { name: 'cnic_front', label: 'Original CNIC Front Pic', type: 'file' },
+  { name: 'cnic_back', label: 'Original CNIC Back Pic', type: 'file' },
+  { name: 'gmail', label: 'Active Gmail ID', type: 'email' },
+  { name: 'phone', label: 'Registered Phone No', type: 'tel' },
+  { name: 'rto_name', label: 'RTO Name', type: 'text' }
+],
+
+'Company Transfer': [
+  { name: 'owner_login_secp', label: 'Owner Login SECP', type: 'text' },
+  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+  { name: 'purchaser_cnic_front', label: 'Purchaser CNIC Copy Front', type: 'file' },
+  { name: 'purchaser_cnic_back', label: 'Purchaser CNIC Copy Back', type: 'file' },
+  { name: 'purchaser_gmail', label: 'Purchaser Gmail', type: 'email' },
+  { name: 'purchaser_phone', label: 'Purchaser Phone No', type: 'tel' },
+  { name: 'share_transfer', label: 'Share Transfer Details', type: 'text' }
+],
+
+'SECP Company Filing': [
+  { name: 'secp_login', label: 'SECP Login', type: 'text' },
+  { name: 'directors_pin', label: 'All Directors Pin Code', type: 'text' },
+  { name: 'total_revenue', label: 'Total Revenue', type: 'number' },
+  { name: 'total_employees', label: 'Total Employees', type: 'number' }
+],
+
+'PSDA License': [
+  { name: 'institute_name', label: 'Institute Name', type: 'text' },
+  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+  { name: 'bank_statement', label: 'Owner Bank Statement', type: 'file' },
+  { name: 'courses_details', label: 'Courses Details', type: 'text' },
+  { name: 'classes_enrollment', label: 'Classes Enrollment', type: 'text' },
+  { name: 'ntn_copy', label: 'Owner NTN Copy', type: 'file' },
+  { name: 'admission_form', label: 'Admission Form', type: 'file' },
+  { name: 'other_details', label: 'Other Details (Labs, Washroom, Storeroom, etc.)', type: 'text' },
+  { name: 'gmail', label: 'Owner Gmail ID', type: 'email' },
+  { name: 'phone', label: 'Owner Phone No', type: 'tel' }
+],
+
+'Food Authority License': [
+  { name: 'shop_name', label: 'Shop Name', type: 'text' },
+  { name: 'shop_address', label: 'Shop Address', type: 'text' },
+  { name: 'items_details', label: 'Items Details', type: 'text' },
+  { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+  { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+  { name: 'gmail', label: 'Owner Gmail ID', type: 'email' },
+  { name: 'phone', label: 'Owner Phone No', type: 'tel' },
+  { name: 'owner_photo', label: 'Owner Photo', type: 'file' },
+  { name: 'unit_details', label: 'Unit Details (if applicable)', type: 'text' }
+],
+
+'Company Close': [
+  { name: 'secp_login', label: 'SECP Login ID', type: 'text' },
+  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+  { name: 'auditor_report', label: 'Auditor Report', type: 'file' },
+  { name: 'affidavit', label: 'Affidavit', type: 'file' }
+],
+
+'ZGO License': [
+  { name: 'directors_cnic_front', label: 'Directors CNIC Copy Front', type: 'file' },
+  { name: 'directors_cnic_back', label: 'Directors CNIC Copy Back', type: 'file' },
+  { name: 'incorporate_certificate', label: 'Company Incorporate Certificate', type: 'file' },
+  { name: 'aoa_moa', label: 'Company AOA/MOA', type: 'file' },
+  { name: 'form_21', label: 'Company FORM 21', type: 'file' },
+  { name: 'dts_license', label: 'DTS License (if applicable)', type: 'file' },
+  { name: 'iata_license', label: 'IATA License (if applicable)', type: 'file' },
+  { name: 'no_dispute_certificate', label: 'Directors No Dispute Certificate', type: 'file' },
+  { name: 'ntn', label: 'Company and Directors NTN', type: 'file' },
+  { name: 'gmail', label: 'Company Gmail ID', type: 'email' },
+  { name: 'phone', label: 'Company Phone No', type: 'tel' }
+],
+
+'DTS License': [
+  { name: 'institute_name', label: 'Institute Name', type: 'text' },
+  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+  { name: 'gmail', label: 'Institute Gmail ID', type: 'email' },
+  { name: 'phone', label: 'Institute Phone No', type: 'tel' },
+  { name: 'institute_address', label: 'Institute Address', type: 'text' },
+  { name: 'bank_statement', label: 'Bank Statement', type: 'file' },
+  { name: 'bank_security', label: 'Bank Security Deposit Slip', type: 'file' },
+  { name: 'office_plan', label: 'Office Plan', type: 'file' },
+  { name: 'sole_ntn', label: 'NTN (for Sole Proprietorship)', type: 'file' },
+  { name: 'partnership_docs', label: 'Partnership Docs (Form C, Firm Deed, All Partners CNIC)', type: 'file' },
+  { name: 'company_docs', label: 'Company Docs (Incorporate Certificate, AoA, MoA)', type: 'file' },
+  { name: 'license_category', label: 'License Category', type: 'text' }
+],
+
+'Medical Store License': [
+  { name: 'store_name', label: 'Medical Store Name', type: 'text' },
+  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+  { name: 'gmail', label: 'Owner Gmail ID', type: 'email' },
+  { name: 'phone', label: 'Owner Phone No', type: 'tel' },
+  { name: 'qualification_certificate', label: 'Owner Qualification Certificate', type: 'file' },
+  { name: 'owner_biometric', label: 'Owner Biometric Slip', type: 'file' },
+  { name: 'qualified_person_cnic_front', label: 'Qualified Person CNIC Front', type: 'file' },
+  { name: 'qualified_person_cnic_back', label: 'Qualified Person CNIC Back', type: 'file' },
+  { name: 'degree_copy', label: 'Degree Copy', type: 'file' },
+  { name: 'biometric_slip', label: 'Biometric Slip', type: 'file' },
+  { name: 'contract_agreement', label: 'Contract Agreement', type: 'file' },
+  { name: 'store_board_pic', label: 'Medical Store Board Pic', type: 'file' },
+  { name: 'ac_photo', label: 'AC Photo', type: 'file' },
+  { name: 'refrigerator_photo', label: 'Refrigerators Photo', type: 'file' }
+],
+
+'Import Export License': [
+  { name: 'ntn', label: 'Business NTN', type: 'text' },
+  { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+  { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+  { name: 'gmail', label: 'Business Gmail ID', type: 'email' },
+  { name: 'phone', label: 'Business Phone No', type: 'tel' }
+]
 
 };
 
@@ -418,7 +542,7 @@ const DirectService = () => {
       const data = new FormData();
       data.append('serviceType', selectedService);
       // Main form fields
-      ['name', 'email', 'cnic', 'phone'].forEach((key) => {
+      ['name', 'email', 'cnic', 'phone', 'price'].forEach((key) => {
         if (formData[key]) data.append(key, formData[key]);
       });
       // Dynamic fields
@@ -525,6 +649,17 @@ const DirectService = () => {
               value={formData.phone || ''}
             />
           </div>
+
+          <input
+            name="price"
+            type="number"
+            onChange={handleInputChange}
+            className="border rounded p-3"
+            placeholder="Enter Price for Service"
+            value={formData.price || ''}
+            min="0"
+            required
+          />
         </div>
       </div>
 

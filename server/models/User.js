@@ -11,7 +11,6 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpires: { type: Date },
   isActive: { type: Boolean, default: true },
   services: { type: [String], default: [] }
-
 }, {
   timestamps: true
 });

@@ -161,7 +161,7 @@ const MatureLeads = () => {
     Object.entries(convertModal.lead).forEach(([key, value]) => {
       formData.append(key, value);
     });
-     // Add originalLeadId for backend deletion
+    // Add originalLeadId for backend deletion
     if (convertModal.lead && convertModal.lead._id) {
       formData.append('originalLeadId', convertModal.lead._id);
     }
@@ -213,7 +213,7 @@ const MatureLeads = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Mature Leads</h2>
         <div className="flex gap-2">
-         
+
           <button
             className="flex items-center gap-2 bg-[#57123f] text-white px-4 py-2 rounded-lg text-sm"
             onClick={() => window.location.href = '/admin/leads/add'}
@@ -455,6 +455,18 @@ const MatureLeads = () => {
                 <div><span className="font-semibold">Name:</span> {convertModal.lead.name}</div>
                 <div><span className="font-semibold">Phone:</span> {convertModal.lead.phone}</div>
                 <div><span className="font-semibold">Service:</span> {convertModal.lead.service}</div>
+                <div>
+                  <label className="font-semibold">Price:</label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={convertFields.price || ''}
+                    onChange={handleConvertFieldChange}
+                    className="border rounded px-2 py-1 w-full"
+                    placeholder="Enter price for this service"
+                    required
+                  />
+                </div>
               </div>
               <hr className="my-2" />
               <div className="font-semibold mb-2">Required Documents/Fields:</div>

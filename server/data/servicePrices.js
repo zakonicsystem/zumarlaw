@@ -37,5 +37,16 @@ export const servicePrices = {
   'Freelancer Renewal': 4000,
   'Sole Proprietor': 3000,
   'Partnership firm': 5000,
-  'Private Limited Company (PVT)': 7000
+  'Private Limited Company (PVT)': 7000,
+   'Newspaper Registration': 60000,
+  'RTO Password Recovery': 3500,
+  'Company Transfer': 12000,
+  'SECP Company Filing': 10000,
+  'PSDA License': 60000,
+  'Food Authority License': 8000,
+  'Company Close': 15000,
+  'ZGO License': 50000,
+  'DTS License': 50000,
+  'Medical Store License': 50000,
+  'Import Export License': 5000,
 };

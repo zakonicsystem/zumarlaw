@@ -106,7 +106,7 @@ const Account = () => {
                     ))}
                 </select>
             </div>
-           
+            {/* Top 4 blocks: Revenue, Pending, Salary Paid, Profit */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 my-6">
                 <div className="bg-white rounded-xl shadow-md px-6 py-4 flex flex-col justify-between h-32">
                     <p className="text-gray-500 text-sm font-medium">Total Revenue</p>
@@ -195,7 +195,7 @@ const Account = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {payrolls.slice(0, 2).map((p, idx) => (
+                        {payrolls.map((p, idx) => (
                             <tr key={idx} className="border-t hover:bg-gray-50">
                                 <td className="px-4 py-3">{p.employee}</td>
                                 <td className="px-4 py-3">{p.payrollMonth}</td>
@@ -211,10 +211,6 @@ const Account = () => {
                         )}
                     </tbody>
                 </table>
-                {/* View Payroll link */}
-                <div className="mt-4 text-center">
-                    <a href="/admin/payroll" className="text-[#57123f] font-semibold hover:underline">View Payrolls</a>
-                </div>
             </div>
 
         </>

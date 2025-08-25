@@ -5,7 +5,8 @@ import {
   FaIdCard,
   FaFileInvoice,
   FaEye,
-  FaDownload
+  FaDownload,
+  FaEnvelope
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import ZumarLogo from '../../assets/ZumarLogo.png';
@@ -125,6 +126,10 @@ const ServiceProcessingPage = () => {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageType, setMessageType] = useState('alert');
+  const [messageText, setMessageText] = useState('');
+  const [messageRow, setMessageRow] = useState(null);
   const itemsPerPage = 6;
 
 
@@ -273,7 +278,7 @@ const ServiceProcessingPage = () => {
     }
   };
 
- 
+
   const handleCertificateUpload = async (e) => {
     e.preventDefault();
     if (!selectedFile || !selectedRow) {
@@ -282,7 +287,7 @@ const ServiceProcessingPage = () => {
     }
     const formData = new FormData();
     formData.append('certificate', selectedFile);
-    
+
     try {
       await axios.post(
         `https://app.zumarlawfirm.com/admin/services/${selectedRow._id}/certificate?pending=true`,
@@ -572,8 +577,18 @@ const ServiceProcessingPage = () => {
                       >
                         <FaDownload />
                       </button>
+                      <button
+                        title="Send Message"
+                        className="text-[#57123f] hover:text-[#a8326e]"
+                        onClick={() => {
+                          setMessageRow(row);
+                          setShowMessageModal(true);
+                        }}
+                      >
+                        <FaEnvelope />
+                      </button>
                     </div>
-  {/* Removed certificate modal logic. FaEye now opens certificate in new tab. */}
+                    {/* Removed certificate modal logic. FaEye now opens certificate in new tab. */}
                   </td>
                 </tr>
               ))}
@@ -586,7 +601,71 @@ const ServiceProcessingPage = () => {
           </table>
         </div>
       </div>
-
+      {showMessageModal && messageRow && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl w-full max-w-md relative">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl"
+              onClick={() => setShowMessageModal(false)}
+              title="Close"
+            >
+              &times;
+            </button>
+            <h2 className="text-lg font-bold mb-4 text-[#57123f]">Send Message</h2>
+            <div className="mb-4">
+              <label className="block font-medium mb-1">Message Type</label>
+              <select
+                value={messageType}
+                onChange={e => setMessageType(e.target.value)}
+                className="w-full border rounded px-3 py-2"
+              >
+                <option value="alert">Alert</option>
+                <option value="update">Update</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block font-medium mb-1">Message</label>
+              <textarea
+                value={messageText}
+                onChange={e => setMessageText(e.target.value)}
+                className="w-full border rounded px-3 py-2"
+                rows={4}
+                placeholder="Type your message here..."
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 border rounded-full"
+                onClick={() => setShowMessageModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="bg-[#57123f] text-white px-4 py-2 rounded-full"
+                onClick={async () => {
+                  try {
+                    console.log('Sending message to userId:', messageRow.userId, 'serviceId:', messageRow._id); // Debug
+                    await axios.post('https://app.zumarlawfirm.com/serviceMessage', {
+                      userId: messageRow.userId,
+                      serviceId: messageRow._id, // Use _id as serviceId
+                      type: messageType,
+                      message: messageText,
+                    });
+                    toast.success('Message sent!');
+                    setShowMessageModal(false);
+                    setMessageText('');
+                  } catch (err) {
+                    toast.error('Failed to send message');
+                  }
+                }}
+                disabled={!messageText.trim()}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-end mt-4 gap-2">
         {Array.from({ length: totalPages }, (_, i) => (

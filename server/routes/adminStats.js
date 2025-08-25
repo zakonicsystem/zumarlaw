@@ -17,17 +17,7 @@ router.get('/leads/count', async (req, res) => {
   }
 });
 
-// router.get('/services/count', async (req, res) => {
-//   try {
-//     const mainCompleted = await Service.countDocuments({ status: 'completed' });
-//     const manualCompleted = await ManualService.countDocuments({ status: 'completed' });
-//     const convertedCompleted = await ConvertedLead.countDocuments({ status: 'completed' });
-//     const count = mainCompleted + manualCompleted + convertedCompleted;
-//     res.json({ count });
-//   } catch (err) {
-//     res.status(500).json({ error: 'Failed to fetch services count' });
-//   }
-// });
+
 
 router.get('/services/pending/count', async (req, res) => {
   try {
@@ -63,6 +53,12 @@ router.get('/services/completed/paymentsum', async (req, res) => {
 
     // Helper to get amount
     const getAmount = (s, type) => {
+      if (type === 'manual' && typeof s.price !== 'undefined') {
+        return Number(s.price);
+      }
+      if (type === 'converted' && typeof s.price !== 'undefined') {
+        return Number(s.price);
+      }
       if (s.paymentAmount && !isNaN(parseFloat(s.paymentAmount))) {
         return parseFloat(s.paymentAmount);
       }
@@ -148,73 +144,77 @@ router.get('/stats', async (req, res) => {
         start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     }
     let serviceQuery = useDateFilter ? { createdAt: { $gte: start, $lte: now } } : {};
-    // Completed services
+
+    // Fetch all services
     const completedServices = await Service.find({ ...serviceQuery, status: 'completed' });
-    const completedManual = await ManualService.find({ ...serviceQuery, status: 'completed' });
-    const completedConverted = await ConvertedLead.find({ ...serviceQuery, status: 'completed' });
-    // Pending services
     const pendingServices = await Service.find({ ...serviceQuery, status: 'pending' });
+    const completedManual = await ManualService.find({ ...serviceQuery, status: 'completed' });
     const pendingManual = await ManualService.find({ ...serviceQuery, status: 'pending' });
+    const completedConverted = await ConvertedLead.find({ ...serviceQuery, status: 'completed' });
     const pendingConverted = await ConvertedLead.find({ ...serviceQuery, status: 'pending' });
-    // Total leads (all models)
-    const totalLeads = await Service.countDocuments(serviceQuery)
-      + await ManualService.countDocuments(serviceQuery)
-      + await ConvertedLead.countDocuments(serviceQuery);
-    // Payment sum for completed
-      // Helper to get price from servicePrices
-      const getPrice = (s, type) => {
-        if (s.paymentAmount && !isNaN(parseFloat(s.paymentAmount))) {
-          return parseFloat(s.paymentAmount);
-        }
-        let key = '';
-        if (type === 'main') {
-          key = s.serviceTitle;
-        } else if (type === 'manual') {
-          key = s.serviceType;
-        } else if (type === 'converted') {
-          key = s.service;
-        }
-        if (key && servicePrices[key]) {
-          return servicePrices[key];
-        }
-        return 0;
-      };
 
-      // Calculate prices for completed services
-      const completedServicePrices = completedServices.map(s => ({
-        id: s._id,
-        type: 'main',
-        title: s.serviceTitle,
-        price: getPrice(s, 'main')
-      }));
-      const completedManualPrices = completedManual.map(s => ({
-        id: s._id,
-        type: 'manual',
-        title: s.serviceType,
-        price: getPrice(s, 'manual')
-      }));
-      const completedConvertedPrices = completedConverted.map(s => ({
-        id: s._id,
-        type: 'converted',
-        title: s.service,
-        price: getPrice(s, 'converted')
-      }));
+    // Fetch all leads for total leads block
+    const allLeads = await Lead.find({ ...serviceQuery });
+    const totalLeads = allLeads.length;
 
-      const allCompletedPrices = [
-        ...completedServicePrices,
-        ...completedManualPrices,
-        ...completedConvertedPrices
-      ];
+    // Helper to get price for completed services
+    const getServicePrice = (s) => {
+      if (s.paymentAmount && !isNaN(parseFloat(s.paymentAmount))) {
+        return parseFloat(s.paymentAmount);
+      }
+      if (s.serviceTitle && servicePrices[s.serviceTitle]) {
+        return servicePrices[s.serviceTitle];
+      }
+      return 0;
+    };
+    // Helper to get price for manual and converted
+    const getModelPrice = (s) => {
+      if (typeof s.price !== 'undefined') {
+        return Number(s.price);
+      }
+      return 0;
+    };
 
-      const paymentSum = allCompletedPrices.reduce((acc, s) => acc + s.price, 0);
+    // Completed block: all completed services
+    const completedCount = completedServices.length + completedManual.length + completedConverted.length;
+    // Pending block: all pending services
+    const pendingCount = pendingServices.length + pendingManual.length + pendingConverted.length;
 
-      res.json([
-        { title: 'Completed Services', value: completedServices.length + completedManual.length + completedConverted.length },
-        { title: 'Pending Services', value: pendingServices.length + pendingManual.length + pendingConverted.length },
-        { title: 'Total Leads', value: totalLeads },
-        { title: 'Payment of Completed', value: paymentSum },
-        { title: 'Completed Service Prices', value: allCompletedPrices }
-      ]);
+    // Followup and Contacted blocks
+  
+    // Completed Service Pricing block
+    const completedServicePrices = completedServices.map(s => ({
+      id: s._id,
+      type: 'main',
+      title: s.serviceTitle,
+      price: getServicePrice(s)
+    }));
+    const completedManualPrices = completedManual.map(s => ({
+      id: s._id,
+      type: 'manual',
+      title: s.serviceType,
+      price: getModelPrice(s)
+    }));
+    const completedConvertedPrices = completedConverted.map(s => ({
+      id: s._id,
+      type: 'converted',
+      title: s.service,
+      price: getModelPrice(s)
+    }));
+    const allCompletedPrices = [
+      ...completedServicePrices,
+      ...completedManualPrices,
+      ...completedConvertedPrices
+    ];
+    const paymentSum = allCompletedPrices.reduce((acc, s) => acc + s.price, 0);
+
+    res.json([
+      { title: 'Completed Services', value: completedCount },
+      { title: 'Pending Services', value: pendingCount },
+      { title: 'Total Leads', value: totalLeads },
+      { title: 'Payment of Completed', value: paymentSum },
+      { title: 'Completed Service Prices', value: allCompletedPrices },
+     ]);
   } catch (err) {
     console.error('Stats error:', err);
     res.status(500).json({ error: 'Failed to fetch stats.' });

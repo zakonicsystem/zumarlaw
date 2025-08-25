@@ -6,6 +6,7 @@ const ManualServiceSubmissionSchema = new mongoose.Schema({
   email: String,
   cnic: String,
   phone: String,
+  price: { type: Number }, // Added price field
   // Dynamic fields: store all submitted fields as a mixed object
   fields: { type: mongoose.Schema.Types.Mixed },
   // CNIC groups (for dynamic member CNICs)

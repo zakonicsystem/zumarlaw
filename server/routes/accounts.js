@@ -40,6 +40,8 @@ router.get('/summary', async (req, res) => {
     function getAmount(obj) {
       // Determine service title/type
       const title = obj.serviceTitle || obj.serviceType || obj.service || 'Other';
+      // For ManualServiceSubmission and ConvertedLead, use price field if present
+      if (typeof obj.price !== 'undefined') return Number(obj.price);
       // Use static price if available, else fallback to submitted paymentAmount
       if (servicePrices[title]) return Number(servicePrices[title]);
       if (obj.formFields && obj.formFields.paymentAmount) return Number(obj.formFields.paymentAmount);
@@ -65,11 +67,9 @@ router.get('/summary', async (req, res) => {
       .filter(svc => svc.status === 'pending')
       .reduce((acc, svc) => acc + getAmount(svc), 0);
 
-    // Salary paid from all payrolls
-    const allPayrolls = await Payroll.find(payrollFilter);
-    const salaryPaid = allPayrolls.reduce((acc, p) => acc + (Number(p.salary) || 0), 0);
-    // Only latest 2 for display
-    const latestPayrolls = allPayrolls.sort((a, b) => b.createdAt - a.createdAt).slice(0, 2);
+    // Salary paid from payrolls
+    const payrolls = await Payroll.find(payrollFilter).sort({ createdAt: -1 }).limit(2);
+    const salaryPaid = payrolls.reduce((acc, p) => acc + (p.salary || 0), 0);
     // Profit
     const totalProfit = totalRevenue - salaryPaid;
     res.json({
@@ -78,7 +78,7 @@ router.get('/summary', async (req, res) => {
       salaryPaid,
       totalProfit,
       revenueByServices,
-      latestPayrolls
+      latestPayrolls: payrolls
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch accounts summary' });

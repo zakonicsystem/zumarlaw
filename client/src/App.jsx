@@ -30,6 +30,7 @@ import Customers from './pages/admin/Customers';
 import Payroll from './pages/admin/Payroll';
 import NewPayroll from './pages/admin/NewPayroll';
 import Account from './pages/admin/Account';
+import Expense from './pages/admin/Expense';
 import AuthRedirectHandler from './components/AuthRedirectHandler';
 import ConvertedService from './pages/admin/ConvertedService';
 import NewEmployee from './pages/admin/NewEmployee';
@@ -37,6 +38,7 @@ import ManualService from './pages/admin/ManualService';
 import FollowUpLeads from './pages/admin/FollowupLeads';
 import MatureLeads from './pages/admin/MatureLeads';
 import ContactedLeads from './pages/admin/ContactedLeads';
+import Attendance from './pages/admin/Attendance';
 
 const AppContent = () => {
   const location = useLocation();
@@ -68,7 +70,7 @@ const AppContent = () => {
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin/employee-login" element={<EmployeeLogin />} />
+        <Route path="/employee-login" element={<EmployeeLogin />} />
         <Route path="/admin" element={
           <AdminPrivateRoute>
             <AdminLayout />
@@ -88,14 +90,17 @@ const AppContent = () => {
           <Route path="/admin/leads/add" element={<EmployeeProtectedRoute><AddLeads /></EmployeeProtectedRoute>} />
           <Route path="/admin/payroll/add" element={<EmployeeProtectedRoute><NewPayroll /></EmployeeProtectedRoute>} />
           <Route path="/admin/account" element={<EmployeeProtectedRoute><Account /></EmployeeProtectedRoute>} />
+          <Route path="/admin/expense" element={<EmployeeProtectedRoute><Expense /></EmployeeProtectedRoute>} />
           <Route path="/admin/roles/add" element={<EmployeeProtectedRoute><NewEmployee /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/followup' element={<EmployeeProtectedRoute><FollowUpLeads /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/mature' element={<EmployeeProtectedRoute><MatureLeads /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/contacted' element={<EmployeeProtectedRoute><ContactedLeads /></EmployeeProtectedRoute>} />
           <Route path='/admin/services/manual' element={<EmployeeProtectedRoute><ManualService /></EmployeeProtectedRoute>} />
-          <Route path="/admin/services/converted" element={<EmployeeProtectedRoute><ConvertedService /></EmployeeProtectedRoute>} />
-        </Route>
 
+          <Route path="/admin/services/converted" element={<EmployeeProtectedRoute><ConvertedService /></EmployeeProtectedRoute>} />
+
+        <Route path='/admin/attendance' element={<EmployeeProtectedRoute><Attendance /></EmployeeProtectedRoute>} />
+        </Route>
       </Routes>
     </>
   );

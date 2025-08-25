@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
+// Employee login
 router.post('/employee-login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -28,6 +29,16 @@ router.post('/employee-login', async (req, res) => {
     );
     console.log('[DEBUG] JWT_SECRET in employee.routes.js:', process.env.JWT_SECRET);
     res.json({ token });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all employees
+router.get('/employees', async (req, res) => {
+  try {
+    const employees = await Roles.find({ role: 'employee' });
+    res.json(employees);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

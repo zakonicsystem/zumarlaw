@@ -19,7 +19,7 @@ const NewEmployee = ({ onEmployeeAdded }) => {
   const [editId, setEditId] = useState(null);
 
   const roles = ['CEO', 'Director', 'Branch Manager', 'PRO', 'Assistant Branch Manager', 'IT Manager', 'Employee'];
-  const pages = [
+ const pages = [
     {
       label: 'Leads',
       path: '/admin/leads',
@@ -39,6 +39,7 @@ const NewEmployee = ({ onEmployeeAdded }) => {
         { label: 'Service Processing', path: '/admin/services' },
         { label: 'Converted Services', path: '/admin/services/converted' },
         { label: 'Manual Services', path: '/admin/services/manual' },
+        { label: 'Add Manual Service', path: '/add-service' },
       ]
     },
     { label: 'Payroll', path: '/admin/payroll',
@@ -46,7 +47,9 @@ const NewEmployee = ({ onEmployeeAdded }) => {
         { label: 'AddPayroll', path:'/admin/payroll/add' },
         { label: 'Account', path: '/admin/account' }
       ]
-     }
+     },
+    { label: 'Expense', path: '/admin/expense', },
+    { label: 'Attendance', path: '/admin/attendance', },
   ];
 
   const handleChange = (e) => {

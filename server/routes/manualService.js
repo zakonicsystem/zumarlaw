@@ -156,13 +156,14 @@ router.post('/', upload.any(), async (req, res) => {
     }
 
     const submission = new ManualServiceSubmission({
-      serviceType,
-      name,
-      email,
-      cnic,
-      phone,
-      fields,
-      cnicGroups
+  serviceType,
+  name,
+  email,
+  cnic,
+  phone,
+  price: req.body.price ? Number(req.body.price) : undefined,
+  fields,
+  cnicGroups
     });
     await submission.save();
     res.status(201).json({ message: 'Submission saved successfully' });

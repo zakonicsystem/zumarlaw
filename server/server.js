@@ -4,6 +4,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import passport from 'passport';
 import accountsRouter from './routes/accounts.js';
+import serviceMessageRoutes from './routes/serviceMessage.js';
+import expenseRouter from './routes/expense.js';
 import announcementsRouter from './routes/announcements.js';
 import session from 'express-session';
 import morgan from 'morgan';
@@ -25,6 +27,7 @@ import manualServiceRoutes from './routes/manualService.js';
 import convertedServiceRoutes from './routes/convertedService.js';
 import adminServiceStats from './routes/adminServiceStats.js'; // Import the new route
 import latestCompletedServices from './routes/latestCompletedServices.js';
+import attendanceRoutes from './routes/attendance.js';
 
 import './config/passport.js';
 import path from 'path';
@@ -69,8 +72,7 @@ app.use(cookieParser());
 app.use('/uploads', express.static('uploads'));
 app.use('/admin', manualServiceRoutes);
 app.use('/admin', adminServiceRoutes);
-
-// Routes
+app.use('/serviceMessage', serviceMessageRoutes);
 app.use('/employee-login', employeeRoutes);
 app.use('/', employeeAuthRoutes);
 app.use('/auth', authRoutes);
@@ -89,6 +91,8 @@ app.use('/admin', adminStatsRoutes);
 app.use('/admin', adminServiceStats); // Register the new route
 app.use('/admin', latestCompletedServices); // Register the latestCompletedServices route
 app.use('/accounts', accountsRouter);
+app.use('/expense', expenseRouter);
+app.use('/attendance', attendanceRoutes); // Register attendance routes
 
 // Error handler
 app.use((err, req, res, next) => {

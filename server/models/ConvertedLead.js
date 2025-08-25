@@ -18,6 +18,7 @@ const ConvertedLeadSchema = new mongoose.Schema({
   email: String,
   assigned: { type: String, default: '' },
   service: String,
+  price: { type: Number }, // Added price field
   status: { type: String, enum: ['pending', 'processing', 'converted', 'completed', 'Follow-up', 'Mature', 'Contacted'], default: 'converted' },
   // Dynamic fields
   fields: { type: Object, default: {} },
