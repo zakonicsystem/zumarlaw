@@ -67,9 +67,11 @@ router.get('/summary', async (req, res) => {
       .filter(svc => svc.status === 'pending')
       .reduce((acc, svc) => acc + getAmount(svc), 0);
 
-    // Salary paid from payrolls
-    const payrolls = await Payroll.find(payrollFilter).sort({ createdAt: -1 }).limit(2);
-    const salaryPaid = payrolls.reduce((acc, p) => acc + (p.salary || 0), 0);
+  // Salary paid from all payrolls
+  const allPayrolls = await Payroll.find(payrollFilter);
+  const salaryPaid = allPayrolls.reduce((acc, p) => acc + (p.salary || 0), 0);
+  // Only show latest 2 payrolls in table
+  const payrolls = allPayrolls.sort((a, b) => b.createdAt - a.createdAt).slice(0, 2);
     // Profit
     const totalProfit = totalRevenue - salaryPaid;
     res.json({
