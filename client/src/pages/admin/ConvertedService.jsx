@@ -490,6 +490,27 @@ const ConvertedService = () => {
           </table>
         </div>
 
+        {/* Pagination Controls */}
+        <div className="flex justify-center items-center gap-2 mt-4">
+          <button
+            className="px-3 py-1 rounded bg-gray-200 text-gray-700 font-semibold disabled:opacity-50"
+            onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </button>
+          <span className="mx-2 text-sm font-medium text-gray-700">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            className="px-3 py-1 rounded bg-gray-200 text-gray-700 font-semibold disabled:opacity-50"
+            onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
+        </div>
+
         {/* Invoice Modal */}
         {showInvoice && invoiceData && (
           <>
