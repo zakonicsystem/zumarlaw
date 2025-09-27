@@ -1,0 +1,32 @@
+@keyframes announcement-fadein {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-announcement-fadein {
+  animation: announcement-fadein 0.7s ease-in forwards;
+}
+@import 'tailwindcss';
+
+* {
+  font-family: 'Poppins', sans-serif;
+}
+
+.invoice-content {
+  /* white with 80% opacity */
+  overflow: visible !important;
+  max-height: none !important;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none; 
+  scrollbar-width: none;
+}
