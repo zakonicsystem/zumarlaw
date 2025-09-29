@@ -69,7 +69,7 @@ const AppContent = () => {
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/employee-login" element={<EmployeeLogin />} />
+        <Route path="/admin/employee-login" element={<EmployeeLogin />} />
         <Route path="/admin" element={
           <AdminPrivateRoute>
             <AdminLayout />
