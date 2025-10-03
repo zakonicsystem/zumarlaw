@@ -36,7 +36,7 @@ export default function Payroll() {
     const fetchPayrolls = async () => {
       setLoading(true);
       try {
-        const res = await axios.get("http://localhost:5000/payrolls");
+        const res = await axios.get("https://app.zumarlawfirm.com/payrolls");
         setPayrolls(res.data);
       } catch (err) {
         setPayrolls([]);
@@ -51,7 +51,7 @@ export default function Payroll() {
     // Fetch employees for Quick Salary Pay
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/admin/roles", { withCredentials: true });
+        const res = await axios.get("https://app.zumarlawfirm.com/admin/roles", { withCredentials: true });
         setEmployeeList(res.data);
       } catch (err) {
         setEmployeeList([]);
@@ -82,7 +82,7 @@ export default function Payroll() {
     if (!window.confirm("Are you sure you want to delete this payroll?")) return;
     try {
       setLoading(true);
-      await axios.delete(`http://localhost:5000/payrolls/${id}`);
+      await axios.delete(`https://app.zumarlawfirm.com/payrolls/${id}`);
       setPayrolls((prev) => prev.filter((p) => p._id !== id));
       toast.success("Payroll deleted successfully!");
     } catch (err) {
@@ -107,7 +107,7 @@ export default function Payroll() {
     e.preventDefault();
     try {
       setLoading(true);
-      await axios.put(`http://localhost:5000/payrolls/${editData._id}`, editData);
+      await axios.put(`https://app.zumarlawfirm.com/payrolls/${editData._id}`, editData);
       setPayrolls((prev) => prev.map((p) => (p._id === editData._id ? editData : p)));
       toast.success("Payroll updated successfully!");
       setEditModal(false);
@@ -146,7 +146,7 @@ export default function Payroll() {
       const today = new Date();
       const monthStr = today.toLocaleString('default', { month: 'long', year: 'numeric' });
       const paymentDate = today.toISOString().slice(0, 10);
-      const res = await axios.post('http://localhost:5000/payrolls', {
+      const res = await axios.post('https://app.zumarlawfirm.com/payrolls', {
         employee: selectedEmp.name,
         salary: selectedEmp.salary,
         branch: selectedEmp.branch,

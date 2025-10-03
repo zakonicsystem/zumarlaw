@@ -12,7 +12,7 @@ const Attendance = () => {
   const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/admin/roles')
+    axios.get('https://app.zumarlawfirm.com/admin/roles')
       .then(res => {
         setEmployees(res.data);
         setLoading(false);
@@ -22,7 +22,7 @@ const Attendance = () => {
   }, []);
 
   const fetchAttendanceHistory = () => {
-    axios.get('http://localhost:5000/attendance/history')
+    axios.get('https://app.zumarlawfirm.com/attendance/history')
       .then(res => setAttendanceHistory(res.data))
       .catch(() => {});
   };
@@ -57,7 +57,7 @@ const Attendance = () => {
   const handleEditAttendance = async (id, date, status) => {
     setMarking(true);
     try {
-      await axios.patch('http://localhost:5000/attendance/edit', {
+      await axios.patch('https://app.zumarlawfirm.com/attendance/edit', {
         employeeId: id,
         date,
         present: status === 'present',

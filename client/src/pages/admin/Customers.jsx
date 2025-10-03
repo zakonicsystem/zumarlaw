@@ -10,7 +10,7 @@ const Customers = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/admin/customers');
+        const res = await axios.get('https://app.zumarlawfirm.com/admin/customers');
         const arr = Array.isArray(res.data) ? res.data : [];
         setUsers(arr);
         setFilteredUsers(arr);

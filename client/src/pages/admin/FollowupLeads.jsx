@@ -44,7 +44,7 @@ const FollowupLeads = () => {
 
   const fetchLeads = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/leads');
+      const res = await axios.get('https://app.zumarlawfirm.com/leads');
       setLeads(res.data);
     } catch (err) {
       setLeads([]);
@@ -68,7 +68,7 @@ const FollowupLeads = () => {
 
   const handleStatusChange = async (leadId, value) => {
     try {
-      await axios.put(`http://localhost:5000/leads/${leadId}/status`, { status: value });
+      await axios.put(`https://app.zumarlawfirm.com/leads/${leadId}/status`, { status: value });
     } catch (err) { }
     setLeads(prev => {
       // Update status and remove from current page if status changes
@@ -86,7 +86,7 @@ const FollowupLeads = () => {
 
   const handleEditSave = async () => {
     try {
-      await axios.put(`http://localhost:5000/leads/${editModal.lead._id}`, editModal.lead);
+      await axios.put(`https://app.zumarlawfirm.com/leads/${editModal.lead._id}`, editModal.lead);
       setLeads(prev => prev.map(l => l._id === editModal.lead._id ? { ...editModal.lead } : l));
       setEditModal({ open: false, lead: null });
       toast.success('Lead updated successfully');
@@ -99,7 +99,7 @@ const FollowupLeads = () => {
   const handleDeleteLead = async (leadId) => {
     if (!window.confirm('Are you sure you want to delete this lead?')) return;
     try {
-      await axios.delete(`http://localhost:5000/leads/${leadId}`);
+      await axios.delete(`https://app.zumarlawfirm.com/leads/${leadId}`);
       setLeads(prev => prev.filter(l => l._id !== leadId));
       setSelectedRows(prev => prev.filter(id => id !== leadId));
       toast.success('Lead deleted successfully');
@@ -225,7 +225,7 @@ const FollowupLeads = () => {
       if (item.phone) formData.append(`memberDetail[${idx}][phone]`, item.phone);
     });
     try {
-      await axios.post('http://localhost:5000/convertedService', formData, {
+      await axios.post('https://app.zumarlawfirm.com/convertedService', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Lead converted and submitted!');

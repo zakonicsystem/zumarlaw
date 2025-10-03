@@ -596,7 +596,7 @@ const AddServiceDetails = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/invoices', {
+      const response = await fetch('https://app.zumarlawfirm.com/invoices', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

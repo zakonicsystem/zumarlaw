@@ -28,10 +28,10 @@ const NewPayroll = () => {
       try {
         setLoading(true);
         const [branchesRes, employeesRes, payersRes, monthsRes] = await Promise.all([
-          axios.get('http://localhost:5000/branches'),
-          axios.get('http://localhost:5000/employees'),
-          axios.get('http://localhost:5000/payers'),
-          axios.get('http://localhost:5000/payroll-months'),
+          axios.get('https://app.zumarlawfirm.com/branches'),
+          axios.get('https://app.zumarlawfirm.com/employees'),
+          axios.get('https://app.zumarlawfirm.com/payers'),
+          axios.get('https://app.zumarlawfirm.com/payroll-months'),
         ]);
         setBranches(branchesRes.data);
         setEmployees(employeesRes.data);
@@ -52,7 +52,7 @@ const NewPayroll = () => {
       (async () => {
         setLoading(true);
         try {
-          const res = await axios.get(`http://localhost:5000/payrolls/${id}`);
+          const res = await axios.get(`https://app.zumarlawfirm.com/payrolls/${id}`);
           setFormData({
             payrollMonth: res.data.payrollMonth?.slice(0, 10) || '',
             branch: res.data.branch || '',
@@ -81,10 +81,10 @@ const NewPayroll = () => {
     try {
       setLoading(true);
       if (id) {
-        await axios.put(`http://localhost:5000/payrolls/${id}`, formData);
+        await axios.put(`https://app.zumarlawfirm.com/payrolls/${id}`, formData);
         alert('Payroll updated successfully!');
       } else {
-        await axios.post('http://localhost:5000/payrolls', formData);
+        await axios.post('https://app.zumarlawfirm.com/payrolls', formData);
         alert('Payroll saved successfully!');
       }
       setFormData({

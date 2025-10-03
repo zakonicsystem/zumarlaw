@@ -76,7 +76,7 @@ const Roles = () => {
   const fetchEmployees = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/admin/roles', {
+      const response = await axios.get('https://app.zumarlawfirm.com/admin/roles', {
         withCredentials: true
       });
       setEmployees(response.data);
@@ -110,7 +110,7 @@ const Roles = () => {
 
   try {
     setLoading(true); // Start loading
-    await axios.delete(`http://localhost:5000/admin/roles/${id}`, {
+    await axios.delete(`https://app.zumarlawfirm.com/admin/roles/${id}`, {
       withCredentials: true,
     });
     
@@ -356,7 +356,7 @@ const Roles = () => {
                 onClick={async () => {
                   try {
                     setLoading(true);
-                    await axios.put(`http://localhost:5000/admin/roles/${editId}`, form, { withCredentials: true });
+                    await axios.put(`https://app.zumarlawfirm.com/admin/roles/${editId}`, form, { withCredentials: true });
                     toast.success('Employee updated successfully!');
                     setIsEditing(false);
                     setEditId(null);

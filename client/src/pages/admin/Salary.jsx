@@ -11,7 +11,7 @@ const Salary = () => {
     try {
       if (!selectedMonth) return;
       const [year, month] = selectedMonth.split('-');
-      const res = await axios.post('http://localhost:5000/autoSalary/calculate', { month, year });
+      const res = await axios.post('https://app.zumarlawfirm.com/autoSalary/calculate', { month, year });
       setSalaryData(res.data);
     } catch (err) {
       alert('Error fetching salary data');

@@ -39,7 +39,7 @@ const StatsCards = () => {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        let url = `http://localhost:5000/admin/stats?filter=${filter}`;
+        let url = `https://app.zumarlawfirm.com/admin/stats?filter=${filter}`;
         if (filter === 'day') {
           url += `&date=${selectedDate}`;
         } else if (filter === 'month') {

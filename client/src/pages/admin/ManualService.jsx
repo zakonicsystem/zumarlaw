@@ -258,7 +258,7 @@ function StatusButton({ status, onClick }) {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/admin/roles');
+        const res = await axios.get('https://app.zumarlawfirm.com/admin/roles');
         const employeesArr = Array.isArray(res.data)
           ? res.data.filter(emp => typeof emp.name === 'string' && emp.name.trim() !== '')
           : [];
@@ -274,7 +274,7 @@ function StatusButton({ status, onClick }) {
   const handleAssignEmployee = async (row, employeeName) => {
     try {
       await axios.patch(
-        `http://localhost:5000/manualService/${row._id}/assign`,
+        `https://app.zumarlawfirm.com/manualService/${row._id}/assign`,
         { assignedTo: employeeName }
       );
       setServices(prev => prev.map(r => r._id === row._id ? { ...r, assignedTo: employeeName } : r));
@@ -290,7 +290,7 @@ function StatusButton({ status, onClick }) {
     const nextStatus = statusOrder[(currentIdx + 1) % statusOrder.length];
     try {
       await axios.patch(
-        `http://localhost:5000/manualService/${row._id}/status`,
+        `https://app.zumarlawfirm.com/manualService/${row._id}/status`,
         { status: nextStatus }
       );
       setServices(prev => prev.map(r => r._id === row._id ? { ...r, status: nextStatus } : r));
@@ -304,7 +304,7 @@ function StatusButton({ status, onClick }) {
     const fetchServices = async () => {
       setLoading(true);
       try {
-        const res = await axios.get('http://localhost:5000/manualService');
+        const res = await axios.get('https://app.zumarlawfirm.com/manualService');
         // Ensure status and assignedTo are always present for each row
         const data = Array.isArray(res.data)
           ? res.data.map(row => ({
@@ -448,7 +448,7 @@ function StatusButton({ status, onClick }) {
                   // Use new single-certificate endpoint
                   const formData = new FormData();
                   formData.append('certificate', file);
-                  await axios.post(`http://localhost:5000/manualService/${selectedRows[0]}/certificate`, formData, {
+                  await axios.post(`https://app.zumarlawfirm.com/manualService/${selectedRows[0]}/certificate`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                   });
                 } else {
@@ -456,13 +456,13 @@ function StatusButton({ status, onClick }) {
                   const formData = new FormData();
                   formData.append('certificate', file);
                   formData.append('ids', JSON.stringify(selectedRows));
-                  await axios.post('http://localhost:5000/manualService/uploadCertificate', formData, {
+                  await axios.post('https://app.zumarlawfirm.com/manualService/uploadCertificate', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                   });
                 }
                 toast.success('Certificate uploaded successfully!');
                 // Refresh data
-                const res = await axios.get('http://localhost:5000/manualService');
+                const res = await axios.get('https://app.zumarlawfirm.com/manualService');
                 setServices(res.data);
               } catch (err) {
                 toast.error('Failed to upload certificate');
@@ -492,7 +492,7 @@ function StatusButton({ status, onClick }) {
               }
               if (!window.confirm('Are you sure you want to delete the selected services?')) return;
               try {
-                await axios.post('http://localhost:5000/manualService/deleteMany', { ids: selectedRows });
+                await axios.post('https://app.zumarlawfirm.com/manualService/deleteMany', { ids: selectedRows });
                 toast.success('Selected services deleted!');
                 setServices(prev => prev.filter(row => !selectedRows.includes(row._id)));
                 setSelectedRows([]);
@@ -718,7 +718,7 @@ function StatusButton({ status, onClick }) {
                         const JSZip = (await import('jszip')).default;
                         const zip = new JSZip();
                         await Promise.all(imageFiles.map(async (file) => {
-                          const url = `http://localhost:5000/uploads/${encodeURIComponent(file)}`;
+                          const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
                           try {
                             const response = await fetch(url);
                             if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -778,7 +778,7 @@ function StatusButton({ status, onClick }) {
                         const JSZip = (await import('jszip')).default;
                         const zip = new JSZip();
                         await Promise.all(docFiles.map(async (file) => {
-                          const url = `http://localhost:5000/uploads/${encodeURIComponent(file)}`;
+                          const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
                           try {
                             const response = await fetch(url);
                             if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -808,7 +808,7 @@ function StatusButton({ status, onClick }) {
                       onClick={async () => {
                         if (!invoiceData || !invoiceData._id) return toast.error('No invoice data');
                         try {
-                          await axios.post(`http://localhost:5000/manualService/${invoiceData._id}/send-invoice`);
+                          await axios.post(`https://app.zumarlawfirm.com/manualService/${invoiceData._id}/send-invoice`);
                           toast.success('Invoice sent to user email!');
                         } catch (err) {
                           toast.error('Failed to send invoice');
