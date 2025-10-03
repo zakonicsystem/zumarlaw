@@ -57,7 +57,7 @@ function InvoiceContent({ invoiceData }) {
                         return (
                           <img
                             key={i}
-                            src={`https://app.zumarlawfirm.com/uploads/${item.replace(/.*uploads[\\/]/, '')}`}
+                            src={`http://localhost:5000/uploads/${item.replace(/.*uploads[\\/]/, '')}`}
                             alt={`Uploaded ${key} ${i + 1}`}
                             className={`h-auto border rounded mb-1 ${key.toLowerCase().includes('cnic') || key.toLowerCase().includes('document') ? 'w-full max-w-xs' : 'w-[100px]'}`}
                             style={{ maxWidth: '100%' }}
@@ -65,7 +65,7 @@ function InvoiceContent({ invoiceData }) {
                         );
                       } else if (typeof item === 'string' && item.match(/\.pdf$/i)) {
                         return (
-                          <a key={i} href={`https://app.zumarlawfirm.com/uploads/${item.replace(/.*uploads[\\/]/, '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline block">PDF File {i + 1}</a>
+                          <a key={i} href={`http://localhost:5000/uploads/${item.replace(/.*uploads[\\/]/, '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline block">PDF File {i + 1}</a>
                         );
                       } else if (typeof item === 'object' && item !== null) {
                         // Render object (e.g. member details)
@@ -84,13 +84,13 @@ function InvoiceContent({ invoiceData }) {
                     })
                   ) : typeof value === 'string' && value.match(/\.(jpg|jpeg|png)$/i) ? (
                     <img
-                      src={`https://app.zumarlawfirm.com/uploads/${value.replace(/.*uploads[\\/]/, '')}`}
+                      src={`http://localhost:5000/uploads/${value.replace(/.*uploads[\\/]/, '')}`}
                       alt={`Uploaded ${key}`}
                       className={`h-auto border rounded mb-1 ${key.toLowerCase().includes('cnic') || key.toLowerCase().includes('document') ? 'w-full max-w-xs' : 'w-[100px]'}`}
                       style={{ maxWidth: '100%' }}
                     />
                   ) : typeof value === 'string' && value.match(/\.pdf$/i) ? (
-                    <a href={`https://app.zumarlawfirm.com/uploads/${value.replace(/.*uploads[\\/]/, '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">PDF File</a>
+                    <a href={`http://localhost:5000/uploads/${value.replace(/.*uploads[\\/]/, '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">PDF File</a>
                   ) : typeof value === 'object' && value !== null ? (
                     <div>
                       {Object.entries(value).map(([k, v]) => (
@@ -115,13 +115,13 @@ function InvoiceContent({ invoiceData }) {
                       <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginRight: 16 }}>
                         <span style={{ fontWeight: 500, fontSize: 13 }}>Front:</span>
                         {group.front && group.front.replace(/\\/g, '/').includes('uploads/') ? (
-                          <img src={`https://app.zumarlawfirm.com/uploads/${group.front.replace(/\\/g, '/').split('uploads/').pop().replace(/^\/+/, '')}`} alt="CNIC Front" className="w-full max-w-xs h-auto border rounded mb-1" style={{ maxWidth: '100%' }} crossOrigin="anonymous" />
+                          <img src={`http://localhost:5000/uploads/${group.front.replace(/\\/g, '/').split('uploads/').pop().replace(/^\/+/, '')}`} alt="CNIC Front" className="w-full max-w-xs h-auto border rounded mb-1" style={{ maxWidth: '100%' }} crossOrigin="anonymous" />
                         ) : group.front ? (
                           <span>{group.front}</span>
                         ) : null}
                         <span style={{ fontWeight: 500, fontSize: 13 }}>Back:</span>
                         {group.back && group.back.replace(/\\/g, '/').includes('uploads/') ? (
-                          <img src={`https://app.zumarlawfirm.com/uploads/${group.back.replace(/\\/g, '/').split('uploads/').pop().replace(/^\/+/, '')}`} alt="CNIC Back" className="w-full max-w-xs h-auto border rounded mb-1" style={{ maxWidth: '100%' }} crossOrigin="anonymous" />
+                          <img src={`http://localhost:5000/uploads/${group.back.replace(/\\/g, '/').split('uploads/').pop().replace(/^\/+/, '')}`} alt="CNIC Back" className="w-full max-w-xs h-auto border rounded mb-1" style={{ maxWidth: '100%' }} crossOrigin="anonymous" />
                         ) : group.back ? (
                           <span>{group.back}</span>
                         ) : null}
@@ -164,7 +164,7 @@ const ConvertedService = () => {
     const fetchLeads = async () => {
       setLoading(true);
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/convertedService');
+        const res = await axios.get('http://localhost:5000/convertedService');
         setLeads(res.data);
       } catch (err) {
         toast.error('Failed to fetch converted leads');
@@ -176,7 +176,7 @@ const ConvertedService = () => {
     // Fetch employee list from roles
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/admin/roles');
+        const res = await axios.get('http://localhost:5000/admin/roles');
         const employeesArr = Array.isArray(res.data)
           ? res.data.filter(emp => typeof emp.name === 'string' && emp.name.trim() !== '')
           : [];
@@ -202,9 +202,7 @@ const ConvertedService = () => {
   });
 
   // Pagination
-  const PAGE_SIZE = 10;
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
-  const currentData = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const currentData = filtered;
 
   // Select logic
   const handleSelectAll = () => {
@@ -212,7 +210,7 @@ const ConvertedService = () => {
       setSelectedRows([]);
       setSelectAll(false);
     } else {
-      setSelectedRows(currentData.map(row => row._id));
+      setSelectedRows(filtered.map(row => row._id));
       setSelectAll(true);
     }
   };
@@ -309,7 +307,7 @@ const ConvertedService = () => {
               formData.append('certificate', file);
               try {
                 toast('Uploading certificate...');
-                await axios.post(`https://app.zumarlawfirm.com/convertedService/${selectedRows[0]}/certificate`, formData, {
+                await axios.post(`http://localhost:5000/convertedService/${selectedRows[0]}/certificate`, formData, {
                   headers: { 'Content-Type': 'multipart/form-data' },
                 });
                 toast.success('Certificate uploaded');
@@ -332,7 +330,7 @@ const ConvertedService = () => {
                 console.log('Attempting to delete IDs:', selectedRows);
                 for (const id of selectedRows) {
                   try {
-                    const resp = await axios.delete(`https://app.zumarlawfirm.com/convertedService/${id}`);
+                    const resp = await axios.delete(`http://localhost:5000/convertedService/${id}`);
                     console.log(`Deleted lead ${id}:`, resp.data);
                   } catch (err) {
                     console.error(`Delete failed for ${id}:`, err?.response?.data || err.message || err);
@@ -340,7 +338,7 @@ const ConvertedService = () => {
                   }
                 }
                 // Refresh leads from server after deletion
-                const res = await axios.get('https://app.zumarlawfirm.com/convertedService');
+                const res = await axios.get('http://localhost:5000/convertedService');
                 setLeads(res.data);
                 setSelectedRows([]);
                 setSelectAll(false);
@@ -405,7 +403,7 @@ const ConvertedService = () => {
                       onChange={async (e) => {
                         const newAssigned = e.target.value;
                         try {
-                          await axios.patch(`https://app.zumarlawfirm.com/convertedService/${row._id}`, { assigned: newAssigned });
+                          await axios.patch(`http://localhost:5000/convertedService/${row._id}`, { assigned: newAssigned });
                           setLeads(prev => prev.map(l => l._id === row._id ? { ...l, assigned: newAssigned } : l));
                           toast.success('Assigned to updated');
                         } catch (err) {
@@ -430,7 +428,7 @@ const ConvertedService = () => {
                       onChange={async (e) => {
                         const newStatus = e.target.value;
                         try {
-                          await axios.put(`https://app.zumarlawfirm.com/convertedService/${row._id}/status`, { status: newStatus });
+                          await axios.put(`http://localhost:5000/convertedService/${row._id}/status`, { status: newStatus });
                           setLeads(prev => prev.map(l => l._id === row._id ? { ...l, status: newStatus } : l));
                           toast.success('Status updated');
                         } catch (err) {
@@ -442,6 +440,7 @@ const ConvertedService = () => {
                       <option value="processing">Processing</option>
                       <option value="converted">Converted</option>
                       <option value="completed">Completed</option>
+                      <option value="rejected">Rejected</option>
                     </select>
                   </td>
                     <td className="px-4 py-3">
@@ -489,6 +488,9 @@ const ConvertedService = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {/* Pagination Controls Removed: All rows shown on one page */}
 
         {/* Invoice Modal */}
         {showInvoice && invoiceData && (
@@ -610,7 +612,7 @@ const ConvertedService = () => {
                         // Fetch all images as blobs, compress to JPEG, and add to zip
                         await Promise.all(imageFiles.map(async (file) => {
                           const fileName = file.replace(/.*uploads[\\/]/, '');
-                          const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(fileName)}`;
+                          const url = `http://localhost:5000/uploads/${encodeURIComponent(fileName)}`;
                           try {
                             const response = await fetch(url);
                             if (!response.ok) throw new Error('Failed to fetch ' + fileName);
@@ -653,7 +655,7 @@ const ConvertedService = () => {
                         {invoiceData.files.filter(f => typeof f === 'string' && f.match(/\.(jpg|jpeg|png)$/i)).map((file, idx) => (
                           <img
                             key={idx}
-                            src={`https://app.zumarlawfirm.com/uploads/${file.replace(/.*uploads[\\/]/, '')}`}
+                            src={`http://localhost:5000/uploads/${file.replace(/.*uploads[\\/]/, '')}`}
                             alt={`Uploaded file ${idx + 1}`}
                             className="h-auto border rounded mb-1 max-w-[120px] max-h-[90px]"
                             style={{ objectFit: 'cover' }}
@@ -708,7 +710,7 @@ const ConvertedService = () => {
                         const JSZip = (await import('jszip')).default;
                         const zip = new JSZip();
                         await Promise.all(docFiles.map(async (file) => {
-                          const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
+                          const url = `http://localhost:5000/uploads/${encodeURIComponent(file)}`;
                           try {
                             const response = await fetch(url);
                             if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -739,7 +741,7 @@ const ConvertedService = () => {
                         if (!invoiceData || !invoiceData._id) return toast.error('No invoice data');
                         if (!invoiceData.email) return toast.error('No email found for this client');
                         try {
-                          await axios.post(`https://app.zumarlawfirm.com/convertedService/${invoiceData._id}/send-invoice`, { email: invoiceData.email });
+                          await axios.post(`http://localhost:5000/convertedService/${invoiceData._id}/send-invoice`, { email: invoiceData.email });
                           toast.success('Invoice sent to user email!');
                         } catch (err) {
                           toast.error('Failed to send invoice');

@@ -7,7 +7,7 @@ import toast, { Toaster } from 'react-hot-toast';
 const COLORS = ['#10b981', '#facc15', '#6366f1'];
 
 const ServiceProcessing = () => {
-  const [serviceStats, setServiceStats] = useState({ completed: 0, processing: 0, pending: 0 });
+  const [serviceStats, setServiceStats] = useState({ completed: 0, processing: 0, pending: 0, rejected: 0 });
   const [latestCompleted, setLatestCompleted] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,10 +15,10 @@ const ServiceProcessing = () => {
     // Fetch service status counts and latest completed services from backend
     const fetchStats = async () => {
       try {
-        const statsRes = await axios.get('https://app.zumarlawfirm.com/admin/service-status-counts');
+        const statsRes = await axios.get('http://localhost:5000/admin/service-status-counts');
         setServiceStats(statsRes.data);
         // Fetch only latest 4 completed services from all models
-        const completedRes = await axios.get('https://app.zumarlawfirm.com/admin/latest-completed-services?limit=4');
+        const completedRes = await axios.get('http://localhost:5000/admin/latest-completed-services?limit=4');
         // Log the response for debugging
         console.log('Latest completed services:', completedRes.data);
         setLatestCompleted(Array.isArray(completedRes.data) ? completedRes.data : []);
@@ -37,6 +37,7 @@ const ServiceProcessing = () => {
     { name: 'Completed', value: serviceStats.completed },
     { name: 'Processing', value: serviceStats.processing },
     { name: 'Pending', value: serviceStats.pending },
+    { name: 'Rejected', value: serviceStats.rejected },
   ];
 
   // Ensure latestCompleted is always an array

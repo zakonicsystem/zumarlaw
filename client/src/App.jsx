@@ -17,6 +17,7 @@ import DirectService from './pages/admin/DirectService';
 import UserDashboard from './pages/userDashboard';
 
 import EmployeeLogin from './pages/admin/EmployeeLogin';
+import Salary from './pages/admin/Salary';
 import AnnouncementForm from './pages/admin/AnnouncementForm';
 import AdminLogin from './pages/admin/AdminLogin';
 import LeadsManagment from './pages/admin/LeadsManagment';
@@ -78,6 +79,7 @@ const AppContent = () => {
           {/* This index route renders inside AdminLayout's <Outlet /> */}
           <Route path='/admin' index element={<Dashboard />} />
           <Route path='/admin/add-Service' element={<DirectService />} />
+          <Route path='/admin/salary' element={<Salary   />} />
           <Route path='/admin/announcment' element={<EmployeeProtectedRoute><AnnouncementForm /></EmployeeProtectedRoute>} />
           <Route path="leads" element={<EmployeeProtectedRoute><LeadsManagment /></EmployeeProtectedRoute>} />
           <Route path="services" element={<EmployeeProtectedRoute><ServiceProcessingPage /></EmployeeProtectedRoute>} />

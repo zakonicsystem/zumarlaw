@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
@@ -6,215 +7,160 @@ const Attendance = () => {
   const [loading, setLoading] = useState(true);
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [marking, setMarking] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [activeTab, setActiveTab] = useState(0);
 
-  // Fetch attendance history (all or single employee)
   useEffect(() => {
-    axios.get('https://app.zumarlawfirm.com/admin/roles')
+    axios.get('http://localhost:5000/admin/roles')
       .then(res => {
         setEmployees(res.data);
         setLoading(false);
       })
-      .catch(err => {
-        setLoading(false);
-      });
+      .catch(() => setLoading(false));
     fetchAttendanceHistory();
   }, []);
 
-  const fetchAttendanceHistory = (employeeId = null) => {
-    const url = employeeId
-      ? `https://app.zumarlawfirm.com/attendance/history/${employeeId}`
-      : 'https://app.zumarlawfirm.com/attendance/history';
-    axios.get(url)
+  const fetchAttendanceHistory = () => {
+    axios.get('http://localhost:5000/attendance/history')
       .then(res => setAttendanceHistory(res.data))
       .catch(() => {});
   };
 
-  // Helper: get today's attendance for each employee
-  const today = new Date().toISOString().slice(0, 10);
-  const getPresentStatus = (emp) => {
-    const record = attendanceHistory.find(r => r.employeeName === emp.name && r.date === today);
-    return record ? record.present : false;
+  // Generate all dates for selected month/year (handles leap years)
+  const getMonthDates = (year, month) => {
+    const dates = [];
+    // month is 1-based
+    const daysInMonth = new Date(year, month, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month - 1, day);
+      dates.push(date.toISOString().slice(0, 10));
+    }
+    return dates;
+  };
+  const filteredDates = getMonthDates(year, month);
+
+  // Helper to get status for employee on a date
+  const getStatus = (emp, date) => {
+    const record = attendanceHistory.find(r => r.employeeName === emp.name && r.date === date);
+    if (!record) return '';
+    if (record.holiday) return 'holiday';
+    if (record.leaveRelief) return 'leaveRelief';
+    if (record.leave) return 'leave';
+    if (record.halfDay) return 'halfDay';
+    if (record.present) return 'present';
+    if (record.absent) return 'absent';
+    return '';
   };
 
-  const handleAttendance = async (id, status) => {
+  // Edit previous attendance
+  const handleEditAttendance = async (id, date, status) => {
     setMarking(true);
     try {
-      await axios.post('https://app.zumarlawfirm.com/attendance/mark', {
+      await axios.patch('http://localhost:5000/attendance/edit', {
         employeeId: id,
-        present: status
+        date,
+        present: status === 'present',
+        leave: status === 'leave',
+        holiday: status === 'holiday',
+        halfDay: status === 'halfDay',
+        leaveRelief: status === 'leaveRelief',
+        absent: status === 'absent'
       });
-      setEmployees(prev =>
-        prev.map(emp =>
-          emp._id === id ? { ...emp, present: status } : emp
-        )
-      );
-      // Optionally, refetch history after marking
-      const res = await axios.get('https://app.zumarlawfirm.com/attendance/history');
-      setAttendanceHistory(res.data);
+      fetchAttendanceHistory();
     } catch (err) {}
     setMarking(false);
   };
 
-  // Mark all employees as present
-  const handleMarkAllPresent = async () => {
-    setMarking(true);
-    try {
-      await Promise.all(
-        employees.map(emp => {
-          const isPresent = getPresentStatus(emp);
-          if (!isPresent) {
-            return axios.post('https://app.zumarlawfirm.com/attendance/mark', {
-              employeeId: emp._id,
-              present: true
-            });
-          }
-          return null;
-        })
-      );
-      // Refetch history after marking
-      const res = await axios.get('https://app.zumarlawfirm.com/attendance/history');
-      setAttendanceHistory(res.data);
-    } catch (err) {}
-    setMarking(false);
-  };
-
-  // Group attendance history by day, date, and month (only for all employees view)
-  const groupedHistory = {};
-  if (!selectedEmployee) {
-    attendanceHistory.forEach(record => {
-      const dateObj = new Date(record.date);
-      const day = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-      const date = dateObj.getDate();
-      const month = dateObj.toLocaleDateString('en-US', { month: 'long' });
-      const key = `${day}-${date}-${month}`;
-      if (!groupedHistory[key]) groupedHistory[key] = [];
-      groupedHistory[key].push(record);
-    });
-  }
-
-  // Filter history for selected employee
-  const filteredHistory = selectedEmployee
-    ? attendanceHistory.filter(r => r.employeeName === selectedEmployee.name)
-    : attendanceHistory;
-
-  // When a card is clicked, fetch single employee attendance
-  const handleSelectEmployee = (emp) => {
-    setSelectedEmployee(emp);
-    fetchAttendanceHistory(emp._id);
-  };
-
-  // When 'Show All' is clicked, fetch all attendance
-  const handleShowAll = () => {
-    setSelectedEmployee(null);
-    fetchAttendanceHistory();
-  };
+  // Month/year dropdowns
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const years = Array.from(new Set(attendanceHistory.map(r => new Date(r.date).getFullYear())));
+  if (!years.includes(year)) years.push(year);
+  years.sort((a, b) => b - a);
 
   return (
     <div className="p-4">
       <h2 className="text-xl font-bold mb-4">Attendance</h2>
+      <div className="flex gap-4 mb-4">
+        <select value={month} onChange={e => setMonth(Number(e.target.value))} className="px-2 py-1 rounded bg-gray-100">
+          {months.map((m, i) => (
+            <option key={m} value={i + 1}>{m}</option>
+          ))}
+        </select>
+        <select value={year} onChange={e => setYear(Number(e.target.value))} className="px-2 py-1 rounded bg-gray-100">
+          {years.map(y => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
       {loading ? (
         <div>Loading...</div>
       ) : (
-        <div>
-          {!selectedEmployee && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-              {employees.map(emp => {
-                const isPresent = getPresentStatus(emp);
-                const todayRecord = attendanceHistory.find(r => r.employeeName === emp.name && r.date === today);
-                return (
-                  <div key={emp._id} className={`rounded-xl shadow p-4 flex flex-col items-center border ${isPresent ? 'border-green-400' : 'border-gray-300'} cursor-pointer transition hover:scale-105`} onClick={() => handleSelectEmployee(emp)}>
-                    <div className="font-bold text-lg mb-2">{emp.name}</div>
-                    <div className="text-gray-500 mb-2">{emp.email}</div>
-                    <div className="mb-2 text-sm">Date: {todayRecord ? todayRecord.date : today}</div>
-                    <div className="mb-2 text-sm">Time: {todayRecord && todayRecord.time ? todayRecord.time : '-'}</div>
-                    <div className="mb-2 text-sm">Status: {isPresent ? <span className="text-green-600">Present</span> : <span className="text-red-600">Absent</span>}</div>
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        className={`px-4 py-2 rounded font-semibold ${isPresent ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}`}
-                        disabled={marking}
-                        onClick={e => { e.stopPropagation(); handleAttendance(emp._id, true); }}
-                      >
-                        Present
-                      </button>
-                      <button
-                        className={`px-4 py-2 rounded font-semibold ${!isPresent ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}`}
-                        disabled={marking}
-                        onClick={e => { e.stopPropagation(); handleAttendance(emp._id, false); }}
-                      >
-                        Absent
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          <div className="overflow-x-auto">
-            {!selectedEmployee ? (
-              Object.entries(groupedHistory).map(([groupKey, records], idx) => {
-                const [day, date, month] = groupKey.split('-');
-                return (
-                  <div key={groupKey} className="mb-8">
-                    <div className="font-bold text-lg mb-2">{day}, {date} {month}</div>
-                    <table className="w-full border text-left mb-2">
-                      <thead>
-                        <tr>
-                          <th className="px-4 py-2">Name</th>
-                          <th className="px-4 py-2">Email</th>
-                          <th className="px-4 py-2">Date</th>
-                          <th className="px-4 py-2">Time</th>
-                          <th className="px-4 py-2">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {records.map((record, i) => (
-                          <tr key={i} className="border-b">
-                            <td className="px-4 py-2">{record.employeeName}</td>
-                            <td className="px-4 py-2">{record.employeeEmail || '-'}</td>
-                            <td className="px-4 py-2">{record.date}</td>
-                            <td className="px-4 py-2">{record.time ? record.time : '-'}</td>
-                            <td className="px-4 py-2">{record.present ? (
-                              <span className="text-green-600">Present</span>
-                            ) : (
-                              <span className="text-red-600">Absent</span>
-                            )}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })
-            ) : (
-              <table className="w-full border text-left mb-2">
+        <>
+          <div className="mb-4 flex gap-2 border-b">
+            {employees.map((emp, idx) => (
+              <button
+                key={emp._id}
+                className={`px-4 py-2 rounded-t ${activeTab === idx ? 'bg-[#57123f] text-white' : 'bg-gray-100 text-gray-700'}`}
+                onClick={() => setActiveTab(idx)}
+              >
+                {emp.name}
+              </button>
+            ))}
+          </div>
+          {employees[activeTab] && (
+            <div className="overflow-x-auto">
+              <table className="min-w-max w-full border text-xs">
                 <thead>
                   <tr>
-                    <th className="px-4 py-2">Date</th>
-                    <th className="px-4 py-2">Time</th>
-                    <th className="px-4 py-2">Status</th>
+                    <th className="px-2 py-2 border">Date</th>
+                    <th className="px-2 py-2 border">Status</th>
+                    <th className="px-2 py-2 border">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {attendanceHistory.map((record, i) => (
-                    <tr key={i} className="border-b">
-                      <td className="px-4 py-2">{record.date}</td>
-                      <td className="px-4 py-2">{record.time ? record.time : '-'}</td>
-                      <td className="px-4 py-2">{record.present ? (
-                        <span className="text-green-600">Present</span>
-                      ) : (
-                        <span className="text-red-600">Absent</span>
-                      )}</td>
-                    </tr>
-                  ))}
+                  {filteredDates.map((date, idx) => {
+                    const emp = employees[activeTab];
+                    const status = getStatus(emp, date);
+                    let cellClass = '';
+                    if (status === 'present') cellClass = 'bg-green-50';
+                    else if (status === 'leave') cellClass = 'bg-yellow-50';
+                    else if (status === 'absent') cellClass = 'bg-red-50';
+                    else if (status === 'holiday') cellClass = 'bg-blue-50';
+                    else if (status === 'halfDay') cellClass = 'bg-orange-50';
+                    else if (status === 'leaveRelief') cellClass = 'bg-purple-50';
+                    return (
+                      <tr key={date} className={idx % 2 === 0 ? 'bg-gray-50 border-b' : 'bg-white border-b'}>
+                        <td className="px-2 py-2 border font-semibold">{date}</td>
+                        <td className={`px-2 py-2 border font-bold text-center ${cellClass}`}>
+                          {status === 'present' && <span className="text-green-600">Present</span>}
+                          {status === 'leave' && <span className="text-yellow-600">Leave</span>}
+                          {status === 'absent' && <span className="text-red-600">Absent</span>}
+                          {status === 'holiday' && <span className="text-blue-600">Holiday</span>}
+                          {status === 'halfDay' && <span className="text-orange-600">Half Day</span>}
+                          {status === 'leaveRelief' && <span className="text-purple-600">Leave Relief</span>}
+                        </td>
+                        <td className="px-2 py-2 border text-center">
+                          <div className="flex gap-1 justify-center">
+                            <button className="px-2 py-1 bg-green-200 hover:bg-green-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'present')}>P</button>
+                            <button className="px-2 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'leave')}>L</button>
+                            <button className="px-2 py-1 bg-red-200 hover:bg-red-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'absent')}>A</button>
+                            <button className="px-2 py-1 bg-blue-200 hover:bg-blue-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'holiday')}>H</button>
+                            <button className="px-2 py-1 bg-orange-200 hover:bg-orange-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'halfDay')}>HD</button>
+                            <button className="px-2 py-1 bg-purple-200 hover:bg-purple-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'leaveRelief')}>LR</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
-            )}
-          </div>
-          {selectedEmployee && (
-            <button className="ml-4 px-2 py-1 bg-gray-200 rounded text-xs" onClick={handleShowAll}>Show All</button>
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

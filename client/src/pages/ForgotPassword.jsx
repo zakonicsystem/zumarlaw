@@ -9,7 +9,7 @@ const ForgetPassword = () => {
 
   const handleCheckEmail = async () => {
     try {
-      const res = await axios.post('https://app.zumarlawfirm.com/auth/forgot-password', { email });
+      const res = await axios.post('http://localhost:5000/auth/forgot-password', { email });
       setEmailVerified(true);
       setMessage('✅ Email verified. Enter your new password.');
     } catch (error) {
@@ -19,7 +19,7 @@ const ForgetPassword = () => {
 
   const handleResetPassword = async () => {
     try {
-      await axios.post('https://app.zumarlawfirm.com/auth/reset-password', {
+      await axios.post('http://localhost:5000/auth/reset-password', {
         email,
         newPassword,
       });

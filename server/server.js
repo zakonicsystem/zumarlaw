@@ -1,3 +1,4 @@
+import autoSalaryRoutes from './routes/autoSalary.js';
 // Global test route to verify server health
 import dotenv from 'dotenv';
 import express from 'express';
@@ -70,6 +71,7 @@ app.use(passport.session());
 app.use('/admin', roleRoutes);
 
 app.use(cookieParser());
+app.use('/autoSalary', autoSalaryRoutes);
 app.use('/uploads', express.static('uploads'));
 app.use('/admin', manualServiceRoutes);
 app.use('/admin', adminServiceRoutes);

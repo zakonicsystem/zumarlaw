@@ -5,14 +5,16 @@ import axios from 'axios';
 import { FiUser, FiCreditCard, FiPhone, FiCalendar, FiCheckCircle, FiChevronDown } from 'react-icons/fi';
 
 const AddLeads = () => {
-    const { register, handleSubmit, formState: { errors }, reset, control } = useForm();
+    const { register, handleSubmit, formState: { errors }, reset, control, watch } = useForm();
+    // Watch leadSource for conditional fields
+    const leadSourceValue = watch('leadSource');
     const [employees, setEmployees] = useState([]);
 
     useEffect(() => {
         // Fetch employees from backend Roles model
        const fetchEmployees = async () => {
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/admin/roles');
+        const res = await axios.get('http://localhost:5000/admin/roles');
         const employeesArr = Array.isArray(res.data)
           ? res.data.filter(emp => typeof emp.name === 'string' && emp.name.trim() !== '')
           : [];
@@ -34,12 +36,15 @@ const AddLeads = () => {
             assigned: data.assignedTo,
             service: data.service,
             leadSource: data.leadSource,
-            firstFollowUpDate: data.firstFollowUpDate,
-            nextFollowUpDate: data.nextFollowUpDate,
             remarks: data.remarks,
         };
+        // Add referral fields if present
+        if (data.leadSource === 'Referral') {
+            lead.referralName = data.referralName || '';
+            lead.referralPhone = data.referralPhone || '';
+        }
         try {
-            await axios.post('https://app.zumarlawfirm.com/leads', lead);
+            await axios.post('http://localhost:5000/leads', lead);
             toast.success('Lead added successfully!');
             reset();
         } catch (err) {
@@ -228,6 +233,7 @@ const AddLeads = () => {
                             {errors.service && <p className="mt-1 text-sm text-red-600">{errors.service.message}</p>}
                         </div>
 
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Legal Source</label>
                             <div className="relative">
@@ -244,6 +250,30 @@ const AddLeads = () => {
                             </div>
                             {errors.leadSource && <p className="mt-1 text-sm text-red-600">{errors.leadSource.message}</p>}
                         </div>
+
+                        {/* Show referral fields if leadSource is Referral */}
+                        {leadSourceValue === 'Referral' && (
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Referral Person Name</label>
+                                    <input
+                                        type="text"
+                                        {...register("referralName")}
+                                        className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="Enter referral person's name"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Referral Person Phone</label>
+                                    <input
+                                        type="text"
+                                        {...register("referralPhone")}
+                                        className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="Enter referral person's phone"
+                                    />
+                                </div>
+                            </div>
+                        )}
 
                         {/* Branch removed */}
 
@@ -293,51 +323,14 @@ const AddLeads = () => {
                     </div>
                 </section>
 
-                <div className="border-t border-gray-200 my-6"></div>
-
-                {/* Follow-up Details Section */}
-                <section>
-                    <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center">
-                        <FiCalendar className="mr-2" /> Follow-up Details
-                    </h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">First Follow-Up Date</label>
-                            <input
-                                {...register("firstFollowUpDate")}
-                                type="date"
-                                className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Next Follow-Up Date</label>
-                            <input
-                                {...register("nextFollowUpDate")}
-                                type="date"
-                                className="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="mt-6 flex justify-between items-center">
-                        {/* <button
-                            type="button"
-                            onClick={() => register("markAsComplete").onChange({ target: { checked: true } })}
-                            className="px-4 py-2 text-white bg-[#57123f] rounded-md hover:bg-opacity-90 transition-all flex items-center gap-2"
-                        >
-                            <FiCheckCircle /> Mark As Complete
-                        </button> */}
-
-                        <button
-                            type="submit"
-                            className="inline-flex items-center px-6 py-2 rounded-md text-white bg-[#57123f] hover:bg-opacity-90 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#57123f]"
-                        >
-                            <FiCheckCircle className="mr-2" /> Move to Processing
-                        </button>
-                    </div>
-                </section>
+                <div className="mt-6 flex justify-end">
+                    <button
+                        type="submit"
+                        className="inline-flex items-center px-6 py-2 rounded-md text-white bg-[#57123f] hover:bg-opacity-90 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#57123f]"
+                    >
+                        <FiCheckCircle className="mr-2" /> Move to Processing
+                    </button>
+                </div>
             </form>
         </div>
     );

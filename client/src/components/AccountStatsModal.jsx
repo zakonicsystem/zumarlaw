@@ -328,6 +328,8 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit }) => {
     }
   };
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // all, completed, pending
+  const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
   const handleEditClick = (idx) => {
     setEditIdx(idx);
     setEditRow({ ...filtered[idx] });
@@ -350,9 +352,39 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit }) => {
   if (!open) return null;
 
   const data = dataByType[activeTab] || [];
-  const filtered = data.filter(row =>
+  // Sort newest first
+  const sortedData = [...data].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+  // Filter by search
+  let filtered = sortedData.filter(row =>
     Object.values(row).join(' ').toLowerCase().includes(search.toLowerCase())
   );
+  // Filter by status
+  if (statusFilter === 'completed') {
+    filtered = filtered.filter(row => Number(row.totalPayment) === Number(row.currentReceivingPayment));
+  } else if (statusFilter === 'pending') {
+    filtered = filtered.filter(row => Number(row.totalPayment) !== Number(row.currentReceivingPayment));
+  }
+  // Date filter logic (by payments[].date)
+  if (dateFilter.start || dateFilter.end) {
+    filtered = filtered.filter(row => {
+      let paymentDates = [];
+      if (Array.isArray(row.payments)) {
+        row.payments.forEach(p => {
+          if (p.date) paymentDates.push(p.date);
+        });
+      }
+      // If no payment dates, exclude
+      if (paymentDates.length === 0) return false;
+      // If any payment date is in range, include
+      return paymentDates.some(dateStr => {
+        const d = new Date(dateStr);
+        let afterStart = true, beforeEnd = true;
+        if (dateFilter.start) afterStart = d >= new Date(dateFilter.start);
+        if (dateFilter.end) beforeEnd = d <= new Date(dateFilter.end);
+        return afterStart && beforeEnd;
+      });
+    });
+  }
 
 
   return (
@@ -399,6 +431,55 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit }) => {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+        </div>
+
+        {/* Filter Buttons */}
+        <div className="mb-4 flex gap-2">
+          <button
+            className={`px-3 py-1 rounded ${statusFilter === 'all' ? 'bg-[#57123f] text-white' : 'bg-gray-200 text-gray-700'}`}
+            onClick={() => setStatusFilter('all')}
+          >
+            All
+          </button>
+          <button
+            className={`px-3 py-1 rounded ${statusFilter === 'completed' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+            onClick={() => setStatusFilter('completed')}
+          >
+            Completed
+          </button>
+          <button
+            className={`px-3 py-1 rounded ${statusFilter === 'pending' ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+            onClick={() => setStatusFilter('pending')}
+          >
+            Pending
+          </button>
+        </div>
+
+        {/* Date Range Filter */}
+        <div className="mb-4 flex gap-2">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">Payment Date:</span>
+            <input
+              type="date"
+              value={dateFilter.start}
+              onChange={e => setDateFilter(df => ({ ...df, start: e.target.value }))}
+              className="border rounded px-2 py-1"
+            />
+            <span>-</span>
+            <input
+              type="date"
+              value={dateFilter.end}
+              onChange={e => setDateFilter(df => ({ ...df, end: e.target.value }))}
+              className="border rounded px-2 py-1"
+            />
+            <button
+              className="ml-2 px-2 py-1 rounded bg-gray-200 text-gray-700"
+              onClick={() => setDateFilter({ start: '', end: '' })}
+              type="button"
+            >
+              Clear
+            </button>
+          </div>
         </div>
 
         {/* Table */}

@@ -1,7 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FaEye, FaEdit, FaTrash, FaInfoCircle } from 'react-icons/fa';
-
-import { useState } from 'react';
 import { serviceData } from '../../data/serviceSchemas';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
@@ -18,6 +16,7 @@ const LeadsTable = ({
   tableTitle = '',
 }) => {
   const [editModal, setEditModal] = useState({ open: false, lead: null });
+  const [viewModal, setViewModal] = useState({ open: false, lead: null });
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
@@ -29,7 +28,7 @@ const LeadsTable = ({
   const handleEditSave = async () => {
     if (!editModal.lead?._id) return;
     try {
-      await axios.put(`https://app.zumarlawfirm.com/leads/${editModal.lead._id}`, editModal.lead);
+      await axios.put(`http://localhost:5000/leads/${editModal.lead._id}`, editModal.lead);
       toast.success('Lead updated successfully');
       setEditModal({ open: false, lead: null });
       // Optionally: refresh leads list or update UI here
@@ -57,7 +56,6 @@ const LeadsTable = ({
                     <th className="p-3">Status</th>
                     <th className="p-3">Service Interested</th>
                     <th className="p-3">Assigned To</th>
-                    <th className="p-3">Remarks</th>
                     <th className="p-3">Action</th>
                 </tr>
             </thead>
@@ -95,20 +93,15 @@ const LeadsTable = ({
                             </td>
                             <td className="p-2">{lead.service}</td>
                             <td className="p-2">{lead.assigned || '-'}</td>
-                            <td className="p-2">
-                                <div className="flex items-center gap-1 text-sm">
-                                    <FaInfoCircle className="text-gray-400" />
-                                    {lead.remarks || 'The client is interested but …'}
-                                </div>
-                            </td>
+                        
                             <td className="p-2 flex gap-2">
-                                <button
-                                    className="rounded-full hover:bg-gray-100 text-[#57123f]"
-                                    title="View"
-                                    onClick={() => onAction('View', lead)}
-                                >
-                                    <FaEye />
-                                </button>
+                <button
+                  className="rounded-full hover:bg-gray-100 text-[#57123f]"
+                  title="View"
+                  onClick={() => setViewModal({ open: true, lead })}
+                >
+                  <FaEye />
+                </button>
                 <button
                   className="rounded-full hover:bg-gray-100 text-[#57123f]"
                   title="Edit"
@@ -139,9 +132,10 @@ const LeadsTable = ({
       <div className="text-sm text-gray-500 mt-3">Showing 10 results in a Page</div>
       {editModal.open && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
           <h3 className="text-lg font-bold mb-4">Edit Lead</h3>
           <div className="space-y-3">
+            <span className="block font-semibold mb-1">Name</span>
             <input
               type="text"
               name="name"
@@ -150,6 +144,7 @@ const LeadsTable = ({
               className="border rounded px-3 py-2 w-full"
               placeholder="Name"
             />
+            <span className="block font-semibold mb-1">Email</span>
             <input
               type="email"
               name="email"
@@ -158,6 +153,7 @@ const LeadsTable = ({
               className="border rounded px-3 py-2 w-full"
               placeholder="Email"
             />
+            <span className="block font-semibold mb-1">Phone</span>
             <input
               type="text"
               name="phone"
@@ -166,6 +162,7 @@ const LeadsTable = ({
               className="border rounded px-3 py-2 w-full"
               placeholder="Phone"
             />
+            <span className="block font-semibold mb-1">Service Interested</span>
             <select
               name="service"
               value={editModal.lead?.service || ''}
@@ -177,6 +174,7 @@ const LeadsTable = ({
                 <option key={service} value={service}>{service}</option>
               ))}
             </select>
+            <span className="block font-semibold mb-1">Assigned To</span>
             <input
               type="text"
               name="assigned"
@@ -185,6 +183,7 @@ const LeadsTable = ({
               className="border rounded px-3 py-2 w-full"
               placeholder="Assigned To"
             />
+            <span className="block font-semibold mb-1">Remarks</span>
             <textarea
               name="remarks"
               value={editModal.lead?.remarks || ''}
@@ -192,6 +191,24 @@ const LeadsTable = ({
               className="border rounded px-3 py-2 w-full"
               placeholder="Remarks"
               rows={2}
+            />
+            <span className="block font-semibold mb-1">Referral Name</span>
+            <input
+              type="text"
+              name="referralName"
+              value={editModal.lead?.referralName || ''}
+              onChange={handleEditChange}
+              className="border rounded px-3 py-2 w-full"
+              placeholder="Referral Name"
+            />
+            <span className="block font-semibold mb-1">Referral Phone</span>
+            <input
+              type="text"
+              name="referralPhone"
+              value={editModal.lead?.referralPhone || ''}
+              onChange={handleEditChange}
+              className="border rounded px-3 py-2 w-full"
+              placeholder="Referral Phone"
             />
           </div>
           <div className="flex justify-end gap-2 mt-6">
@@ -211,6 +228,38 @@ const LeadsTable = ({
         </div>
       </div>
     )}
+      {/* View Modal for Eye Icon */}
+      {viewModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <FaEye className="text-[#57123f]" /> Lead Details
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <span className="font-semibold">Remarks:</span><br />
+                <span className="text-gray-700">{viewModal.lead?.remarks || 'No remarks provided.'}</span>
+              </div>
+              <div>
+                <span className="font-semibold">Referral Name:</span><br />
+                <span className="text-gray-700">{viewModal.lead?.referralName || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-semibold">Referral Phone:</span><br />
+                <span className="text-gray-700">{viewModal.lead?.referralPhone || 'N/A'}</span>
+              </div>
+            </div>
+            <div className="flex justify-end mt-6">
+              <button
+                className="px-4 py-2 rounded bg-gray-200 text-gray-700"
+                onClick={() => setViewModal({ open: false, lead: null })}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   </>
   );
 };

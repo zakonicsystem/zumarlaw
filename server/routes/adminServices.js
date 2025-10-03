@@ -134,5 +134,20 @@ router.patch('/services/:id/payment-status', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+// PATCH /admin/services/:id/status - update service status (requires authentication)
+router.patch('/services/:id/status', verifyJWT, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const service = await Service.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    if (!service) return res.status(404).json({ error: 'Service not found' });
+    res.json(service);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 export default router;

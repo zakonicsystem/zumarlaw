@@ -36,7 +36,7 @@ const Sidebar = () => {
         const fetchAssignedPages = async () => {
             if (isEmployee) {
                 try {
-                    const res = await axios.get('https://app.zumarlawfirm.com/employee/me', {
+                    const res = await axios.get('http://localhost:5000/employee/me', {
                         headers: { Authorization: `Bearer ${employeeToken}` },
                         withCredentials: true
                     });
@@ -79,7 +79,7 @@ const Sidebar = () => {
 
     const handleLogout = async () => {
         try {
-            await axios.get('https://app.zumarlawfirm.com/admin/logout', { withCredentials: true });
+            await axios.get('http://localhost:5000/admin/logout', { withCredentials: true });
             localStorage.removeItem('adminToken');
             localStorage.removeItem('employeeToken');
             toast.success('Successfully logged out');
@@ -118,6 +118,8 @@ const Sidebar = () => {
             name: 'Payroll', icon: <FaMoneyCheckAlt />, path: '/admin/payroll',
             children: [
                 { name: 'New Payroll', path: '/admin/payroll/add', icon: <FaPlus /> },
+                { name: 'Salary', path: '/admin/salary', icon: <FaMoneyCheckAlt /> },
+                { name: 'Attendance', path: '/admin/attendance', icon: <FaMoneyCheckAlt /> }
             ]
         },
         {
@@ -127,8 +129,12 @@ const Sidebar = () => {
             ]
         },
         { name: 'Customers', icon: <FaUsers />, path: '/admin/customers' },
-        { name: 'Account', icon: <FaUserCog />, path: '/admin/account' },
-        { name: 'Expense', icon: <FaMoneyCheckAlt />, path: '/admin/expense' },
+        { name: 'Account', icon: <FaUserCog />, path: '/admin/account',
+            children: [
+                    { name: 'Expense', icon: <FaMoneyCheckAlt />, path: '/admin/expense' },
+            ]
+         },
+    
     ];
 
     const menuItems = allMenuItems.map(item => {
@@ -228,9 +234,9 @@ const Sidebar = () => {
                     </nav>
                 </div>
                 <div className="flex-shrink-0 p-4 border-t">
-                    <Link to="/admin/attendance" className="w-full flex items-center gap-2 px-4 py-2 mb-2 bg-green-100 text-green-800 rounded hover:bg-green-200 justify-center">
+                    {/* <Link to="/admin/attendance" className="w-full flex items-center gap-2 px-4 py-2 mb-2 bg-green-100 text-green-800 rounded hover:bg-green-200 justify-center">
                         <FaClipboardCheck /> Attendance
-                    </Link>
+                    </Link> */}
                     <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2 bg-[#57123f] text-white rounded hover:bg-primary/90">
                         <FaSignOutAlt /> Logout
                     </button>

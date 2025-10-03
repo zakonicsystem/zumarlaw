@@ -8,7 +8,9 @@ const LeadSchema = new mongoose.Schema({
     status: String,
     service: { type: String },
     assigned: String,
-    remarks: String
+    remarks: String,
+    referralName: String,
+    referralPhone: String
 });
 
 export default mongoose.model('Lead', LeadSchema);

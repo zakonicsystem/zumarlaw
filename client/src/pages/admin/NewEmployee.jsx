@@ -107,8 +107,8 @@ const NewEmployee = ({ onEmployeeAdded }) => {
     try {
       setLoading(true);
       const endpoint = isEditing
-        ? `https://app.zumarlawfirm.com/admin/roles/${editId}`
-        : 'https://app.zumarlawfirm.com/admin/roles';
+        ? `http://localhost:5000/admin/roles/${editId}`
+        : 'http://localhost:5000/admin/roles';
 
       const method = isEditing ? 'put' : 'post';
 

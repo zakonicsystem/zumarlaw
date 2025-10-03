@@ -1,4 +1,3 @@
-
 import express from 'express';
 import Lead from '../models/Lead.js';
 

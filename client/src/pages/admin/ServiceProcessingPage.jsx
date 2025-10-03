@@ -37,8 +37,9 @@ const statusColors = {
   pending: 'bg-yellow-400 text-black',
   processing: 'bg-blue-400 text-white',
   completed: 'bg-green-500 text-white',
+  rejected: 'bg-red-500 text-white',
 };
-const statusOrder = ['pending', 'processing', 'completed'];
+const statusOrder = ['pending', 'processing', 'completed', 'rejected'];
 
 
 
@@ -145,7 +146,7 @@ const ServiceProcessingPage = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/admin/roles', { headers: getAuthHeaders() });
+        const res = await axios.get('http://localhost:5000/admin/roles', { headers: getAuthHeaders() });
         console.log('Employees API response:', res.data); // Debug log
         const employeesArr = Array.isArray(res.data)
           ? res.data.filter(emp => typeof emp.name === 'string' && emp.name.trim() !== '')
@@ -167,7 +168,7 @@ const ServiceProcessingPage = () => {
   const fetchServices = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('https://app.zumarlawfirm.com/admin/services', { headers: getAuthHeaders() });
+      const res = await axios.get('http://localhost:5000/admin/services', { headers: getAuthHeaders() });
       setServices(res.data);
     } catch (err) {
       toast.error('Failed to fetch services');
@@ -185,7 +186,7 @@ const ServiceProcessingPage = () => {
   const handleAssignEmployee = async (row, employeeName) => {
     try {
       await axios.patch(
-        `https://app.zumarlawfirm.com/admin/services/${row._id}/assign`,
+        `http://localhost:5000/admin/services/${row._id}/assign`,
         { assignedTo: employeeName },
         { headers: getAuthHeaders() }
       );
@@ -204,14 +205,14 @@ const ServiceProcessingPage = () => {
       let res;
       try {
         res = await axios.patch(
-          `https://app.zumarlawfirm.com/admin/services/${row._id}/status`,
+          `http://localhost:5000/admin/services/${row._id}/status`,
           { status: nextStatus },
           { headers: getAuthHeaders() }
         );
       } catch (err) {
         if (err.response && err.response.status === 404) {
           res = await axios.patch(
-            `https://app.zumarlawfirm.com/admin/services/status/${row._id}`,
+            `http://localhost:5000/admin/services/status/${row._id}`,
             { status: nextStatus },
             { headers: getAuthHeaders() }
           );
@@ -232,7 +233,7 @@ const ServiceProcessingPage = () => {
     const nextStatus = paymentOrder[(currentIdx + 1) % paymentOrder.length];
     try {
       await axios.patch(
-        `https://app.zumarlawfirm.com/admin/services/${row._id}/payment-status`,
+        `http://localhost:5000/admin/services/${row._id}/payment-status`,
         { paymentStatus: nextStatus },
         { headers: getAuthHeaders() }
       );
@@ -290,7 +291,7 @@ const ServiceProcessingPage = () => {
 
     try {
       await axios.post(
-        `https://app.zumarlawfirm.com/admin/services/${selectedRow._id}/certificate?pending=true`,
+        `http://localhost:5000/admin/services/${selectedRow._id}/certificate?pending=true`,
         formData,
         {
           headers: {
@@ -393,7 +394,7 @@ const ServiceProcessingPage = () => {
     if (selectedRows.length === 0) return toast.error('Please select at least one row.');
     if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} row(s)?`)) return;
     try {
-      await axios.post('https://app.zumarlawfirm.com/invoices/delete-multiple', { ids: selectedRows }, { headers: getAuthHeaders() });
+      await axios.post('http://localhost:5000/invoices/delete-multiple', { ids: selectedRows }, { headers: getAuthHeaders() });
       toast.success('Selected services deleted!');
       setServices(prev => prev.filter(row => !selectedRows.includes(row._id)));
       setSelectedRows([]);
@@ -442,6 +443,7 @@ const ServiceProcessingPage = () => {
             <option value="pending">Pending</option>
             <option value="in-progress">In Progress</option>
             <option value="completed">Completed</option>
+            <option value="rejected">Rejected</option>
           </select>
 
           <button
@@ -645,7 +647,7 @@ const ServiceProcessingPage = () => {
                 onClick={async () => {
                   try {
                     console.log('Sending message to userId:', messageRow.userId, 'serviceId:', messageRow._id); // Debug
-                    await axios.post('https://app.zumarlawfirm.com/serviceMessage', {
+                    await axios.post('http://localhost:5000/serviceMessage', {
                       userId: messageRow.userId,
                       serviceId: messageRow._id, // Use _id as serviceId
                       type: messageType,
@@ -815,7 +817,7 @@ const ServiceProcessingPage = () => {
                       const JSZip = (await import('jszip')).default;
                       const zip = new JSZip();
                       await Promise.all(imageFiles.map(async (file) => {
-                        const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
+                        const url = `http://localhost:5000/uploads/${encodeURIComponent(file)}`;
                         try {
                           const response = await fetch(url);
                           if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -863,7 +865,7 @@ const ServiceProcessingPage = () => {
                       const JSZip = (await import('jszip')).default;
                       const zip = new JSZip();
                       await Promise.all(docFiles.map(async (file) => {
-                        const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
+                        const url = `http://localhost:5000/uploads/${encodeURIComponent(file)}`;
                         try {
                           const response = await fetch(url);
                           if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -894,7 +896,7 @@ const ServiceProcessingPage = () => {
                       const userEmail = selectedRow.personalId?.email;
                       if (!userEmail) return toast.error('No user email found for this service');
                       try {
-                        await axios.post(`https://app.zumarlawfirm.com/admin/services/${selectedRow._id}/send-invoice`, { email: userEmail });
+                        await axios.post(`http://localhost:5000/admin/services/${selectedRow._id}/send-invoice`, { email: userEmail });
                         toast.success('Invoice, certificate, images, and documents sent to user dashboard and email!');
                         fetchServices();
                       } catch (err) {

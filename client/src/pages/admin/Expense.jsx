@@ -15,8 +15,8 @@ const Expense = () => {
 
   const handleUpdate = async (id) => {
     try {
-      await axios.put(`https://app.zumarlawfirm.com/expense/${id}`, { type: editType, amount: parseFloat(editAmount) });
-      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense');
+      await axios.put(`http://localhost:5000/expense/${id}`, { type: editType, amount: parseFloat(editAmount) });
+      const expenseRes = await axios.get('http://localhost:5000/expense');
       setExpenses(expenseRes.data || []);
       setEditIdx(null);
       setEditType('');
@@ -29,8 +29,8 @@ const Expense = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`https://app.zumarlawfirm.com/expense/${id}`);
-      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense');
+      await axios.delete(`http://localhost:5000/expense/${id}`);
+      const expenseRes = await axios.get('http://localhost:5000/expense');
       setExpenses(expenseRes.data || []);
       setMessage('Expense deleted successfully!');
     } catch (err) {
@@ -58,9 +58,9 @@ const Expense = () => {
     // Fetch profit and expenses from backend
     const fetchData = async () => {
       try {
-        const profitRes = await axios.get('https://app.zumarlawfirm.com/accounts/summary');
+        const profitRes = await axios.get('http://localhost:5000/accounts/summary');
         setProfit(profitRes.data.totalProfit || 0);
-        const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense');
+        const expenseRes = await axios.get('http://localhost:5000/expense');
         setExpenses(expenseRes.data || []);
       } catch (err) {
         setMessage('Failed to fetch data');
@@ -83,7 +83,7 @@ const Expense = () => {
     try {
       // Office Boy Salary
       if (form.type === 'Salary' && form.officeBoyName && form.amount && form.officeBoyBranch) {
-        await axios.post('https://app.zumarlawfirm.com/expense', {
+        await axios.post('http://localhost:5000/expense', {
           type: `Office Boy Salary - ${form.officeBoyName}`,
           amount: parseFloat(form.amount),
           officeBoyName: form.officeBoyName,
@@ -92,7 +92,7 @@ const Expense = () => {
       }
       // Branch Expense
       if (form.type === 'Expense' && form.branchName && form.branchExpenseAmount && form.branchExpenseType) {
-        await axios.post('https://app.zumarlawfirm.com/expense', {
+        await axios.post('http://localhost:5000/expense', {
           type: 'Expense', // Always set type to 'Expense' for branch expenses
           amount: parseFloat(form.branchExpenseAmount),
           branchName: form.branchName,
@@ -101,14 +101,14 @@ const Expense = () => {
       }
       // Beverage
       if (form.type === 'Beverage' && form.beverageAmount && form.beverageType && form.beverageBranch) {
-        await axios.post('https://app.zumarlawfirm.com/expense', {
+        await axios.post('http://localhost:5000/expense', {
           type: `Beverage - ${form.beverageType}`,
           amount: parseFloat(form.beverageAmount),
           beverageType: form.beverageType,
           beverageBranch: form.beverageBranch,
         });
       }
-      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense');
+      const expenseRes = await axios.get('http://localhost:5000/expense');
       setExpenses(expenseRes.data || []);
       setForm({
         officeBoyName: '',
