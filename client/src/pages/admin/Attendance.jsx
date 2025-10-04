@@ -12,19 +12,39 @@ const Attendance = () => {
   const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
+    let mounted = true;
     axios.get('https://app.zumarlawfirm.com/admin/roles')
       .then(res => {
+        if (!mounted) return;
         setEmployees(res.data);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-    fetchAttendanceHistory();
-  }, []);
+    // fetch month filtered history
+    fetchAttendanceHistory({ year, month });
+    return () => { mounted = false; };
+  }, [month, year]);
 
-  const fetchAttendanceHistory = () => {
-    axios.get('https://app.zumarlawfirm.com/attendance/history')
-      .then(res => setAttendanceHistory(res.data))
-      .catch(() => {});
+  const fetchAttendanceHistory = async (opts = {}) => {
+    try {
+      const params = {};
+      if (opts.year && opts.month) {
+        params.year = opts.year;
+        params.month = opts.month;
+      }
+      if (opts.employeeId) params.employeeId = opts.employeeId;
+      const res = await axios.get('https://app.zumarlawfirm.com/attendance/history', { params });
+      // If employeeId provided, we just set/merge for that employee
+      if (opts.employeeId) {
+        // merge into attendanceHistory: remove existing for that employee then add
+        const others = attendanceHistory.filter(r => r.employeeEmail !== res.data[0]?.employeeEmail);
+        setAttendanceHistory([...others, ...res.data]);
+      } else {
+        setAttendanceHistory(res.data);
+      }
+    } catch (err) {
+      // ignore
+    }
   };
 
   // Generate all dates for selected month/year (handles leap years)
@@ -33,12 +53,18 @@ const Attendance = () => {
     // month is 1-based
     const daysInMonth = new Date(year, month, 0).getDate();
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month - 1, day);
-      dates.push(date.toISOString().slice(0, 10));
+      // format as YYYY-MM-DD without using toISOString to avoid timezone shifts
+      const mm = String(month).padStart(2, '0');
+      const dd = String(day).padStart(2, '0');
+      dates.push(`${year}-${mm}-${dd}`);
     }
     return dates;
   };
-  const filteredDates = getMonthDates(year, month);
+  // Exclude Sundays from the dates shown (use local Date constructed from parts)
+  const filteredDates = getMonthDates(year, month).filter(d => {
+    const [y, m, day] = d.split('-').map(Number);
+    return new Date(y, m - 1, day).getDay() !== 0;
+  });
 
   // Helper to get status for employee on a date
   const getStatus = (emp, date) => {
@@ -81,8 +107,10 @@ const Attendance = () => {
   if (!years.includes(year)) years.push(year);
   years.sort((a, b) => b - a);
 
+  // Employees are shown as tabs in a grid (3 columns). No horizontal overflow.
+
   return (
-    <div className="p-4">
+  <div className="p-4" style={{ overflowX: 'hidden' }}>
       <h2 className="text-xl font-bold mb-4">Attendance</h2>
       <div className="flex gap-4 mb-4">
         <select value={month} onChange={e => setMonth(Number(e.target.value))} className="px-2 py-1 rounded bg-gray-100">
@@ -100,66 +128,85 @@ const Attendance = () => {
         <div>Loading...</div>
       ) : (
         <>
-          <div className="mb-4 flex gap-2 border-b">
-            {employees.map((emp, idx) => (
-              <button
-                key={emp._id}
-                className={`px-4 py-2 rounded-t ${activeTab === idx ? 'bg-[#57123f] text-white' : 'bg-gray-100 text-gray-700'}`}
-                onClick={() => setActiveTab(idx)}
-              >
-                {emp.name}
-              </button>
-            ))}
-          </div>
-          {employees[activeTab] && (
-            <div className="overflow-x-auto">
-              <table className="min-w-max w-full border text-xs">
-                <thead>
-                  <tr>
-                    <th className="px-2 py-2 border">Date</th>
-                    <th className="px-2 py-2 border">Status</th>
-                    <th className="px-2 py-2 border">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDates.map((date, idx) => {
-                    const emp = employees[activeTab];
-                    const status = getStatus(emp, date);
-                    let cellClass = '';
-                    if (status === 'present') cellClass = 'bg-green-50';
-                    else if (status === 'leave') cellClass = 'bg-yellow-50';
-                    else if (status === 'absent') cellClass = 'bg-red-50';
-                    else if (status === 'holiday') cellClass = 'bg-blue-50';
-                    else if (status === 'halfDay') cellClass = 'bg-orange-50';
-                    else if (status === 'leaveRelief') cellClass = 'bg-purple-50';
-                    return (
-                      <tr key={date} className={idx % 2 === 0 ? 'bg-gray-50 border-b' : 'bg-white border-b'}>
-                        <td className="px-2 py-2 border font-semibold">{date}</td>
-                        <td className={`px-2 py-2 border font-bold text-center ${cellClass}`}>
-                          {status === 'present' && <span className="text-green-600">Present</span>}
-                          {status === 'leave' && <span className="text-yellow-600">Leave</span>}
-                          {status === 'absent' && <span className="text-red-600">Absent</span>}
-                          {status === 'holiday' && <span className="text-blue-600">Holiday</span>}
-                          {status === 'halfDay' && <span className="text-orange-600">Half Day</span>}
-                          {status === 'leaveRelief' && <span className="text-purple-600">Leave Relief</span>}
-                        </td>
-                        <td className="px-2 py-2 border text-center">
-                          <div className="flex gap-1 justify-center">
-                            <button className="px-2 py-1 bg-green-200 hover:bg-green-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'present')}>P</button>
-                            <button className="px-2 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'leave')}>L</button>
-                            <button className="px-2 py-1 bg-red-200 hover:bg-red-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'absent')}>A</button>
-                            <button className="px-2 py-1 bg-blue-200 hover:bg-blue-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'holiday')}>H</button>
-                            <button className="px-2 py-1 bg-orange-200 hover:bg-orange-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'halfDay')}>HD</button>
-                            <button className="px-2 py-1 bg-purple-200 hover:bg-purple-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'leaveRelief')}>LR</button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          <div>
+            <div className="mb-4">
+              <div className="grid grid-cols-3 gap-2">
+                {employees.map((emp, idx) => (
+                  <button
+                    key={emp._id}
+                    onClick={() => setActiveTab(idx)}
+                    className={`w-full box-border px-3 py-2 text-left rounded ${activeTab === idx ? 'bg-[#57123f] text-white' : 'bg-gray-100 text-gray-700'}`}
+                  >
+                    <div className="font-semibold truncate">{emp.name}</div>
+                    <div className="text-xs text-gray-500 truncate">{emp.email}</div>
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
+            {employees[activeTab] && (
+              <div className="border rounded p-3 shadow-sm bg-white">
+                <div className="flex justify-between items-center mb-2">
+                  <div>
+                    <div className="font-semibold text-sm">{employees[activeTab].name}</div>
+                    <div className="text-xs text-gray-500">{employees[activeTab].email}</div>
+                  </div>
+                  <div className="text-sm text-gray-600">{new Date(year, month - 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}</div>
+                </div>
+                <div className="overflow-auto max-h-[420px]">
+                  <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
+                    <thead>
+                      <tr>
+                        <th className="text-left pb-2">Day</th>
+                        <th className="text-left pb-2">Date</th>
+                        <th className="text-center pb-2" style={{ width: '80px' }}>Status</th>
+                        <th className="text-center pb-2" >Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredDates.map((date, idx) => {
+                        const emp = employees[activeTab];
+                        const status = getStatus(emp, date);
+                        const [y, m, d] = date.split('-').map(Number);
+                        const dayName = new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short' });
+                        const dayNumber = d;
+                        let cellClass = '';
+                        if (status === 'present') cellClass = 'bg-green-50';
+                        else if (status === 'leave') cellClass = 'bg-yellow-50';
+                        else if (status === 'absent') cellClass = 'bg-red-50';
+                        else if (status === 'holiday') cellClass = 'bg-blue-50';
+                        else if (status === 'halfDay') cellClass = 'bg-orange-50';
+                        else if (status === 'leaveRelief') cellClass = 'bg-purple-50';
+                        return (
+                          <tr key={date} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                            <td className="px-2 py-1 align-top">{dayName}</td>
+                            <td className="px-2 py-1 align-top font-semibold" title={date}>{dayNumber}</td>
+                            <td className={`px-2 py-1 text-center align-top ${cellClass}`} style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {status === 'present' && <span className="text-green-600">P</span>}
+                              {status === 'leave' && <span className="text-yellow-600">L</span>}
+                              {status === 'absent' && <span className="text-red-600">A</span>}
+                              {status === 'holiday' && <span className="text-blue-600">H</span>}
+                              {status === 'halfDay' && <span className="text-orange-600">HD</span>}
+                              {status === 'leaveRelief' && <span className="text-purple-600">LR</span>}
+                            </td>
+                            <td className="px-2 py-1 text-center align-top">
+                              <div className="flex gap-1 justify-center flex-wrap">
+                                <button title="Present" className="px-2 py-1 bg-green-200 hover:bg-green-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'present')}>P</button>
+                                <button title="Leave" className="px-2 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'leave')}>L</button>
+                                <button title="Absent" className="px-2 py-1 bg-red-200 hover:bg-red-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'absent')}>A</button>
+                                <button title="Holiday" className="px-2 py-1 bg-blue-200 hover:bg-blue-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'holiday')}>H</button>
+                                <button title="Half Day" className="px-2 py-1 bg-orange-200 hover:bg-orange-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'halfDay')}>HD</button>
+                                <button title="Leave Relief" className="px-2 py-1 bg-purple-200 hover:bg-purple-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'leaveRelief')}>LR</button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

@@ -11,17 +11,19 @@ function InvoiceContent({ invoiceData }) {
   // Enhanced invoice design
   return (
     <div style={{ fontFamily: 'Segoe UI, Arial, sans-serif', background: '#fff', borderRadius: 12, boxShadow: '0 2px 12px #0002', padding: '2vw', minHeight: '60vh', maxWidth: '100vw', width: '100%', position: 'relative', overflow: 'auto' }}>
-      {/* Header with logo and company info */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 32, borderBottom: '2px solid #57123f', paddingBottom: 16 }}>
-        <img src={ZumarLogo} alt="Zumar Law Firm Logo" style={{ height: 64, marginRight: 24, borderRadius: 8 }} />
-        <div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#57123f', letterSpacing: 1 }}>Zumar Law Firm</div>
-          <div style={{ fontSize: 16, color: '#57123f', fontWeight: 500 }}>Legal & Tax Consultancy</div>
-          <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>www.zumarlawfirm.com | info@zumarlawfirm.com</div>
+      {/* Header with logo and company info - responsive grid to avoid overflow */}
+      <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto', gap: 16, alignItems: 'center', marginBottom: 24, borderBottom: '2px solid #57123f', paddingBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <img src={ZumarLogo} alt="Zumar Law Firm Logo" style={{ height: 80, width: 80, objectFit: 'contain', borderRadius: 8 }} />
         </div>
-        <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#57123f', letterSpacing: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>Zumar Law Firm</div>
+          <div style={{ fontSize: 14, color: '#57123f', fontWeight: 500, marginTop: 4 }}>Legal & Tax Consultancy</div>
+          <div style={{ fontSize: 12, color: '#888', marginTop: 6, wordBreak: 'break-word' }}>www.zumarlawfirm.com | info@zumarlawfirm.com</div>
+        </div>
+        <div style={{ textAlign: 'right', minWidth: 140 }}>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#57123f' }}>INVOICE</div>
-          <div style={{ fontSize: 13, color: '#888' }}>#{invoiceData._id?.slice(-6).toUpperCase()}</div>
+          <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>#{invoiceData._id?.slice(-6).toUpperCase()}</div>
         </div>
       </div>
       {/* Invoice meta */}
@@ -35,7 +37,7 @@ function InvoiceContent({ invoiceData }) {
         <div style={{ textAlign: 'right' }}>
           <div><span style={{ fontWeight: 600, color: '#57123f' }}>Date:</span> {invoiceData.createdAt ? new Date(invoiceData.createdAt).toLocaleDateString() : ''}</div>
           <div><span style={{ fontWeight: 600, color: '#57123f' }}>Status:</span> <span style={{ textTransform: 'capitalize' }}>{invoiceData.status || 'pending'}</span></div>
-          <div><span style={{ fontWeight: 600, color: '#57123f' }}>Service:</span> {invoiceData.serviceType || invoiceData.service}</div>
+          <div style={{ maxWidth: 280, marginLeft: 'auto', wordBreak: 'break-word' }}><span style={{ fontWeight: 600, color: '#57123f' }}>Service:</span> <span style={{ display: 'inline-block', maxWidth: 220, whiteSpace: 'normal', wordBreak: 'break-word' }}>{invoiceData.serviceType || invoiceData.service}</span></div>
         </div>
       </div>
       {/* Details Table */}
@@ -50,7 +52,7 @@ function InvoiceContent({ invoiceData }) {
             {invoiceData.fields && Object.keys(invoiceData.fields).length > 0 && Object.entries(invoiceData.fields).map(([key, value]) => (
               <tr key={key}>
                 <td style={{ fontWeight: 600, color: '#57123f', padding: 8 }}>{key.replace(/_/g, ' ')}</td>
-                <td style={{ padding: 8 }}>
+                <td style={{ padding: 8, maxWidth: '60vw', wordBreak: 'break-word', whiteSpace: 'normal' }}>
                   {Array.isArray(value) ? (
                     value.map((item, i) => {
                       if (typeof item === 'string' && item.match(/\.(jpg|jpeg|png)$/i)) {
@@ -195,7 +197,7 @@ const ConvertedService = () => {
     const matchesSearch = searchQuery
       ? (
         (row.name && row.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (row.cnic && row.cnic.toLowerCase().includes(searchQuery.toLowerCase()))
+        (row.phone && row.phone.toLowerCase().includes(searchQuery.toLowerCase()))
       )
       : true;
     return matchesStatus && matchesSearch;
@@ -256,7 +258,7 @@ const ConvertedService = () => {
             <input
               className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
               type="text"
-              placeholder="Search by Name or CNIC"
+              placeholder="Search by Name or Phone"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);

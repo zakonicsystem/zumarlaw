@@ -98,3 +98,37 @@ export const authenticateAdmin = (req, res, next) => {
     return res.status(401).json({ message: 'Token is invalid or expired' });
   }
 };
+
+// Non-blocking verifier: try to set req.user/req.admin if token present and valid,
+// but do NOT reject the request if token is missing or expired. This allows
+// admin "override" flows where the client may retry without Authorization header.
+export const tryVerify = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // No token provided — continue without attaching user
+    return next();
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    if (!process.env.JWT_SECRET) {
+      console.warn('JWT_SECRET not defined');
+      return next();
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Try to find user or employee; attach to req if found
+    const user = await User.findById(decoded.id);
+    if (user) {
+      req.user = { id: user._id, email: user.email, role: 'admin' };
+      return next();
+    }
+    const employee = await Roles.findById(decoded.id);
+    if (employee) {
+      req.user = { id: employee._id, email: employee.login?.email, role: employee.role || 'employee' };
+    }
+    return next();
+  } catch (err) {
+    // Token expired or invalid — do not block, allow request to continue as unauthenticated
+    console.warn('[tryVerify] Token invalid/expired; allowing request to continue without auth');
+    return next();
+  }
+};

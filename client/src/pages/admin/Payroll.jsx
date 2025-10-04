@@ -1,17 +1,15 @@
-import { useState, useEffect , useRef } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, Edit, Trash2 } from "lucide-react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { BiImport } from "react-icons/bi";
-import { FaMoneyBillWave, FaUser } from "react-icons/fa";
+import { Edit, Trash2 } from "lucide-react";
+import { FaMoneyBillWave, FaFilePdf } from "react-icons/fa";
+import jsPDF from 'jspdf';
+import ZumarLogo from '../../assets/Zumar Logo.jpg';
 import { toast } from "react-hot-toast";
 
 const tabs = [
   { name: "This Month", count: 0 },
   { name: "All Records", count: 0 },
-  { name: "Paid", count: 0 },
-  { name: "Pending", count: 0 },
 ];
 
 export default function Payroll() {
@@ -19,46 +17,49 @@ export default function Payroll() {
   const [activeTab, setActiveTab] = useState("This Month");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
+  const [filterMonth, setFilterMonth] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [payrolls, setPayrolls] = useState([]);
   const [employeeList, setEmployeeList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editModal, setEditModal] = useState(false);
   const [editData, setEditData] = useState(null);
-  const [selectedEmp, setSelectedEmp] = useState(null);
-  const [autoPayLoading, setAutoPayLoading] = useState(false);
-  const [showPayModal, setShowPayModal] = useState(false);
-  const [payMethod, setPayMethod] = useState('Cash');
+  // Removed Auto Pay state variables
   const perPage = 5;
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get("https://app.zumarlawfirm.com/admin/roles", { withCredentials: true });
+        setEmployeeList(res.data);
+      } catch (err) {
+        setEmployeeList([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEmployees();
+  }, []);
 
   useEffect(() => {
     const fetchPayrolls = async () => {
       setLoading(true);
       try {
-        const res = await axios.get("https://app.zumarlawfirm.com/payrolls");
-        setPayrolls(res.data);
+        // If filterMonth is provided (YYYY-MM), pass as query param
+        const url = filterMonth ? `https://app.zumarlawfirm.com/payrolls?month=${encodeURIComponent(filterMonth)}` : 'https://app.zumarlawfirm.com/payrolls';
+        const res = await axios.get(url);
+        setPayrolls(res.data || []);
       } catch (err) {
+        console.error('Failed to fetch payrolls', err);
         setPayrolls([]);
       } finally {
         setLoading(false);
       }
     };
     fetchPayrolls();
-  }, []);
-
-  useEffect(() => {
-    // Fetch employees for Quick Salary Pay
-    const fetchEmployees = async () => {
-      try {
-        const res = await axios.get("https://app.zumarlawfirm.com/admin/roles", { withCredentials: true });
-        setEmployeeList(res.data);
-      } catch (err) {
-        setEmployeeList([]);
-      }
-    };
-    fetchEmployees();
-  }, []);
+  }, [filterMonth]);
 
   const statusColor = {
     Paid: "bg-green-100 text-green-700",
@@ -98,6 +99,98 @@ export default function Payroll() {
     setEditModal(true);
   };
 
+  const formatCurrency = (v) => {
+    const n = Number(v) || 0;
+    return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  };
+
+  const handleSalarySlip = (rec) => {
+    // Load logo image and convert to dataURL, then generate PDF
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.src = ZumarLogo;
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL('image/png');
+        const pdf = new jsPDF();
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        // centered logo
+  const logoW = 100; const logoH = 60; const logoX = (pageWidth - logoW) / 2;
+  pdf.addImage(dataUrl, 'PNG', logoX, 10, logoW, logoH);
+  // place title below the logo with some extra padding
+  const headerY = 10 + logoH + 10;
+        pdf.setFontSize(18);
+        pdf.setTextColor(40,40,40);
+        
+        pdf.text('Salary Slip', pageWidth/2, headerY, { align: 'center' });
+        // meta
+        pdf.setFontSize(11);
+        const metaY = headerY + 10;
+        pdf.text(`Employee: ${rec.employee || '-'}`, 20, metaY);
+        pdf.text(`Branch: ${rec.branch || '-'}`, 20, metaY + 8);
+        pdf.text(`Payroll Month: ${rec.payrollMonth || '-'}`, 20, metaY + 16);
+        pdf.text(`Payment Date: ${rec.paymentDate ? (rec.paymentDate+'').slice(0,10) : '-'}`, 20, metaY + 24);
+        // salary box
+        const boxY = metaY + 36;
+        pdf.setDrawColor(200,200,200);
+        pdf.roundedRect(15, boxY, pageWidth - 30, 40, 4, 4);
+        pdf.setFontSize(12);
+        pdf.text(`Basic Salary: Rs ${formatCurrency(rec.salary || 0)}`, 20, boxY + 12);
+  // Paid By: fixed to zumarlawfirm and remove signature
+  pdf.text(`Paid By: zumarlawfirm`, 20, boxY + 22);
+  pdf.text(`Payment Method: ${rec.paymentMethod || '-'}`, 120, boxY + 12);
+  pdf.text(`Status: Paid`, 120, boxY + 22);
+  pdf.setFontSize(8);
+  pdf.text('This is a computer generated salary slip.', pageWidth/2, boxY + 48, { align: 'center' });
+        const fileName = `salary_slip_${(rec.employee||'employee').replace(/[^a-z0-9]+/gi,'_')}_${rec._id?.slice(-6)}.pdf`;
+        pdf.save(fileName);
+        toast.success('Salary slip downloaded');
+      } catch (err) {
+        console.error('Salary slip error', err);
+        toast.error('Failed to generate salary slip');
+      }
+    };
+    img.onerror = (e) => {
+      console.warn('Logo load failed, generating PDF without logo', e);
+      try {
+        const pdf = new jsPDF();
+        const pageWidth = pdf.internal.pageSize.getWidth();
+  // fallback header when logo not available: give extra top margin
+  const headerY = 30;
+        pdf.setFontSize(18);
+        pdf.setTextColor(40,40,40);
+        pdf.text('Salary Slip', pageWidth/2, headerY, { align: 'center' });
+        pdf.setFontSize(11);
+        const metaY = headerY + 10;
+        pdf.text(`Employee: ${rec.employee || '-'}`, 20, metaY);
+        pdf.text(`Branch: ${rec.branch || '-'}`, 20, metaY + 8);
+        pdf.text(`Payroll Month: ${rec.payrollMonth || '-'}`, 20, metaY + 16);
+        pdf.text(`Payment Date: ${rec.paymentDate ? (rec.paymentDate+'').slice(0,10) : '-'}`, 20, metaY + 24);
+        const boxY = metaY + 36;
+        pdf.setDrawColor(200,200,200);
+        pdf.roundedRect(15, boxY, pageWidth - 30, 40, 4, 4);
+  pdf.setFontSize(12);
+  pdf.text(`Basic Salary: Rs ${formatCurrency(rec.salary || 0)}`, 20, boxY + 12);
+  // Paid By fixed
+  pdf.setFontSize(10);
+  pdf.text(`Paid By: zumarlawfirm`, 20, boxY + 36);
+  // Status: Paid
+  pdf.text(`Status: Paid`, 120, boxY + 22);
+  const fileName = `salary_slip_${(rec.employee||'employee').replace(/[^a-z0-9]+/gi,'_')}_${rec._id?.slice(-6)}.pdf`;
+        pdf.save(fileName);
+        toast.success('Salary slip downloaded');
+      } catch (err) {
+        console.error(err);
+        toast.error('Failed to generate salary slip');
+      }
+    };
+  };
+
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditData((prev) => ({ ...prev, [name]: value }));
@@ -118,54 +211,7 @@ export default function Payroll() {
       setLoading(false);
     }
   };
-  const scrollRef = useRef(null);
-
-  const scroll = (direction) => {
-    const { current } = scrollRef;
-    if (current) {
-      current.scrollBy({
-        left: direction === "left" ? -300 : 300,
-        behavior: "smooth",
-      });
-    }
-  };
-
-  // Handle Auto Pay for selected employee
-  const handleAutoPay = () => {
-    if (!selectedEmp) {
-      toast.error('Please select an employee to pay.');
-      return;
-    }
-    setShowPayModal(true);
-  };
-
-  const confirmAutoPay = async () => {
-    if (!selectedEmp) return;
-    setAutoPayLoading(true);
-    try {
-      const today = new Date();
-      const monthStr = today.toLocaleString('default', { month: 'long', year: 'numeric' });
-      const paymentDate = today.toISOString().slice(0, 10);
-      const res = await axios.post('https://app.zumarlawfirm.com/payrolls', {
-        employee: selectedEmp.name,
-        salary: selectedEmp.salary,
-        branch: selectedEmp.branch,
-        paymentDate,
-        status: 'Paid',
-        paymentMethod: payMethod,
-        paidBy: 'arslan',
-        payrollMonth: monthStr
-      });
-      setPayrolls(prev => [res.data, ...prev]);
-      toast.success(`Auto Pay successful for ${selectedEmp.name}!`);
-      setShowPayModal(false);
-      setSelectedEmp(null);
-    } catch (err) {
-      toast.error('Auto Pay failed.');
-    } finally {
-      setAutoPayLoading(false);
-    }
-  };
+  // Auto Pay removed
 
   return (
     <div className="w-auto space-y-5 py-6 bg-white">
@@ -184,104 +230,18 @@ export default function Payroll() {
             <FaMoneyBillWave size={18} />
             Add New Salary
           </Link>
-          <button
-            className={`bg-[#57123f] hover:bg-[#7a1a59] text-white px-4 py-2 rounded-full flex items-center gap-2 ${autoPayLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
-            disabled={autoPayLoading}
-            onClick={handleAutoPay}
-          >
-            Auto Pay
-          </button>
+          {/* Auto Pay button removed */}
           <Link
             to="/admin/salary"
             className="bg-[#57123f] hover:bg-[#7a1a59] text-white px-4 py-2 rounded-full flex items-center gap-2"
           >
             Salary Page
           </Link>
-      {/* Payment Method Modal */}
-      {showPayModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-[320px]">
-            <h3 className="text-lg font-semibold mb-4">Select Payment Method</h3>
-            <div className="flex flex-col gap-3 mb-4">
-              <label className="flex items-center gap-2">
-                <input type="radio" name="payMethod" value="Cash" checked={payMethod === 'Cash'} onChange={() => setPayMethod('Cash')} />
-                Cash
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" name="payMethod" value="Bank" checked={payMethod === 'Bank'} onChange={() => setPayMethod('Bank')} />
-                Bank
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="radio" name="payMethod" value="Cheque" checked={payMethod === 'Cheque'} onChange={() => setPayMethod('Cheque')} />
-                Cheque
-              </label>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button className="px-4 py-2 rounded bg-gray-200" onClick={() => setShowPayModal(false)} disabled={autoPayLoading}>Cancel</button>
-              <button className="px-4 py-2 rounded bg-[#57123f] text-white" onClick={confirmAutoPay} disabled={autoPayLoading}>
-                {autoPayLoading ? 'Paying...' : 'Confirm & Pay'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Payment method modal removed with Auto Pay feature */}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm w-full">
-      <h2 className="text-lg font-semibold mb-4">Quick Salary Pay</h2>
-      <div className="relative flex items-center">
-        {/* Left Arrow */}
-        <button
-          onClick={() => scroll("left")}
-          className="z-10 absolute left-0 bg-white rounded-full shadow p-1"
-        >
-          <ChevronLeft size={24} />
-        </button>
-
-        {/* Scrollable Cards */}
-        <div
-          ref={scrollRef}
-          className="flex overflow-x-auto gap-4 px-10 py-2 scrollbar-hide"
-        >
-          {employeeList.map((emp, idx) => {
-            const isSelected = selectedEmp && selectedEmp._id === emp._id;
-            const today = new Date();
-            const dateStr = today.toISOString().slice(0, 10);
-            const monthStr = today.toLocaleString('default', { month: 'long', year: 'numeric' });
-            return (
-              <div
-                key={emp._id || idx}
-                className={`min-w-[120px] flex flex-col items-center border rounded-lg p-2 shadow-sm cursor-pointer transition-all duration-150 ${isSelected ? "ring-2 ring-[#57123f] bg-[#f7eaf4]" : "bg-white"}`}
-                onClick={() => setSelectedEmp(emp)}
-              >
-                <div className="w-16 h-16 rounded-full border mb-2 bg-gray-100 flex items-center justify-center">
-                  <FaUser className="text-gray-400 text-3xl" />
-                </div>
-                <p className="font-medium">{emp.name}</p>
-                <p className="text-sm text-gray-500">{emp.branch}</p>
-                {isSelected && (
-                  <div className="mt-2 text-xs text-[#57123f] text-center">
-                    <div>Date: {dateStr}</div>
-                    <div>Month: {monthStr}</div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Right Arrow */}
-        <button
-          onClick={() => scroll("right")}
-          className="z-10 absolute right-0 bg-white rounded-full shadow p-1"
-        >
-          <ChevronRight size={24} />
-        </button>
-      </div>
-      {/* Auto Pay Button */}
-  
-    </div>
+      {/* Quick Salary Pay removed */}
 
       <div className="flex gap-3 flex-wrap">
         {tabs.map((tab) => (
@@ -300,7 +260,7 @@ export default function Payroll() {
         <input
           type="text"
           placeholder="Search by employee name or ID"
-          className="border px-4 py-2 rounded w-64"
+          className="border px-4 py-2 rounded w-96"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -316,7 +276,7 @@ export default function Payroll() {
         <table className="w-full min-w-[957px] text-sm text-left">
           <thead className="bg-gray-100 text-gray-600">
             <tr>
-              <th className="p-2"><input type="checkbox" /></th>
+              <th className="p-1"><input type="checkbox" /></th>
               <th className="p-2">Employee</th>
               <th className="p-2">Date</th>
               <th className="p-2">Amount</th>
@@ -338,15 +298,22 @@ export default function Payroll() {
                     <div className="text-gray-500 text-xs">{rec._id?.slice(-6)}</div>
                   </td>
                   <td className="p-2">{rec.paymentDate ? rec.paymentDate.slice(0, 10) : ''}</td>
-                  <td className="p-2">Rs {rec.salary}</td>
+                  <td className="p-2">Rs {formatCurrency(rec.salary)}</td>
                   <td className="p-2">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${statusColor[rec.status || 'Paid']}`}>
-                      {rec.status || 'Paid'}
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${statusColor['Paid']}`}>
+                      Paid
                     </span>
                   </td>
                   <td className="p-2">{rec.branch}</td>
                   <td className="p-2">{rec.paymentMethod}</td>
-                  <td className="p-2 flex gap-1 text-[#57123f]">
+                  <td className="p-2 flex items-center gap-2 text-[#57123f]">
+                    <button
+                      className="btn btn-sm btn-outline-secondary p-1"
+                      onClick={() => handleSalarySlip(rec)}
+                      title="Download Salary Slip"
+                    >
+                      <FaFilePdf size={16} />
+                    </button>
                     <Edit size={18} className="cursor-pointer" onClick={() => navigate(`/admin/payroll/add/${rec._id}`)} />
                     <Trash2 size={18} className="cursor-pointer" onClick={() => handleDelete(rec._id)} />
                   </td>

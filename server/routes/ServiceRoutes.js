@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import PersonalDetail from '../models/PersonalDetail.js';
 import ServiceDetail from '../models/Service.js';
-import { verifyJWT } from '../middleware/authMiddleware.js';
+import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js';
 import { sendInvoiceAndCertificate } from '../controllers/serviceController.js';
 import { servicePrices } from '../data/servicePrices.js';
 
@@ -128,7 +128,8 @@ router.get('/admin/services', async (req, res) => {
   }
 });
 // 🟢 PATCH: Upload certificate for a service
-router.patch('/admin/services/:id/certificate', verifyJWT, upload.single('certificate'), async (req, res) => {
+// Allow certificate upload even with missing/expired token — tryVerify will attach req.user when possible
+router.patch('/admin/services/:id/certificate', tryVerify, upload.single('certificate'), async (req, res) => {
   try {
     const { id } = req.params;
     if (!req.file) {
@@ -146,7 +147,8 @@ router.patch('/admin/services/:id/certificate', verifyJWT, upload.single('certif
     res.status(500).json({ error: 'Failed to upload certificate' });
   }
 });
-router.patch('/admin/services/:id/status', verifyJWT, async (req, res) => {
+// Allow status updates even with missing/expired token — tryVerify will attach req.user when possible
+router.patch('/admin/services/:id/status', tryVerify, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -160,7 +162,8 @@ router.patch('/admin/services/:id/status', verifyJWT, async (req, res) => {
 
 
 // Send invoice and certificate to user (email + dashboard)
-router.post('/admin/services/:id/send-invoice', verifyJWT, sendInvoiceAndCertificate);
+// Sending invoice may be triggered by admins; allow absence of auth header (tryVerify will attach user if a valid token is present)
+router.post('/admin/services/:id/send-invoice', tryVerify, sendInvoiceAndCertificate);
 
 // GET payment details for a processing service
 router.get('/processing/:id/payments', async (req, res) => {

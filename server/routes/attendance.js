@@ -63,8 +63,15 @@ router.patch('/edit', async (req, res) => {
 // Get attendance history (day-wise)
 router.get('/history', async (req, res) => {
   try {
-    const records = await Attendance.find().populate('employeeId', 'name email');
-    // Group by date
+    const { year, month, employeeId } = req.query;
+    const query = {};
+    if (employeeId) query.employeeId = employeeId;
+    if (year && month) {
+      const monthStr = String(month).padStart(2, '0');
+      query.date = { $regex: `^${year}-${monthStr}` };
+    }
+    const records = await Attendance.find(query).populate('employeeId', 'name email');
+    // Map to history format
     const history = records.map(r => ({
       date: r.date,
       time: r.time || (r.createdAt ? new Date(r.createdAt).toLocaleTimeString() : '-'),

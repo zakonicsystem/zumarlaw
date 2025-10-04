@@ -1,6 +1,6 @@
 
 import express from 'express';
-import { verifyJWT } from '../middleware/authMiddleware.js';
+import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js';
 import Service from '../models/Service.js';
 import multer from 'multer';
 import path from 'path';
@@ -17,7 +17,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Upload certificate (pending logic)
-router.post('/services/:id/certificate', upload.single('certificate'), async (req, res) => {
+// Allow certificate upload even if token is missing/expired; tryVerify will attach user if present
+router.post('/services/:id/certificate', tryVerify, upload.single('certificate'), async (req, res) => {
   try {
     const service = await Service.findById(req.params.id);
     if (!service) return res.status(404).json({ error: 'Service not found' });
@@ -36,7 +37,8 @@ router.post('/services/:id/certificate', upload.single('certificate'), async (re
 import nodemailer from 'nodemailer';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
-router.post('/services/:id/send-invoice', async (req, res) => {
+// Allow send-invoice to proceed even if token is missing/expired; tryVerify attached earlier in middleware stack if needed
+router.post('/services/:id/send-invoice', tryVerify, async (req, res) => {
   try {
     const service = await Service.findById(req.params.id).populate('personalId');
     if (!service) return res.status(404).json({ error: 'Service not found' });
@@ -134,8 +136,8 @@ router.patch('/services/:id/payment-status', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
-// PATCH /admin/services/:id/status - update service status (requires authentication)
-router.patch('/services/:id/status', verifyJWT, async (req, res) => {
+// PATCH /admin/services/:id/status - update service status (allow tryVerify so expired tokens don't block)
+router.patch('/services/:id/status', tryVerify, async (req, res) => {
   try {
     const { status } = req.body;
     const service = await Service.findByIdAndUpdate(

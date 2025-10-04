@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AccountStatsModal from '../../components/AccountStatsModal';
+import AccountStatsModal from '../../components/AccountStatModal';
 import axios from 'axios';
 import { FaUsers, FaBoxOpen, FaChartLine, FaClock } from 'react-icons/fa';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';

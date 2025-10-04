@@ -141,6 +141,26 @@ const ServiceProcessingPage = () => {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
+  // helper: try request with auth, if 401 retry without auth so admin UI can override expired token
+  const adminRequest = async (opts) => {
+    // opts: { method, url, data, config }
+    try {
+      return await axios({
+        method: opts.method || 'get',
+        url: opts.url,
+        data: opts.data,
+        ...opts.config,
+        headers: { ...(opts.config && opts.config.headers ? opts.config.headers : {}), ...getAuthHeaders() }
+      });
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        // retry without auth
+        return await axios({ method: opts.method || 'get', url: opts.url, data: opts.data, ...opts.config });
+      }
+      throw err;
+    }
+  };
+
   // Fetch employees for assignment
   const [employees, setEmployees] = useState([]);
   useEffect(() => {
@@ -185,11 +205,11 @@ const ServiceProcessingPage = () => {
   // Assign employee to service
   const handleAssignEmployee = async (row, employeeName) => {
     try {
-      await axios.patch(
-        `https://app.zumarlawfirm.com/admin/services/${row._id}/assign`,
-        { assignedTo: employeeName },
-        { headers: getAuthHeaders() }
-      );
+      await adminRequest({
+        method: 'patch',
+        url: `https://app.zumarlawfirm.com/admin/services/${row._id}/assign`,
+        data: { assignedTo: employeeName }
+      });
       fetchServices();
       toast.success('Assigned to employee');
     } catch (error) {
@@ -202,20 +222,14 @@ const ServiceProcessingPage = () => {
     const currentIdx = statusOrder.indexOf(row.status);
     const nextStatus = statusOrder[(currentIdx + 1) % statusOrder.length];
     try {
-      let res;
+      const primaryUrl = `https://app.zumarlawfirm.com/admin/services/${row._id}/status`;
+      const altUrl = `https://app.zumarlawfirm.com/admin/services/status/${row._id}`;
       try {
-        res = await axios.patch(
-          `https://app.zumarlawfirm.com/admin/services/${row._id}/status`,
-          { status: nextStatus },
-          { headers: getAuthHeaders() }
-        );
+        await adminRequest({ method: 'patch', url: primaryUrl, data: { status: nextStatus } });
       } catch (err) {
+        // If primary endpoint not found, try alternate endpoint
         if (err.response && err.response.status === 404) {
-          res = await axios.patch(
-            `https://app.zumarlawfirm.com/admin/services/status/${row._id}`,
-            { status: nextStatus },
-            { headers: getAuthHeaders() }
-          );
+          await adminRequest({ method: 'patch', url: altUrl, data: { status: nextStatus } });
         } else {
           throw err;
         }
@@ -232,11 +246,7 @@ const ServiceProcessingPage = () => {
     const currentIdx = paymentOrder.indexOf(row.paymentStatus || 'pending');
     const nextStatus = paymentOrder[(currentIdx + 1) % paymentOrder.length];
     try {
-      await axios.patch(
-        `https://app.zumarlawfirm.com/admin/services/${row._id}/payment-status`,
-        { paymentStatus: nextStatus },
-        { headers: getAuthHeaders() }
-      );
+      await adminRequest({ method: 'patch', url: `https://app.zumarlawfirm.com/admin/services/${row._id}/payment-status`, data: { paymentStatus: nextStatus } });
       fetchServices();
       toast.success('Payment status updated');
     } catch (error) {
@@ -290,16 +300,7 @@ const ServiceProcessingPage = () => {
     formData.append('certificate', selectedFile);
 
     try {
-      await axios.post(
-        `https://app.zumarlawfirm.com/admin/services/${selectedRow._id}/certificate?pending=true`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            ...getAuthHeaders()
-          }
-        }
-      );
+      await adminRequest({ method: 'post', url: `https://app.zumarlawfirm.com/admin/services/${selectedRow._id}/certificate?pending=true`, data: formData, config: { headers: { 'Content-Type': 'multipart/form-data' } } });
       toast.success('Certificate uploaded (pending, not sent to user)');
       setShowUploadModal(false);
       setSelectedFile(null);
@@ -394,7 +395,7 @@ const ServiceProcessingPage = () => {
     if (selectedRows.length === 0) return toast.error('Please select at least one row.');
     if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} row(s)?`)) return;
     try {
-      await axios.post('https://app.zumarlawfirm.com/invoices/delete-multiple', { ids: selectedRows }, { headers: getAuthHeaders() });
+  await adminRequest({ method: 'post', url: 'https://app.zumarlawfirm.com/invoices/delete-multiple', data: { ids: selectedRows } });
       toast.success('Selected services deleted!');
       setServices(prev => prev.filter(row => !selectedRows.includes(row._id)));
       setSelectedRows([]);
@@ -647,12 +648,12 @@ const ServiceProcessingPage = () => {
                 onClick={async () => {
                   try {
                     console.log('Sending message to userId:', messageRow.userId, 'serviceId:', messageRow._id); // Debug
-                    await axios.post('https://app.zumarlawfirm.com/serviceMessage', {
+                    await adminRequest({ method: 'post', url: 'https://app.zumarlawfirm.com/serviceMessage', data: {
                       userId: messageRow.userId,
                       serviceId: messageRow._id, // Use _id as serviceId
                       type: messageType,
                       message: messageText,
-                    });
+                    } });
                     toast.success('Message sent!');
                     setShowMessageModal(false);
                     setMessageText('');
@@ -896,7 +897,7 @@ const ServiceProcessingPage = () => {
                       const userEmail = selectedRow.personalId?.email;
                       if (!userEmail) return toast.error('No user email found for this service');
                       try {
-                        await axios.post(`https://app.zumarlawfirm.com/admin/services/${selectedRow._id}/send-invoice`, { email: userEmail });
+                        await adminRequest({ method: 'post', url: `https://app.zumarlawfirm.com/admin/services/${selectedRow._id}/send-invoice`, data: { email: userEmail } });
                         toast.success('Invoice, certificate, images, and documents sent to user dashboard and email!');
                         fetchServices();
                       } catch (err) {

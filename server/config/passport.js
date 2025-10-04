@@ -7,11 +7,12 @@ import dotenv from 'dotenv';
 dotenv.config(); // must come before accessing process.env
 
 
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: process.env.GOOGLE_CALLBACK_URL,
-},
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL) {
+  passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL,
+  },
 async (accessToken, refreshToken, profile, done) => {
   try {
     const googleId = profile.id;
@@ -76,4 +77,7 @@ async (accessToken, refreshToken, profile, done) => {
     console.error("Error in Google Strategy:", err);
     done(err, null);
   }
-}));
+  }));
+} else {
+  console.warn('Google OAuth environment variables not set. Skipping GoogleStrategy registration.');
+}
