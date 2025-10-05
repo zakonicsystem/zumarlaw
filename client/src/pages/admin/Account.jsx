@@ -73,7 +73,7 @@ const Account = () => {
             setLoading(true);
             try {
                 // Send month and year as query params for filtering
-                const res = await axios.get(`https://app.zumarlawfirm.com/accounts/summary?month=${selectedMonth + 1}&year=${new Date().getFullYear()}`);
+                const res = await axios.get(`http://localhost:5000/accounts/summary?month=${selectedMonth + 1}&year=${new Date().getFullYear()}`);
                 setSummary(res.data);
             } catch (err) {
                 setSummary({});
@@ -101,7 +101,7 @@ const Account = () => {
         if (!modalOpen) return;
         const fetchModalData = async () => {
             try {
-                const res = await axios.get('https://app.zumarlawfirm.com/accounts/services-stats');
+                const res = await axios.get('http://localhost:5000/accounts/services-stats');
                 setModalDataByType(res.data);
             } catch (err) {
                 setModalDataByType({ converted: [], manual: [], processing: [] });
@@ -235,7 +235,7 @@ const Account = () => {
                 </div>
             </div>
             {/* Latest 2 payrolls at bottom */}
-            <div className="bg-white p-6 rounded-[20px] shadow-md w-full overflow-x-auto mt-6">
+            {/* <div className="bg-white p-6 rounded-[20px] shadow-md w-full overflow-x-auto mt-6">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">Latest Payrolls</h2>
                 <table className="min-w-full text-sm text-left text-gray-700">
                     <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
@@ -266,7 +266,7 @@ const Account = () => {
                         )}
                     </tbody>
                 </table>
-            </div>
+            </div> */}
 
             <AccountStatsModal
                 open={modalOpen}

@@ -145,12 +145,15 @@ router.get('/summary', async (req, res) => {
     const totalReceived = sumPayments(services) + sumPayments(manuals) + sumPayments(converteds);
     const totalPending = sumPending(services) + sumPending(manuals) + sumPending(converteds);
 
-    // Salary paid from payrolls
+    // Salary paid from payrolls: sum all payroll records' salary values
     let payrolls = [];
     let salaryPaid = 0;
     try {
-      payrolls = await Payroll.find().sort({ createdAt: -1 }).limit(2);
-      salaryPaid = payrolls.reduce((acc, p) => acc + (p.salary || 0), 0);
+      // Sum over all payrolls for total salary paid
+      const allPayrolls = await Payroll.find({});
+      salaryPaid = allPayrolls.reduce((acc, p) => acc + Number(p.salary || 0), 0);
+  // Also fetch all payrolls for display (no limit requested)
+  payrolls = await Payroll.find().sort({ createdAt: -1 });
     } catch (e) {
       console.error('Error loading payrolls:', e);
       return res.status(500).json({ error: 'Error loading payrolls', details: e.message, stack: e.stack });

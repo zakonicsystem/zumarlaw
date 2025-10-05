@@ -10,8 +10,7 @@ const Customers = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-  // Use Vite env var if provided (for VPS/deployment), otherwise default to localhost:5000 for dev
-  const base = import.meta.env.VITE_API_URL || 'https://app.zumarlawfirm.com';
+  const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const url = `${base.replace(/\/$/, '')}/admin/customers`;
   const res = await axios.get(url);
         const arr = Array.isArray(res.data) ? res.data : [];
@@ -23,7 +22,6 @@ const Customers = () => {
         setLoading(false);
       }
     };
-
     fetchUsers();
   }, []);
 
