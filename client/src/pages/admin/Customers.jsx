@@ -10,7 +10,7 @@ const Customers = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-  const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_URL || 'https://app.zumarlawfirm.com';
   const url = `${base.replace(/\/$/, '')}/admin/customers`;
   const res = await axios.get(url);
         const arr = Array.isArray(res.data) ? res.data : [];

@@ -73,7 +73,7 @@ const Account = () => {
             setLoading(true);
             try {
                 // Send month and year as query params for filtering
-                const res = await axios.get(`http://localhost:5000/accounts/summary?month=${selectedMonth + 1}&year=${new Date().getFullYear()}`);
+                const res = await axios.get(`https://app.zumarlawfirm.com/accounts/summary?month=${selectedMonth + 1}&year=${new Date().getFullYear()}`);
                 setSummary(res.data);
             } catch (err) {
                 setSummary({});
@@ -101,7 +101,7 @@ const Account = () => {
         if (!modalOpen) return;
         const fetchModalData = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/accounts/services-stats');
+                const res = await axios.get('https://app.zumarlawfirm.com/accounts/services-stats');
                 setModalDataByType(res.data);
             } catch (err) {
                 setModalDataByType({ converted: [], manual: [], processing: [] });
