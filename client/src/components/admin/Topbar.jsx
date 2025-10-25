@@ -1,6 +1,5 @@
 import React from 'react';
 import { FaBell } from 'react-icons/fa';
-import logo from '../../assets/zumarLogo.png';
 import { Link } from 'react-router-dom';
 
 const Topbar = () => {
