@@ -24,6 +24,14 @@ export default function Payroll() {
   const [loading, setLoading] = useState(false);
   const [editModal, setEditModal] = useState(false);
   const [editData, setEditData] = useState(null);
+  // Payment modal state
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentRec, setPaymentRec] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [paymentAccount, setPaymentAccount] = useState('');
+  const [paymentCheque, setPaymentCheque] = useState('');
+  const [paymentPaidBy, setPaymentPaidBy] = useState('');
+  const [paymentLoading, setPaymentLoading] = useState(false);
   // Removed Auto Pay state variables
   const perPage = 5;
   const navigate = useNavigate();
@@ -99,16 +107,195 @@ export default function Payroll() {
     setEditModal(true);
   };
 
+  const openPaymentModal = (rec) => {
+    setPaymentRec(rec);
+    setPaymentMethod(rec.paymentMethod || 'Cash');
+    setPaymentAccount(rec.accountNumber || '');
+    setPaymentCheque(rec.chequeNumber || '');
+    setPaymentPaidBy(rec.paidBy || '');
+    setPaymentModalOpen(true);
+  };
+
+  const closePaymentModal = () => {
+    setPaymentModalOpen(false);
+    setPaymentRec(null);
+    setPaymentMethod('Cash');
+    setPaymentAccount('');
+    setPaymentCheque('');
+    setPaymentPaidBy('');
+    setPaymentLoading(false);
+  };
+
+  const handleMarkPaid = async () => {
+    if (!paymentRec) return;
+    setPaymentLoading(true);
+    try {
+      const updated = {
+        ...paymentRec,
+        status: 'Paid',
+        paymentMethod,
+        accountNumber: paymentMethod === 'Bank' ? paymentAccount : paymentRec.accountNumber,
+        chequeNumber: paymentMethod === 'Cheque' ? paymentCheque : paymentRec.chequeNumber,
+        paidBy: paymentPaidBy || paymentRec.paidBy,
+        paymentDate: new Date().toISOString(),
+      };
+      // Update server (PUT replaces the payroll object)
+      await axios.put(`https://app.zumarlawfirm.com/payrolls/${paymentRec._id}`, updated);
+      setPayrolls((prev) => prev.map((p) => (p._id === paymentRec._id ? updated : p)));
+      toast.success('Payment recorded and status set to Paid');
+      closePaymentModal();
+    } catch (err) {
+      console.error('Mark paid error', err);
+      toast.error('Failed to record payment');
+    }
+    setPaymentLoading(false);
+  };
+
   const formatCurrency = (v) => {
     const n = Number(v) || 0;
     return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
   };
 
   const handleSalarySlip = (rec) => {
-    // Load logo image and convert to dataURL, then generate PDF
+    // Create a polished salary slip resembling the provided invoice
     const img = new Image();
     img.crossOrigin = 'Anonymous';
     img.src = ZumarLogo;
+    const generate = (dataUrl) => {
+      try {
+        const pdf = new jsPDF('p', 'pt', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const margin = 48; // bigger margin for breathing room
+        // Header: logo left, firm info centered-right
+        const topOffset = 28;
+        if (dataUrl) {
+          const logoW = 84; const logoH = 84; // points
+          pdf.addImage(dataUrl, 'PNG', margin, topOffset, logoW, logoH);
+        }
+        const headerX = margin + 110;
+        pdf.setFontSize(16);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('ZUMAR LAW ASSOCIATE', headerX, topOffset + 10);
+        pdf.setFontSize(10);
+        pdf.setFont(undefined, 'normal');
+        pdf.text('(SMC-PRIVATE) LIMITED', headerX, topOffset + 26);
+        pdf.text('Business Number : 04237242555', headerX, topOffset + 40);
+        pdf.text('Office No 02 Second Floor Al-Meraj Arcade Chowk', headerX, topOffset + 54);
+        pdf.text('Lahore, Pakistan 54000', headerX, topOffset + 68);
+        pdf.text('0303-5988574', headerX, topOffset + 82);
+        pdf.text('zumarlawfirm.com', headerX, topOffset + 96);
+
+        // Invoice/meta box on the right (visually aligned with header)
+        pdf.setFontSize(12);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('SALARY SLIP', pageWidth - margin - 120, topOffset + 10);
+        pdf.setFont(undefined, 'normal');
+        pdf.setFontSize(9);
+        pdf.text(`Slip No: ${(rec._id || '').slice(-8)}`, pageWidth - margin - 120, topOffset + 30);
+        pdf.text(`Date: ${rec.paymentDate ? (rec.paymentDate + '').slice(0, 10) : '-'}`, pageWidth - margin - 120, topOffset + 46);
+        pdf.text(`Month: ${rec.payrollMonth || '-'}`, pageWidth - margin - 120, topOffset + 62);
+
+        // divider with more space below header
+        const dividerY = topOffset + 110;
+        pdf.setLineWidth(1);
+        pdf.line(margin, dividerY, pageWidth - margin, dividerY);
+
+        // Bill To / Employee block (with more vertical spacing)
+        const empY = dividerY + 18;
+        pdf.setFontSize(10);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('EMPLOYEE', margin, empY);
+        pdf.setFont(undefined, 'normal');
+  pdf.setFontSize(14);
+  pdf.setFont(undefined, 'bold');
+  const empNameY = empY + 20;
+  pdf.text(rec.employee || '-', margin, empNameY);
+  // subtle underline under name
+  const nameWidth = pdf.getTextWidth(rec.employee || '-');
+  pdf.setLineWidth(0.8);
+  pdf.line(margin, empNameY + 4, margin + nameWidth + 6, empNameY + 4);
+  pdf.setFont(undefined, 'normal');
+        pdf.setFontSize(9);
+  pdf.text(rec.branch || 'Lahore', margin, empY + 40);
+  pdf.text(rec.employeeContact || rec.phone || '-', margin, empY + 56);
+        let paymentInfoY = empY + 66;
+        if (rec.paymentMethod) {
+          pdf.text(`Method: ${rec.paymentMethod}`, margin, paymentInfoY);
+          paymentInfoY += 16;
+        }
+        if (rec.accountNumber) {
+          pdf.text(`Account #: ${rec.accountNumber}`, margin, paymentInfoY);
+          paymentInfoY += 16;
+        }
+        if (rec.chequeNumber) {
+          pdf.text(`Cheque #: ${rec.chequeNumber}`, margin, paymentInfoY);
+          paymentInfoY += 16;
+        }
+        if (rec.paidBy) {
+          pdf.text(`Paid By: ${rec.paidBy}`, margin, paymentInfoY);
+          paymentInfoY += 16;
+        }
+
+        // Earnings/Deductions table header (more breathing room)
+        const tableTop = Math.max(paymentInfoY + 10, dividerY + 120);
+        pdf.setLineWidth(0.6);
+        pdf.line(margin, tableTop - 10, pageWidth - margin, tableTop - 10);
+        pdf.setFontSize(11);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('DESCRIPTION', margin + 4, tableTop);
+        pdf.text('RATE', pageWidth / 2 - 20, tableTop);
+        pdf.text('QTY', pageWidth / 2 + 40, tableTop);
+        pdf.text('AMOUNT', pageWidth - margin - 60, tableTop);
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, tableTop + 6, pageWidth - margin, tableTop + 6);
+
+  // rows: Basic salary only (remove allowances/deductions for simplified slip)
+  const rowYStart = tableTop + 28;
+  pdf.setFont(undefined, 'normal');
+  const salary = Number(rec.salary) || 0;
+  const net = salary;
+
+  pdf.text('Basic Salary', margin + 4, rowYStart);
+  pdf.text(formatCurrency(salary), pageWidth / 2 - 20, rowYStart);
+  pdf.text('1', pageWidth / 2 + 40, rowYStart);
+  pdf.text(formatCurrency(salary), pageWidth - margin - 60, rowYStart);
+
+  // totals area (simplified)
+  const totalsTop = rowYStart + 44;
+  pdf.setLineWidth(0.6);
+  pdf.line(pageWidth / 2, totalsTop - 8, pageWidth - margin, totalsTop - 8);
+  pdf.setFont(undefined, 'bold');
+  pdf.text('SUBTOTAL', pageWidth - margin - 160, totalsTop);
+  pdf.setFont(undefined, 'normal');
+  pdf.text(formatCurrency(salary), pageWidth - margin - 60, totalsTop);
+
+  pdf.setFont(undefined, 'bold');
+  pdf.text('NET PAY', pageWidth - margin - 160, totalsTop + 28);
+  pdf.setFont(undefined, 'normal');
+  pdf.text(formatCurrency(net), pageWidth - margin - 60, totalsTop + 28);
+
+        // Signature
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, totalsTop + 90, margin + 140, totalsTop + 90);
+        pdf.setFontSize(10);
+        pdf.text('Authorized Signature', margin, totalsTop + 106);
+        pdf.text(`Date: ${rec.paymentDate ? (rec.paymentDate + '').slice(0, 10) : '-'}`, margin + 150, totalsTop + 106);
+
+        // Footer note
+        pdf.setFontSize(9);
+        pdf.text('This is a computer generated salary slip.', pageWidth / 2, totalsTop + 150, { align: 'center' });
+        pdf.setFontSize(8);
+        pdf.text('In case of any error or correction in the statement, contact: 042-37242555', pageWidth / 2, totalsTop + 166, { align: 'center' });
+
+        const fileName = `salary_slip_${(rec.employee || 'employee').replace(/[^a-z0-9]+/gi, '_')}_${rec._id?.slice(-6)}.pdf`;
+        pdf.save(fileName);
+        toast.success('Salary slip downloaded');
+      } catch (err) {
+        console.error('Salary slip error', err);
+        toast.error('Failed to generate salary slip');
+      }
+    };
+
     img.onload = () => {
       try {
         const canvas = document.createElement('canvas');
@@ -117,77 +304,15 @@ export default function Payroll() {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
         const dataUrl = canvas.toDataURL('image/png');
-        const pdf = new jsPDF();
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        // centered logo
-  const logoW = 100; const logoH = 60; const logoX = (pageWidth - logoW) / 2;
-  pdf.addImage(dataUrl, 'PNG', logoX, 10, logoW, logoH);
-  // place title below the logo with some extra padding
-  const headerY = 10 + logoH + 10;
-        pdf.setFontSize(18);
-        pdf.setTextColor(40,40,40);
-        
-        pdf.text('Salary Slip', pageWidth/2, headerY, { align: 'center' });
-        // meta
-        pdf.setFontSize(11);
-        const metaY = headerY + 10;
-        pdf.text(`Employee: ${rec.employee || '-'}`, 20, metaY);
-        pdf.text(`Branch: ${rec.branch || '-'}`, 20, metaY + 8);
-        pdf.text(`Payroll Month: ${rec.payrollMonth || '-'}`, 20, metaY + 16);
-        pdf.text(`Payment Date: ${rec.paymentDate ? (rec.paymentDate+'').slice(0,10) : '-'}`, 20, metaY + 24);
-        // salary box
-        const boxY = metaY + 36;
-        pdf.setDrawColor(200,200,200);
-        pdf.roundedRect(15, boxY, pageWidth - 30, 40, 4, 4);
-        pdf.setFontSize(12);
-        pdf.text(`Basic Salary: Rs ${formatCurrency(rec.salary || 0)}`, 20, boxY + 12);
-  // Paid By: fixed to zumarlawfirm and remove signature
-  pdf.text(`Paid By: zumarlawfirm`, 20, boxY + 22);
-  pdf.text(`Payment Method: ${rec.paymentMethod || '-'}`, 120, boxY + 12);
-  pdf.text(`Status: Paid`, 120, boxY + 22);
-  pdf.setFontSize(8);
-  pdf.text('This is a computer generated salary slip.', pageWidth/2, boxY + 48, { align: 'center' });
-        const fileName = `salary_slip_${(rec.employee||'employee').replace(/[^a-z0-9]+/gi,'_')}_${rec._id?.slice(-6)}.pdf`;
-        pdf.save(fileName);
-        toast.success('Salary slip downloaded');
-      } catch (err) {
-        console.error('Salary slip error', err);
-        toast.error('Failed to generate salary slip');
+        generate(dataUrl);
+      } catch (e) {
+        console.warn('Logo conversion failed, generating without logo', e);
+        generate(null);
       }
     };
     img.onerror = (e) => {
       console.warn('Logo load failed, generating PDF without logo', e);
-      try {
-        const pdf = new jsPDF();
-        const pageWidth = pdf.internal.pageSize.getWidth();
-  // fallback header when logo not available: give extra top margin
-  const headerY = 30;
-        pdf.setFontSize(18);
-        pdf.setTextColor(40,40,40);
-        pdf.text('Salary Slip', pageWidth/2, headerY, { align: 'center' });
-        pdf.setFontSize(11);
-        const metaY = headerY + 10;
-        pdf.text(`Employee: ${rec.employee || '-'}`, 20, metaY);
-        pdf.text(`Branch: ${rec.branch || '-'}`, 20, metaY + 8);
-        pdf.text(`Payroll Month: ${rec.payrollMonth || '-'}`, 20, metaY + 16);
-        pdf.text(`Payment Date: ${rec.paymentDate ? (rec.paymentDate+'').slice(0,10) : '-'}`, 20, metaY + 24);
-        const boxY = metaY + 36;
-        pdf.setDrawColor(200,200,200);
-        pdf.roundedRect(15, boxY, pageWidth - 30, 40, 4, 4);
-  pdf.setFontSize(12);
-  pdf.text(`Basic Salary: Rs ${formatCurrency(rec.salary || 0)}`, 20, boxY + 12);
-  // Paid By fixed
-  pdf.setFontSize(10);
-  pdf.text(`Paid By: zumarlawfirm`, 20, boxY + 36);
-  // Status: Paid
-  pdf.text(`Status: Paid`, 120, boxY + 22);
-  const fileName = `salary_slip_${(rec.employee||'employee').replace(/[^a-z0-9]+/gi,'_')}_${rec._id?.slice(-6)}.pdf`;
-        pdf.save(fileName);
-        toast.success('Salary slip downloaded');
-      } catch (err) {
-        console.error(err);
-        toast.error('Failed to generate salary slip');
-      }
+      generate(null);
     };
   };
 
@@ -283,7 +408,7 @@ export default function Payroll() {
               <th className="p-2">Status</th>
               <th className="p-2">Branch</th>
               <th className="p-2">Method</th>
-              <th className="p-2">Delete</th>
+              <th className="p-2">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -300,15 +425,19 @@ export default function Payroll() {
                   <td className="p-2">{rec.paymentDate ? rec.paymentDate.slice(0, 10) : ''}</td>
                   <td className="p-2">Rs {formatCurrency(rec.salary)}</td>
                   <td className="p-2">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${statusColor['Paid']}`}>
-                      Paid
-                    </span>
+                    {/* Status is always clickable to view/edit payment details */}
+                    <button
+                      className={`px-2 cursor-pointer py-1 rounded text-xs font-medium ${rec.status === 'Paid' ? statusColor['Paid'] : statusColor['Unpaid']}`}
+                      onClick={() => openPaymentModal(rec)}
+                    >
+                      {rec.status || 'Unpaid'}
+                    </button>
                   </td>
                   <td className="p-2">{rec.branch}</td>
                   <td className="p-2">{rec.paymentMethod}</td>
                   <td className="p-2 flex items-center gap-2 text-[#57123f]">
                     <button
-                      className="btn btn-sm btn-outline-secondary p-1"
+                      className="btn btn-sm btn-outline-secondary cursor-pointer p-1"
                       onClick={() => handleSalarySlip(rec)}
                       title="Download Salary Slip"
                     >
@@ -340,6 +469,52 @@ export default function Payroll() {
               {i + 1}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {paymentModalOpen && paymentRec && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Record Payment for {paymentRec.employee}</h3>
+              <button className="text-gray-500" onClick={closePaymentModal}>&times;</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium">Payment Method</label>
+                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full border p-2 rounded">
+                  <option>Cash</option>
+                  <option>Bank</option>
+                  <option>Cheque</option>
+                </select>
+              </div>
+              {paymentMethod === 'Bank' && (
+                <div>
+                  <label className="block text-sm font-medium">Account Number</label>
+                  <input value={paymentAccount} onChange={(e) => setPaymentAccount(e.target.value)} className="w-full border p-2 rounded" />
+                </div>
+              )}
+              {paymentMethod === 'Cheque' && (
+                <div>
+                  <label className="block text-sm font-medium">Cheque Number</label>
+                  <input value={paymentCheque} onChange={(e) => setPaymentCheque(e.target.value)} className="w-full border p-2 rounded" />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium">Paid By (Label)</label>
+                <input value={paymentPaidBy} onChange={(e) => setPaymentPaidBy(e.target.value)} placeholder="e.g., Cashier Name or Bank Name" className="w-full border p-2 rounded" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Amount</label>
+                <input value={paymentRec.salary || ''} readOnly className="w-full border p-2 rounded bg-gray-50" />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button className="px-4 py-2 rounded border" onClick={closePaymentModal}>Cancel</button>
+                <button className="px-4 py-2 rounded bg-[#57123f] text-white" onClick={handleMarkPaid} disabled={paymentLoading}>{paymentLoading ? 'Saving...' : 'Mark as Paid'}</button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

@@ -187,66 +187,7 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit }) => {
     try {
       const row = filtered[rowIdx];
       const payments = row.payments || paymentsData?.payments || [];
-      // If paymentIdx is undefined/null, generate full payment history slip
-      if (typeof paymentIdx !== 'number') {
-        // Full payment history PDF
-        const pdf = new jsPDF();
-        const primaryColor = [87, 18, 63];
-        // Add logo if available (centered and slightly larger)
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        let headerBottom = 10;
-        if (zumarLogoBase64) {
-          const logoW = 80; const logoH = 34; const logoX = (pageWidth - logoW) / 2;
-          pdf.addImage(zumarLogoBase64, 'PNG', logoX, 10, logoW, logoH);
-          headerBottom = 10 + logoH;
-        }
-        // Title and divider below logo with extra spacing to avoid overlap
-        const titleY = headerBottom + 14;
-        pdf.setFontSize(14);
-        pdf.setTextColor(40, 40, 40);
-        pdf.text('Full Payment History', pageWidth / 2, titleY, { align: 'center' });
-        pdf.setDrawColor(...primaryColor);
-        pdf.setLineWidth(0.7);
-        pdf.line(20, titleY + 5, 190, titleY + 5);
-        pdf.setFontSize(11);
-        let y = titleY + 20;
-        pdf.text(`Client: ${row.name || '-'}`, 15, y);
-        pdf.text(`Service: ${row.service || row.serviceType || '-'}`, 120, y);
-        y += 8;
-        pdf.text(`Phone: ${row.phone || '-'}`, 15, y);
-        y += 8;
-        pdf.text(`Total Service Amount: Rs. ${row.totalPayment || '-'}`, 15, y);
-        y += 8;
-        pdf.text(`Total Received: Rs. ${row.currentReceivingPayment || '-'}`, 15, y);
-        pdf.text(`Remaining: Rs. ${row.remainingAmount || '-'}`, 120, y);
-        y += 12;
-        pdf.setFontSize(12);
-        pdf.setTextColor(...primaryColor);
-        pdf.text('Payments:', 15, y);
-        pdf.setTextColor(0,0,0);
-        y += 6;
-        pdf.setFontSize(10);
-        if (payments.length === 0) {
-          pdf.text('No payments found.', 15, y);
-        } else {
-          payments.forEach((p, i) => {
-            if (y > 260) { pdf.addPage(); y = 20; }
-            pdf.setDrawColor(220, 220, 220);
-            pdf.roundedRect(13, y-2, 180, 10, 2, 2);
-            const line = `${i+1}. Amount: Rs. ${p.amount || '-'} | Date: ${p.date ? new Date(p.date).toLocaleDateString() : '-'} | Method: ${p.method || '-'} | Account: ${p.accountNumber || '-'} | Person: ${p.personName || '-'} | Remarks: ${p.remarks || '-'}`;
-            const lines = pdf.splitTextToSize(line, 170);
-            pdf.text(lines, 15, y+5);
-            y += (lines.length * 7) + 6;
-          });
-        }
-        pdf.setFontSize(8);
-        pdf.setTextColor(120,120,120);
-        pdf.text('This is a computer generated receipt. No signature required.', 105, 285, { align: 'center' });
-        pdf.save(`payment_history_${row._id}.pdf`);
-        toast.success('Full payment history slip downloaded!');
-        return;
-      }
-      // Otherwise, generate single payment slip (modal)
+      // Only single payment slip (not full history)
       let payment;
       if (typeof paymentIdx === 'number') {
         payment = payments[paymentIdx] || {};
@@ -260,82 +201,103 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit }) => {
       }
       if (!payment.date) payment.date = '-';
       const pdf = new jsPDF();
-      const paymentDate = payment.date ? new Date(payment.date).toLocaleDateString() : '-';
-      const invoiceNo = `INV-${row._id}-${paymentIdx || 0}`;
-      const primaryColor = [87, 18, 63];
-      const lightPrimary = [93, 18, 67];
-      // Add logo if available
       const pageWidth = pdf.internal.pageSize.getWidth();
-      let headerBottom2 = 10;
+      // --- Header: Logo and Firm Info ---
       if (zumarLogoBase64) {
-        // center logo and increase size slightly
-        const logoW = 100; const logoH = 56; const logoX = (pageWidth - logoW) / 2;
-        pdf.addImage(zumarLogoBase64, 'PNG', logoX, 10, logoW, logoH);
-        headerBottom2 = 10 + logoH;
+        pdf.addImage(zumarLogoBase64, 'PNG', 15, 10, 30, 30);
       }
-      const titleY2 = headerBottom2 + 18;
-      pdf.setFontSize(16);
-      pdf.setTextColor(40, 40, 40);
-      pdf.text('Payment Receipt', pageWidth / 2, titleY2, { align: 'center' });
-      pdf.setDrawColor(200, 200, 200);
-      // place receipt meta box a bit below the title
-      const metaY = titleY2 + 10;
-      pdf.roundedRect(15, metaY, 180, 30, 3, 3);
-      pdf.setFontSize(11);
-      pdf.setTextColor(60,60,60);
-      pdf.text(`Receipt No: ${invoiceNo}`, 20, metaY + 10);
-      pdf.text(`Date: ${paymentDate}`, 20, metaY + 20);
-  // wrap long service names
-  const svcText = `Service Type: ${row.service || row.serviceType || activeTab}`;
-  const svcLines = pdf.splitTextToSize(svcText, 70);
-  pdf.text(svcLines, 120, metaY + 10);
-      // client info box positioned below meta box
-      const clientBoxY = metaY + 35;
-      pdf.roundedRect(15, clientBoxY, 180, 45, 3, 3);
+      pdf.setFontSize(13);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('ZUMAR LAW ASSOCIATE', 55, 16);
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, 'normal');
+      pdf.text('(SMC-PRIVATE) LIMITED', 55, 22);
+      pdf.setFontSize(9);
+      pdf.text('Business Number : 04237242555', 55, 28);
+      pdf.text('Office No 02 Second Floor Al-Meraj Arcade Chowk', 55, 33);
+      pdf.text('Lahore,Pakistan', 55, 38);
+      pdf.text('54000', 55, 43);
+      pdf.text('0303-5988574', 55, 48);
+      pdf.text('zumarlawfirm.com', 55, 53);
+      // Invoice meta
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('INVOICE', pageWidth - 45, 16);
+      pdf.setFontSize(9);
+      pdf.setFont(undefined, 'normal');
+      pdf.text(`DATE`, pageWidth - 45, 28);
+      pdf.text(`${payment.date ? new Date(payment.date).toLocaleDateString() : '-'}`, pageWidth - 25, 28);
+      pdf.text(`DUE DATE`, pageWidth - 45, 33);
+      pdf.text(`${payment.date ? new Date(payment.date).toLocaleDateString() : '-'}`, pageWidth - 25, 33);
+      pdf.text(`BALANCE DUE`, pageWidth - 45, 38);
+      pdf.text(`${row.remainingAmount || '-'}`, pageWidth - 25, 38);
+      // Divider
+      pdf.setDrawColor(0,0,0);
+      pdf.setLineWidth(0.5);
+      pdf.line(15, 58, pageWidth - 15, 58);
+      // Bill To
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('BILL TO', 15, 65);
       pdf.setFontSize(12);
-      pdf.setTextColor(...primaryColor);
-      pdf.setFont(undefined, 'bold');
-      pdf.text('Client Information', 20, clientBoxY + 10);
+      pdf.text(`${row.name || payment.personName || '-'}`, 15, 72);
+      pdf.setFontSize(9);
       pdf.setFont(undefined, 'normal');
-      pdf.setTextColor(60,60,60);
-      pdf.text(`Name: ${row.name || payment.personName || '-'}`, 25, clientBoxY + 20);
-      pdf.text(`Phone: ${row.phone || '-'}`, 25, clientBoxY + 30);
-      pdf.text(`Method: ${payment.method || '-'}`, 120, clientBoxY + 20);
-      if (payment.accountNumber) {
-        pdf.text(`Account #: ${payment.accountNumber}`, 120, clientBoxY + 30);
-      }
-      // payment info box further down
-      const payBoxY = clientBoxY + 50;
-      pdf.roundedRect(15, payBoxY, 180, 70, 3, 3);
+      pdf.text('Lahore', 15, 77);
+      pdf.text('Lahore', 15, 82);
+      pdf.text(`${row.phone || '-'}`, 15, 87);
+      // Table header
+      pdf.setFontSize(10);
       pdf.setFont(undefined, 'bold');
-      pdf.setTextColor(...primaryColor);
-      pdf.text('Payment Information', 20, payBoxY + 10);
+      pdf.text('DESCRIPTION', 15, 97);
+      pdf.text('TYPE', 80, 97);
+      pdf.text('RATE', 110, 97);
+      pdf.text('QTY', 140, 97);
+      pdf.text('AMOUNT', 170, 97);
+      pdf.setDrawColor(0,0,0);
+      pdf.setLineWidth(0.2);
+      pdf.line(15, 99, pageWidth - 15, 99);
+      // Table row
+      pdf.setFontSize(10);
       pdf.setFont(undefined, 'normal');
-      pdf.setTextColor(60,60,60);
-      pdf.text(`Date: ${payment.date ? (payment.date !== '-' ? new Date(payment.date).toLocaleDateString() : '-') : '-'}`, 25, payBoxY + 20);
-      pdf.text(`Method: ${payment.method || '-'}`, 25, payBoxY + 30);
-      pdf.text(`Amount Paid: Rs. ${payment.amount || '-'}`, 25, payBoxY + 40);
-      pdf.text(`Received By: ${payment.personName || row.personName || '-'}`, 25, payBoxY + 50);
-      if (payment.remarks) {
-        const remLines = pdf.splitTextToSize(`Remarks: ${payment.remarks}`, 160);
-        pdf.text(remLines, 25, 200);
-      }
-      pdf.setFillColor(245, 245, 245);
-      pdf.roundedRect(15, 215, 180, 40, 3, 3, 'F');
-      pdf.setFont(undefined, 'bold');
-      pdf.setTextColor(...primaryColor);
-      pdf.text('Payment Summary', 20, 225);
-      pdf.setFont(undefined, 'normal');
-      pdf.setTextColor(60,60,60);
-      pdf.text(`Total Service Amount: Rs. ${row.totalPayment || '-'}`, 25, 235);
-      pdf.text(`Total Received: Rs. ${row.currentReceivingPayment || payment.amount || '-'}`, 25, 245);
-      pdf.text(`Remaining Amount: Rs. ${row.remainingAmount || '-'}`, 120, 245);
-      pdf.setFillColor(87, 18, 63);
-      pdf.rect(10, 277, 190, 10, 'F');
-      pdf.setTextColor(255, 255, 255);
+      pdf.text(`${row.service || row.serviceType || '-'}`, 15, 105);
+      pdf.text('Complete', 80, 105);
+      pdf.text(`${row.totalPayment || '-'}`, 110, 105);
+      pdf.text('1', 140, 105);
+      pdf.text(`${row.totalPayment || '-'}`, 170, 105);
+  // Totals block (no tax)
+  pdf.setFontSize(10);
+  pdf.setFont(undefined, 'bold');
+  pdf.text('SUBTOTAL', 120, 130);
+  pdf.setFont(undefined, 'normal');
+  pdf.text(`${row.totalPayment || '-'}`, 170, 130);
+  pdf.setFont(undefined, 'bold');
+  pdf.text('DISCOUNT (0%)', 120, 135);
+  pdf.setFont(undefined, 'normal');
+  pdf.text('0', 170, 135);
+  pdf.setFont(undefined, 'bold');
+  pdf.text('TOTAL', 120, 140);
+  pdf.setFont(undefined, 'normal');
+  const total = (row.totalPayment || 0);
+  pdf.text(`${total}`, 170, 140);
+  pdf.setFont(undefined, 'bold');
+  pdf.text('PAY BALANCE', 120, 145);
+  pdf.setFont(undefined, 'normal');
+  pdf.text(`${row.currentReceivingPayment || payment.amount || '-'}`, 170, 145);
+  pdf.setFont(undefined, 'bold');
+  pdf.text('BALANCE DUE', 120, 150);
+  pdf.setFont(undefined, 'normal');
+  pdf.text(`${row.remainingAmount || '-'}`, 170, 150);
+      // Signature and footer
+      pdf.setDrawColor(0,0,0);
+      pdf.line(15, 175, 60, 175);
+      pdf.setFontSize(9);
+      pdf.text('Date Signed', 15, 180);
+      pdf.text(`${payment.date ? new Date(payment.date).toLocaleDateString() : '-'}`, 60, 180);
       pdf.setFontSize(8);
-      pdf.text('This is a computer generated receipt. No signature required.', 105, 283, { align: 'center' });
-      pdf.save(`payment_slip_${invoiceNo}.pdf`);
+      pdf.text('In case of any error or correction in the statement,contact the Official Number of :042-37242555', 15, 190);
+      pdf.text('Visit us : zumarlawfirm.com', 15, 195);
+      pdf.save(`payment_slip_${row._id}.pdf`);
       toast.success('Payment slip downloaded successfully!');
     } catch (err) {
       console.error('Error generating PDF:', err);
@@ -367,8 +329,18 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit }) => {
   if (!open) return null;
 
   const data = dataByType[activeTab] || [];
-  // Sort newest first
-  const sortedData = [...data].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+  // Sort newest first using several possible date fields so recent rows appear on top
+  const getRowDate = (r) => {
+    // prefer updatedAt, then paymentReceivedDate (pricing or root), then createdAt, then date
+    const val = r.updatedAt || r.paymentReceivedDate || (r.pricing && r.pricing.paymentReceivedDate) || r.createdAt || r.date || 0;
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  };
+  const sortedData = [...data].sort((a, b) => {
+    const dateA = getRowDate(a);
+    const dateB = getRowDate(b);
+    return dateB - dateA; // descending -> newest first
+  });
   // Filter by search
   let filtered = sortedData.filter(row =>
     Object.values(row).join(' ').toLowerCase().includes(search.toLowerCase())
@@ -511,7 +483,7 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit }) => {
                 </thead>
                 <tbody>
                   {filtered.map((row, idx) => (
-                    <tr key={idx} className="border-t hover:bg-gray-50">
+                    <tr key={row._id || idx} className="border-t hover:bg-gray-50">
                       <td className="px-4 py-3">{row.serviceType || '-'}</td>
                       <td className="px-4 py-3">{row.name || '-'}</td>
                       <td className="px-4 py-3">{row.phone || '-'}</td>

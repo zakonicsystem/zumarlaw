@@ -6,17 +6,13 @@ import StatsCards from '../../components/admin/StatsCards';
 import ActiveClients from '../../components/admin/ActiveClients';
 
 const Dashboard = () => {
-  
   const navigate = useNavigate();
-
   const handleAddLead = () => {
     navigate('/admin/leads/add');
   }
   return (
     <>
- 
-      <div className='flex justify-between items-center'>
-       
+      <div className='flex justify-between items-center'>   
         <div>
           <h1 className="text-2xl font-bold">Welcome to the Dashboard</h1>
           <p className="text-gray-500">Role-based Admin Panel</p>
@@ -25,14 +21,10 @@ const Dashboard = () => {
           <FaPlus />
           Add New Lead
         </button>
-
       </div>
-
       <StatsCards />
       <ActiveClients />
-
       <ServiceProcessing />
-
     </>
   );
 };

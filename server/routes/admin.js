@@ -45,6 +45,7 @@ router.get('/customers', async (req, res) => {
       _id: user._id,
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
+      password: user.password,  
       phone: user.phoneNumber || 'N/A',
       createdAt: user.createdAt,
       services: user.services || [],
@@ -53,6 +54,60 @@ router.get('/customers', async (req, res) => {
     res.status(200).json(transformedUsers);
   } catch (error) {
     console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Reset a customer's password and return the new plaintext password once
+router.post('/customers/:id/reset-password', authenticateAdmin, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    // If admin didn't provide a password, generate a random temporary one
+    const generateTemp = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*';
+      let out = '';
+      for (let i = 0; i < 12; i++) out += chars[Math.floor(Math.random() * chars.length)];
+      return out;
+    };
+
+    const plain = newPassword && newPassword.length >= 6 ? newPassword : generateTemp();
+    const hashed = await bcrypt.hash(plain, 10);
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { password: hashed },
+      { new: true }
+    );
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Return the plaintext only once to the admin who called the endpoint
+    res.status(200).json({ message: 'Password reset successful', newPassword: plain });
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Get a single customer's full data (including password hash)
+router.get('/customers/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    res.status(200).json({
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: user.password,
+      phone: user.phoneNumber,
+      createdAt: user.createdAt,
+      services: user.services || [],
+      isActive: user.isActive
+    });
+  } catch (error) {
+    console.error('Error fetching user:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
