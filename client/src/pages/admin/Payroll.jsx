@@ -156,8 +156,57 @@ export default function Payroll() {
     return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
   };
 
-  const handleSalarySlip = (rec) => {
-    // Create a polished salary slip resembling the provided invoice
+  // Minimal number-to-words helper (used for Amount in words)
+  const numberToWords = {
+    toWords: (num) => {
+      if (num === 0) return 'zero';
+      const a = ['','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+      const b = ['','', 'twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+      const thousand = (n) => {
+        if (n < 20) return a[n];
+        if (n < 100) return b[Math.floor(n/10)] + (n%10 ? ' ' + a[n%10] : '');
+        if (n < 1000) return a[Math.floor(n/100)] + ' hundred' + (n%100 ? ' ' + thousand(n%100) : '');
+        for (let i = 0, p = ['','thousand','million','billion']; i < p.length; i++) {
+          const pow = Math.pow(1000, i+1);
+          if (n < pow) {
+            const high = Math.floor(n / Math.pow(1000, i));
+            const rem = n % Math.pow(1000, i);
+            return thousand(high) + ' ' + p[i] + (rem ? ' ' + thousand(rem) : '');
+          }
+        }
+        return '';
+      };
+      return thousand(Math.abs(Math.floor(num)));
+    }
+  };
+
+  const handleSalarySlip = async (rec) => {
+    // Ensure we have cutDays and base salary. If missing, call server autoSalary/calculate for the payroll month
+    let enhancedRec = { ...rec };
+    try {
+      const pm = rec.payrollMonth || (rec.paymentDate ? (rec.paymentDate + '').slice(0,7) : null); // YYYY-MM
+      if (pm) {
+        const [yStr, mStr] = pm.split('-');
+        const year = Number(yStr);
+        const month = Number(mStr);
+        if ((!enhancedRec.cutDays && enhancedRec.cutDays !== 0) || (!enhancedRec.baseSalary && enhancedRec.baseSalary !== 0)) {
+          const resp = await axios.post('https://app.zumarlawfirm.com/autoSalary/calculate', { year, month }).catch(() => null);
+          if (resp && Array.isArray(resp.data)) {
+            const found = resp.data.find(r => String(r.employee).toLowerCase() === String(rec.employee).toLowerCase());
+            if (found) {
+              // Map fields from autoSalary result
+              enhancedRec.cutDays = enhancedRec.cutDays ?? found.cutDays ?? found.cutDays;
+              enhancedRec.baseSalary = enhancedRec.baseSalary ?? found.baseSalary ?? found.baseSalary;
+              enhancedRec.present = enhancedRec.present ?? found.present ?? found.present;
+              enhancedRec.finalSalary = enhancedRec.finalSalary ?? found.finalSalary ?? found.finalSalary;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch salary breakdown, proceeding with available data', e);
+    }
+
     const img = new Image();
     img.crossOrigin = 'Anonymous';
     img.src = ZumarLogo;
@@ -165,127 +214,309 @@ export default function Payroll() {
       try {
         const pdf = new jsPDF('p', 'pt', 'a4');
         const pageWidth = pdf.internal.pageSize.getWidth();
-        const margin = 48; // bigger margin for breathing room
-        // Header: logo left, firm info centered-right
-        const topOffset = 28;
-        if (dataUrl) {
-          const logoW = 84; const logoH = 84; // points
-          pdf.addImage(dataUrl, 'PNG', margin, topOffset, logoW, logoH);
-        }
-        const headerX = margin + 110;
-        pdf.setFontSize(16);
-        pdf.setFont(undefined, 'bold');
-        pdf.text('ZUMAR LAW ASSOCIATE', headerX, topOffset + 10);
-        pdf.setFontSize(10);
-        pdf.setFont(undefined, 'normal');
-        pdf.text('(SMC-PRIVATE) LIMITED', headerX, topOffset + 26);
-        pdf.text('Business Number : 04237242555', headerX, topOffset + 40);
-        pdf.text('Office No 02 Second Floor Al-Meraj Arcade Chowk', headerX, topOffset + 54);
-        pdf.text('Lahore, Pakistan 54000', headerX, topOffset + 68);
-        pdf.text('0303-5988574', headerX, topOffset + 82);
-        pdf.text('zumarlawfirm.com', headerX, topOffset + 96);
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 40;
 
-        // Invoice/meta box on the right (visually aligned with header)
-        pdf.setFontSize(12);
+        // Top header (name + contact) and PAYSLIP title on right
+        pdf.setFontSize(22);
         pdf.setFont(undefined, 'bold');
-        pdf.text('SALARY SLIP', pageWidth - margin - 120, topOffset + 10);
-        pdf.setFont(undefined, 'normal');
+        pdf.setTextColor(87, 18, 63);
+        pdf.text('ZUMAR LAW FIRM', margin, 40);
         pdf.setFontSize(9);
-        pdf.text(`Slip No: ${(rec._id || '').slice(-8)}`, pageWidth - margin - 120, topOffset + 30);
-        pdf.text(`Date: ${rec.paymentDate ? (rec.paymentDate + '').slice(0, 10) : '-'}`, pageWidth - margin - 120, topOffset + 46);
-        pdf.text(`Month: ${rec.payrollMonth || '-'}`, pageWidth - margin - 120, topOffset + 62);
-
-        // divider with more space below header
-        const dividerY = topOffset + 110;
-        pdf.setLineWidth(1);
-        pdf.line(margin, dividerY, pageWidth - margin, dividerY);
-
-        // Bill To / Employee block (with more vertical spacing)
-        const empY = dividerY + 18;
-        pdf.setFontSize(10);
-        pdf.setFont(undefined, 'bold');
-        pdf.text('EMPLOYEE', margin, empY);
         pdf.setFont(undefined, 'normal');
-  pdf.setFontSize(14);
-  pdf.setFont(undefined, 'bold');
-  const empNameY = empY + 20;
-  pdf.text(rec.employee || '-', margin, empNameY);
-  // subtle underline under name
-  const nameWidth = pdf.getTextWidth(rec.employee || '-');
-  pdf.setLineWidth(0.8);
-  pdf.line(margin, empNameY + 4, margin + nameWidth + 6, empNameY + 4);
-  pdf.setFont(undefined, 'normal');
-        pdf.setFontSize(9);
-  pdf.text(rec.branch || 'Lahore', margin, empY + 40);
-  pdf.text(rec.employeeContact || rec.phone || '-', margin, empY + 56);
-        let paymentInfoY = empY + 66;
-        if (rec.paymentMethod) {
-          pdf.text(`Method: ${rec.paymentMethod}`, margin, paymentInfoY);
-          paymentInfoY += 16;
-        }
-        if (rec.accountNumber) {
-          pdf.text(`Account #: ${rec.accountNumber}`, margin, paymentInfoY);
-          paymentInfoY += 16;
-        }
-        if (rec.chequeNumber) {
-          pdf.text(`Cheque #: ${rec.chequeNumber}`, margin, paymentInfoY);
-          paymentInfoY += 16;
-        }
-        if (rec.paidBy) {
-          pdf.text(`Paid By: ${rec.paidBy}`, margin, paymentInfoY);
-          paymentInfoY += 16;
-        }
+        pdf.setTextColor(0,0,0);
+        pdf.text('Office No 8B 5th Floor Rizwan Arcade Adam Jee Road Rawalpindi', margin, 56);
+        pdf.text('Phone: 051-8445595, Email: team@zumarlawfirm.com', margin, 70);
 
-        // Earnings/Deductions table header (more breathing room)
-        const tableTop = Math.max(paymentInfoY + 10, dividerY + 120);
-        pdf.setLineWidth(0.6);
-        pdf.line(margin, tableTop - 10, pageWidth - margin, tableTop - 10);
+        pdf.setFontSize(26);
+        pdf.setFont(undefined,'bold');
+        pdf.setTextColor(87,18,63);
+        pdf.text('PAYSLIP', pageWidth - margin - 100, 48);
+
+        // Employee information box (left)
+        const infoY = 90;
+        pdf.setFillColor(87,18,63);
+        pdf.rect(margin, infoY, 160, 18, 'F');
+        pdf.setFontSize(9);
+        pdf.setTextColor(255,255,255);
+        pdf.text('EMPLOYEE INFORMATION', margin + 6, infoY + 13);
+
+        pdf.setTextColor(0,0,0);
         pdf.setFontSize(11);
-        pdf.setFont(undefined, 'bold');
-        pdf.text('DESCRIPTION', margin + 4, tableTop);
-        pdf.text('RATE', pageWidth / 2 - 20, tableTop);
-        pdf.text('QTY', pageWidth / 2 + 40, tableTop);
-        pdf.text('AMOUNT', pageWidth - margin - 60, tableTop);
-        pdf.setLineWidth(0.3);
-        pdf.line(margin, tableTop + 6, pageWidth - margin, tableTop + 6);
+        pdf.setFont(undefined,'bold');
+        pdf.text(rec.employee || '-', margin, infoY + 36);
+        pdf.setFont(undefined,'normal');
+        pdf.text(`Branch: ${rec.branch || '-'}`, margin, infoY + 52);
+        pdf.text(`Payroll #: ${rec._id?.slice(-8) || '-'}`, margin, infoY + 68);
 
-  // rows: Basic salary only (remove allowances/deductions for simplified slip)
-  const rowYStart = tableTop + 28;
-  pdf.setFont(undefined, 'normal');
-  const salary = Number(rec.salary) || 0;
-  const net = salary;
-
-  pdf.text('Basic Salary', margin + 4, rowYStart);
-  pdf.text(formatCurrency(salary), pageWidth / 2 - 20, rowYStart);
-  pdf.text('1', pageWidth / 2 + 40, rowYStart);
-  pdf.text(formatCurrency(salary), pageWidth - margin - 60, rowYStart);
-
-  // totals area (simplified)
-  const totalsTop = rowYStart + 44;
-  pdf.setLineWidth(0.6);
-  pdf.line(pageWidth / 2, totalsTop - 8, pageWidth - margin, totalsTop - 8);
-  pdf.setFont(undefined, 'bold');
-  pdf.text('SUBTOTAL', pageWidth - margin - 160, totalsTop);
-  pdf.setFont(undefined, 'normal');
-  pdf.text(formatCurrency(salary), pageWidth - margin - 60, totalsTop);
-
-  pdf.setFont(undefined, 'bold');
-  pdf.text('NET PAY', pageWidth - margin - 160, totalsTop + 28);
-  pdf.setFont(undefined, 'normal');
-  pdf.text(formatCurrency(net), pageWidth - margin - 60, totalsTop + 28);
-
-        // Signature
-        pdf.setLineWidth(0.3);
-        pdf.line(margin, totalsTop + 90, margin + 140, totalsTop + 90);
-        pdf.setFontSize(10);
-        pdf.text('Authorized Signature', margin, totalsTop + 106);
-        pdf.text(`Date: ${rec.paymentDate ? (rec.paymentDate + '').slice(0, 10) : '-'}`, margin + 150, totalsTop + 106);
-
-        // Footer note
+        // Right small info table (3 columns) under title
+        const infoTableX = pageWidth / 2;
+        const infoW = pageWidth - margin - infoTableX;
+        const cellH = 18;
+        const headerY = infoY;
+        pdf.setFillColor(139,34,54);
+        pdf.setTextColor(255,255,255);
+        const iw = infoW / 3 - 6;
+        pdf.rect(infoTableX, headerY, iw, cellH, 'F');
+        pdf.rect(infoTableX + iw, headerY, iw, cellH, 'F');
+        pdf.rect(infoTableX + iw*2, headerY, iw, cellH, 'F');
         pdf.setFontSize(9);
-        pdf.text('This is a computer generated salary slip.', pageWidth / 2, totalsTop + 150, { align: 'center' });
+        pdf.text('PAY DATE', infoTableX + 6, headerY + 12);
+        pdf.text('PAY TYPE', infoTableX + iw + 6, headerY + 12);
+        pdf.text('PERIOD', infoTableX + iw*2 + 6, headerY + 12);
+
+        // values
+        pdf.setFillColor(240,240,240);
+        pdf.setTextColor(0,0,0);
+        pdf.rect(infoTableX, headerY + cellH, iw, cellH, 'F');
+        pdf.rect(infoTableX + iw, headerY + cellH, iw, cellH, 'F');
+        pdf.rect(infoTableX + iw*2, headerY + cellH, iw, cellH, 'F');
+        pdf.setFontSize(10);
+        pdf.text(rec.paymentDate ? (rec.paymentDate + '').slice(0,10) : '-', infoTableX + 6, headerY + cellH + 12);
+        pdf.text(rec.paymentMethod || '-', infoTableX + iw + 6, headerY + cellH + 12);
+        pdf.text(rec.payrollMonth || '-', infoTableX + iw*2 + 6, headerY + cellH + 12);
+
+        // Payment method line and account/cheque details
+        pdf.setFontSize(10);
+        pdf.text(`Payment Method: ${rec.paymentMethod || '-'}`, margin, infoY + 92);
+        const pm = (rec.paymentMethod || '').toString().toLowerCase();
+        if (pm === 'bank' && rec.accountNumber) {
+          pdf.text(`Account No: ${rec.accountNumber}`, infoTableX, infoY + 92);
+        } else if (pm === 'cheque' || pm === 'check') {
+          if (rec.chequeNumber) pdf.text(`Cheque No: ${rec.chequeNumber}`, infoTableX, infoY + 92);
+        } else {
+          // if cheque number exists even when method isn't exclusively cheque, still show it
+          if (rec.chequeNumber) pdf.text(`Cheque No: ${rec.chequeNumber}`, infoTableX, infoY + 92);
+        }
+
+        // Attendance & Earnings setup
+    pdf.setFont(undefined,'normal');
+    // present: try multiple possible field names (autoSalary returns `present`)
+    const present = Number(rec.present ?? rec.presentDays ?? rec.daysPresent ?? 0);
+    // cutDays: canonical field is cutDays from autoSalary/Salary model
+    const cutDays = Number(rec.cutDays ?? rec.daysCut ?? rec.cut ?? 0);
+    // totalDays prefer explicit workingDays/totalWorkingDays, otherwise fallback to present+cutDays
+    const totalDays = Number((rec.workingDays ?? rec.totalWorkingDays ?? (present + cutDays)) || 0);
+    const salary = Number(rec.baseSalary ?? rec.salary ?? rec.finalSalary ?? 0) || 0;
+    const perDay = totalDays ? Math.round(salary / totalDays) : 0;
+        // compute days in month from payrollMonth (YYYY-MM) or paymentDate
+        let monthDays = totalDays;
+        try {
+          const pm = rec.payrollMonth || (rec.paymentDate ? (rec.paymentDate + '').slice(0,7) : null);
+          if (pm) {
+            const [yy, mm] = pm.split('-').map(Number);
+            if (yy && mm) {
+              monthDays = new Date(yy, mm, 0).getDate();
+            }
+          }
+        } catch (e) {
+          // fallback to totalDays already set
+        }
+
+  // Attendance counts (use rec fields or fallbacks from autoSalary/Salary model)
+  const absent = Number(rec.absent ?? rec.absentDays ?? rec.daysAbsent ?? 0);
+  const leave = Number(rec.leave ?? rec.leaves ?? 0);
+  const holidayCount = Number(rec.holiday ?? rec.holidays ?? 0);
+  const halfDay = Number(rec.halfDay ?? rec.halfDays ?? 0);
+  const leaveRelief = Number(rec.leaveRelief ?? 0);
+  const sundays = Number(rec.sundays ?? rec.sunday ?? 0);
+  // (cutDays already computed above)
+
+        // Draw attendance box below employee info and above earnings
+        const attendanceY = infoY + 92; // place under the info section
+        const attendanceH = 120; // height to fit 9 rows (Working Days + 8 items)
+        pdf.setFillColor(245,245,245);
+        pdf.rect(margin, attendanceY, pageWidth - margin*2, attendanceH, 'F');
+        pdf.setFontSize(10);
+        pdf.setFont(undefined,'bold');
+        pdf.text('ATTENDANCE DETAILS', margin + 6, attendanceY + 14);
+        pdf.setFont(undefined,'normal');
+        const aStartY = attendanceY + 30;
+        const aGap = 10;
+        const aNumX = pageWidth - margin - 20;
+        const drawA = (label, value, y) => {
+          pdf.text(label, margin + 8, y);
+          const w = pdf.getTextWidth(String(value));
+          pdf.text(String(value), aNumX - w, y);
+        };
+        // show total working days first
+        drawA('Working Days:', monthDays, aStartY);
+        drawA('Present:', present, aStartY + aGap);
+        drawA('Absent:', absent, aStartY + aGap * 2);
+        drawA('Leave:', leave, aStartY + aGap * 3);
+        drawA('Holidays:', holidayCount, aStartY + aGap * 4);
+        drawA('Half Day:', halfDay, aStartY + aGap * 5);
+        drawA('Leave Relief:', leaveRelief, aStartY + aGap * 6);
+        drawA('Sunday:', sundays, aStartY + aGap * 7);
+        drawA('Cut Days:', cutDays, aStartY + aGap * 8);
+
+        // After attendance, start earnings table below it
+        const tableTop = attendanceY + attendanceH + 12;
+        const tableW = pageWidth - margin*2;
+        const colA = margin;
+        const colB = margin + tableW*0.25;
+        const colC = margin + tableW*0.45;
+        const colD = margin + tableW*0.65;
+        const colE = margin + tableW*0.85;
+
+        pdf.setFillColor(255,204,153);
+        pdf.rect(colA, tableTop, tableW, 26, 'F');
+        pdf.setTextColor(0,0,0);
+        pdf.setFontSize(11);
+        pdf.setFont(undefined,'bold');
+        pdf.text('EARNINGS', colA + 6, tableTop + 18);
+        pdf.text('Days', colB + 6, tableTop + 18);
+        // RATE column removed as requested
+        pdf.text('CURRENT', colD + 6, tableTop + 18);
+        pdf.text('PKR', colE + 6, tableTop + 18);
+
+        
+
+        let ry = tableTop + 36;
+        const gap = 18;
+        const basicCurrent = Math.round(perDay * present);
+
+        // column widths & right-edge helpers for better alignment
+        const colWidth1 = colB - colA;
+        const colWidth2 = colC - colB;
+        const colWidth3 = colD - colC;
+        const colWidth4 = colE - colD;
+        const colWidth5 = margin + tableW - colE;
+        const daysX = colB + colWidth2 / 2;
+        const rateRight = colC + colWidth3 - 6;
+        const currentRight = colD + colWidth4 - 6;
+        const pkrRight = colE + colWidth5 - 6;
+
+        const drawRight = (text, xRight, y) => {
+          const w = pdf.getTextWidth(text + '');
+          pdf.text(text + '', xRight - w, y);
+        };
+
+        const drawRow = (y, desc, daysVal, rateVal, currentVal, amountVal) => {
+          pdf.setFont(undefined,'normal');
+          pdf.text(desc, colA + 6, y);
+          // days centered
+          pdf.text(daysVal === undefined ? '' : String(daysVal), daysX, y, { align: 'center' });
+          // rate, current, amount right aligned
+          drawRight(formatCurrency(rateVal), rateRight, y);
+          drawRight(formatCurrency(currentVal), currentRight, y);
+          drawRight(formatCurrency(amountVal), pkrRight, y);
+          // bottom border
+          pdf.setDrawColor(220);
+          pdf.setLineWidth(0.4);
+          pdf.line(colA, y + 4, colA + tableW, y + 4);
+        };
+
+    // Rows
+  const baseMonthly = Number(rec.baseSalary ?? 0) || salary || 0;
+  drawRow(ry, 'Basic Salary', String(monthDays), '', baseMonthly, baseMonthly);
+        ry += gap;
+  // show Monthly Basic Salary (from model if available) as small right-aligned note under the basic row
+  pdf.setFontSize(9);
+  pdf.setFont(undefined,'normal');
+
+        const medical = Number(rec.medicalAllowance ?? rec.medical ?? 0);
+  drawRow(ry, 'Medical Allowance', '0', '', medical, medical);
+        ry += gap;
+
+        const traveling = Number(rec.travelingAllowance ?? rec.travellingAllowance ?? 0);
+  drawRow(ry, 'Traveling Allowance', '0', '', traveling, traveling);
+        ry += gap;
+
+        const overtime = Number(rec.overtimePay ?? 0);
+  drawRow(ry, 'Overtime Pay', '0', '', overtime, overtime);
+        ry += gap;
+
+        const holiday = Number(rec.holidayPay ?? 0);
+  drawRow(ry, 'Holiday pay', '0', '', holiday, holiday);
+        ry += gap;
+
+  // Gross (show Basic Salary clearly and Gross total) - use monthly base (without deductions)
+  const gross = baseMonthly + medical + traveling + overtime + holiday;
+        pdf.setFillColor(255,204,153);
+        pdf.rect(colA, ry + 6, tableW, 24, 'F');
+        pdf.setFont(undefined,'bold');
+        pdf.text('GROSS PAY', colA + 6, ry + 22);
+        // show Basic Salary (monthly base from Salary model if available)
+        pdf.setFont(undefined,'normal');
+  drawRight(`Basic: ${formatCurrency(baseMonthly || basicCurrent)}`, currentRight, ry + 22);
+        pdf.setFont(undefined,'bold');
+        drawRight(formatCurrency(gross), pkrRight, ry + 22);
+
+        // Deductions (show cut days deduction and apply before net)
+        let dy = ry + 44;
+        pdf.setFillColor(255,204,153);
+        pdf.rect(colA, dy, tableW, 24, 'F');
+        pdf.setFont(undefined,'bold');
+        pdf.setTextColor(0,0,0);
+        pdf.text('DEDUCTIONS', colA + 6, dy + 16);
+        dy += 26;
+        pdf.setFont(undefined,'normal');
+
+  const payTax = Number(rec.payTax ?? 0);
+  const leaves = Number(rec.leaves ?? rec.leaveDeductions ?? 0);
+  const loan = Number(rec.loan ?? rec.loanDeduction ?? 0);
+  // calculate per-day based on monthly base and monthDays, then compute cut deduction
+  const perDayBase = monthDays ? Math.round(baseMonthly / monthDays) : 0;
+  const cutDeduction = Math.round(perDayBase * cutDays);
+
+  // Cut Days deduction row (show number of cut days under Days column and deduction amount)
+  // add a small top margin so this deduction row is visually separated from the GROSS block
+  dy += 8;
+  drawRow(dy, 'Cut Days Deduction', cutDays, '', 0, cutDeduction);
+        dy += gap;
+
+  // Pay Tax
+  drawRow(dy, 'Pay Tax', '0', '', payTax, payTax);
+        dy += gap;
+
+        // Other leave deductions (if any separate from cut days)
+        if (leaves && leaves !== 0) {
+          drawRow(dy, 'Leave Deductions', leave, '', 0, leaves);
+          dy += gap;
+        }
+
+  // Loan
+  drawRow(dy, 'Loan', '0', '', 0, loan);
+        dy += gap;
+
+        const totalDeductions = Math.round(cutDeduction + payTax + leaves + loan);
+        pdf.setFillColor(245,245,245);
+        pdf.rect(colA, dy + 6, tableW, 20, 'F');
+        pdf.setFont(undefined,'bold');
+        pdf.text('TOTAL DEDUCTIONS', colA + 6, dy + 20);
+        drawRight(formatCurrency(totalDeductions), pkrRight, dy + 20);
+
+        // Net pay bar
+        const netY = dy + 46;
+        pdf.setFillColor(87,18,63);
+        pdf.rect(colA + tableW*0.25, netY, tableW*0.5, 32, 'F');
+        pdf.setTextColor(255,255,255);
+        pdf.setFont(undefined,'bold');
+        const netPay = gross - totalDeductions;
+        pdf.text('NET PAY', colA + tableW*0.28, netY + 21);
+        pdf.text(`PKR ${formatCurrency(netPay)}`, colA + tableW*0.58, netY + 21);
+
+        // Amount in words
+        pdf.setTextColor(0,0,0);
+        pdf.setFont(undefined,'normal');
+        pdf.setFontSize(9);
+        const amountInWords = numberToWords.toWords(Math.round(netPay)).replace(/\w\S*/g, (w) => (w.replace(/^\w/, (c) => c.toUpperCase())));
+        pdf.text(`Amount in words: ${amountInWords} Rupees Only`, colA, netY + 44);
+
+        // Signatures
+        const signY = netY + 80;
+        pdf.setLineWidth(0.8);
+        pdf.line(colA, signY, colA + 120, signY);
+        pdf.text('Branch Manager', colA, signY + 12);
+        pdf.line(colA + tableW*0.45, signY, colA + tableW*0.45 + 120, signY);
+        pdf.text('Employee Sign', colA + tableW*0.45, signY + 12);
+        pdf.line(colA + tableW - 120, signY, colA + tableW, signY);
+        pdf.text('Chief Executive Officer', colA + tableW - 120, signY + 12);
+
+        // Footer
         pdf.setFontSize(8);
-        pdf.text('In case of any error or correction in the statement, contact: 042-37242555', pageWidth / 2, totalsTop + 166, { align: 'center' });
+        pdf.text('This is a computer generated salary slip.', pageWidth / 2, pageHeight - 40, { align: 'center' });
 
         const fileName = `salary_slip_${(rec.employee || 'employee').replace(/[^a-z0-9]+/gi, '_')}_${rec._id?.slice(-6)}.pdf`;
         pdf.save(fileName);
@@ -304,6 +535,8 @@ export default function Payroll() {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
         const dataUrl = canvas.toDataURL('image/png');
+        // pass enhancedRec to closure by replacing rec variable used in generate
+        rec = enhancedRec;
         generate(dataUrl);
       } catch (e) {
         console.warn('Logo conversion failed, generating without logo', e);
@@ -312,6 +545,8 @@ export default function Payroll() {
     };
     img.onerror = (e) => {
       console.warn('Logo load failed, generating PDF without logo', e);
+      // ensure generate uses enhancedRec
+      rec = enhancedRec;
       generate(null);
     };
   };

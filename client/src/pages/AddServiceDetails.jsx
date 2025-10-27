@@ -464,7 +464,12 @@ const serviceFields = {
 const AddServiceDetails = () => {
   const { serviceTitle } = useParams();
   const navigate = useNavigate();
-  const [showForm, setShowForm] = useState(false);
+  // determine decoded service and required fields early so we can
+  // open the details form by default for services that need additional input
+  const decodedService = decodeURIComponent(serviceTitle);
+  const fields = serviceFields[decodedService] || [];
+  // Open the manual details form automatically when this service has defined fields
+  const [showForm, setShowForm] = useState(() => fields.length > 0);
   const [loading, setLoading] = useState(false);
   const [cnicGroups, setCnicGroups] = useState([]);
   const [invoiceId, setInvoiceId] = useState(null);
@@ -491,8 +496,6 @@ const AddServiceDetails = () => {
     setAdditionalMembers(prev => prev.filter((_, i) => i !== idx));
   };
   const [formData, setFormData] = useState({});
-  const decodedService = decodeURIComponent(serviceTitle);
-  const fields = serviceFields[decodedService] || [];
 
   const rawFee = (() => {
     if (serviceData.prices[decodedService]) return serviceData.prices[decodedService];
@@ -671,20 +674,7 @@ const AddServiceDetails = () => {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 mb-6">
-        <div className="border-2 border-dashed p-6 text-center rounded-lg">
-          <p className="mb-3 font-semibold">Add Details Manually</p>
-          <p className="text-sm text-gray-500 mb-4">
-            Add the details properly as they will be used. Any wrong details can cause rejection.
-          </p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-[#57123f] text-white px-5 py-2 rounded"
-          >
-            Add Details Manually
-          </button>
-        </div>
-
+      <div className="flex justify-center gap-6 mb-6">
         <div className="text-center">
           <img
             src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
