@@ -194,11 +194,18 @@ export default function Payroll() {
           if (resp && Array.isArray(resp.data)) {
             const found = resp.data.find(r => String(r.employee).toLowerCase() === String(rec.employee).toLowerCase());
             if (found) {
-              // Map fields from autoSalary result
-              enhancedRec.cutDays = enhancedRec.cutDays ?? found.cutDays ?? found.cutDays;
-              enhancedRec.baseSalary = enhancedRec.baseSalary ?? found.baseSalary ?? found.baseSalary;
-              enhancedRec.present = enhancedRec.present ?? found.present ?? found.present;
-              enhancedRec.finalSalary = enhancedRec.finalSalary ?? found.finalSalary ?? found.finalSalary;
+              // Map fields from autoSalary result - merge all attendance counts so the payslip can display them
+              enhancedRec.cutDays = enhancedRec.cutDays ?? (found.cutDays ?? 0);
+              enhancedRec.baseSalary = enhancedRec.baseSalary ?? (found.baseSalary ?? 0);
+              enhancedRec.present = enhancedRec.present ?? (found.present ?? 0);
+              enhancedRec.absent = enhancedRec.absent ?? (found.absent ?? 0);
+              enhancedRec.leave = enhancedRec.leave ?? (found.leave ?? 0);
+              enhancedRec.halfDay = enhancedRec.halfDay ?? (found.halfDay ?? 0);
+              // autoSalary returns `holiday` (singular) for count
+              enhancedRec.holiday = enhancedRec.holiday ?? (found.holiday ?? 0);
+              enhancedRec.leaveRelief = enhancedRec.leaveRelief ?? (found.leaveRelief ?? 0);
+              enhancedRec.sundays = enhancedRec.sundays ?? (found.sundays ?? 0);
+              enhancedRec.finalSalary = enhancedRec.finalSalary ?? (found.finalSalary ?? 0);
             }
           }
         }
@@ -278,10 +285,10 @@ export default function Payroll() {
 
         // Payment method line and account/cheque details
         pdf.setFontSize(10);
-        pdf.text(`Payment Method: ${rec.paymentMethod || '-'}`, margin, infoY + 92);
+        pdf.text(`Payment Method: ${rec.paymentMethod || '-'}`, margin, infoY + 82);
         const pm = (rec.paymentMethod || '').toString().toLowerCase();
         if (pm === 'bank' && rec.accountNumber) {
-          pdf.text(`Account No: ${rec.accountNumber}`, infoTableX, infoY + 92);
+          pdf.text(`Account No: ${rec.accountNumber}`, infoTableX, infoY + 82);
         } else if (pm === 'cheque' || pm === 'check') {
           if (rec.chequeNumber) pdf.text(`Cheque No: ${rec.chequeNumber}`, infoTableX, infoY + 92);
         } else {
@@ -322,33 +329,64 @@ export default function Payroll() {
   const sundays = Number(rec.sundays ?? rec.sunday ?? 0);
   // (cutDays already computed above)
 
-        // Draw attendance box below employee info and above earnings
+        // Draw attendance box below employee info and above earnings as a clean 2-column table
         const attendanceY = infoY + 92; // place under the info section
-        const attendanceH = 120; // height to fit 9 rows (Working Days + 8 items)
+        // rows to display (label, value)
+        const attendanceRows = [
+          ['Working Days', monthDays],
+          ['Present', present],
+          ['Absent', absent],
+          ['Leave', leave],
+          ['Holidays', holidayCount],
+          ['Half Day', halfDay],
+          ['Leave Relief', leaveRelief],
+          ['Sunday', sundays],
+          ['Cut Days', cutDays],
+        ];
+        const rowH = 18;
+        const headerH = 22;
+        const attendanceH = headerH + (attendanceRows.length * rowH) + 12;
         pdf.setFillColor(245,245,245);
         pdf.rect(margin, attendanceY, pageWidth - margin*2, attendanceH, 'F');
+
+        // Header
         pdf.setFontSize(10);
-        pdf.setFont(undefined,'bold');
-        pdf.text('ATTENDANCE DETAILS', margin + 6, attendanceY + 14);
-        pdf.setFont(undefined,'normal');
-        const aStartY = attendanceY + 30;
-        const aGap = 10;
-        const aNumX = pageWidth - margin - 20;
-        const drawA = (label, value, y) => {
-          pdf.text(label, margin + 8, y);
-          const w = pdf.getTextWidth(String(value));
-          pdf.text(String(value), aNumX - w, y);
-        };
-        // show total working days first
-        drawA('Working Days:', monthDays, aStartY);
-        drawA('Present:', present, aStartY + aGap);
-        drawA('Absent:', absent, aStartY + aGap * 2);
-        drawA('Leave:', leave, aStartY + aGap * 3);
-        drawA('Holidays:', holidayCount, aStartY + aGap * 4);
-        drawA('Half Day:', halfDay, aStartY + aGap * 5);
-        drawA('Leave Relief:', leaveRelief, aStartY + aGap * 6);
-        drawA('Sunday:', sundays, aStartY + aGap * 7);
-        drawA('Cut Days:', cutDays, aStartY + aGap * 8);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('ATTENDANCE DETAILS', margin + 8, attendanceY + 14);
+
+  // Table columns (names prefixed to avoid collision with earnings table variables)
+  const attTableX = margin + 6;
+  const attTableW = pageWidth - margin*2 - 12;
+  const valueColW = 70;
+  const valueColX = attTableX + attTableW - valueColW;
+  const labelColX = attTableX;
+
+        // Column header background for value column (light) and divider
+        pdf.setFillColor(255,255,255);
+        // draw rows
+        pdf.setFont(undefined, 'normal');
+        for (let i = 0; i < attendanceRows.length; i++) {
+          const y = attendanceY + headerH + i * rowH + 6;
+          const label = attendanceRows[i][0];
+          const value = attendanceRows[i][1] ?? '';
+          // row background (alternating subtle shading)
+          if (i % 2 === 1) {
+            pdf.setFillColor(250,250,250);
+            pdf.rect(margin, y - 8, pageWidth - margin*2, rowH, 'F');
+          }
+          // label
+          pdf.setTextColor(0,0,0);
+          pdf.setFontSize(10);
+          pdf.text(label + ':', labelColX, y + 6);
+          // right-aligned numeric value in value column
+          const vStr = String(value);
+          const w = pdf.getTextWidth(vStr);
+          pdf.text(vStr, valueColX + valueColW - 8 - w, y + 6);
+          // bottom border
+          pdf.setDrawColor(220);
+          pdf.setLineWidth(0.5);
+          pdf.line(margin, y + rowH - 2, margin + attTableW + 6, y + rowH - 2);
+        }
 
         // After attendance, start earnings table below it
         const tableTop = attendanceY + attendanceH + 12;
