@@ -37,7 +37,20 @@ const pages = [
     },
     { label: 'Account', path: '/admin/account' }
     ]
-  }
+  },
+    {
+              label: 'Roles',  path: '/admin/roles',
+              children: [
+                  { label: 'Add New Employee', path: '/admin/roles/add',  },
+              ]
+          },
+          { label: 'Customers',  path: '/admin/customers' },
+          { label: 'Account',  path: '/admin/account',
+              children: [
+                  { label: 'Expense',  path: '/admin/expense' },
+                  { label: 'Expense Submissions',  path: '/admin/expense-submissions' },
+              ]
+           },
 ];
 
 const Roles = () => {

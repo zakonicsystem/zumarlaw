@@ -113,6 +113,22 @@ router.patch('/:id/status', async (req, res) => {
     res.status(500).json({ error: 'Failed to update status' });
   }
 });
+
+// Update progressStatus of manual service submission (granular progress)
+router.patch('/:id/progress', async (req, res) => {
+  try {
+    const { progressStatus } = req.body;
+    const updated = await ManualServiceSubmission.findByIdAndUpdate(
+      req.params.id,
+      { progressStatus },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Submission not found' });
+    res.json({ message: 'Progress status updated', progressStatus });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update progress status' });
+  }
+});
 // Upload certificate for a single manual service submission
 router.post('/:id/certificate', upload.single('certificate'), async (req, res) => {
   try {

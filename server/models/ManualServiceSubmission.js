@@ -49,6 +49,8 @@ const ManualServiceSubmissionSchema = new mongoose.Schema({
   certificate: { type: String },
   assignedTo: { type: String, default: '' },
   status: { type: String, default: 'pending' },
+  // Progress status represents granular case progress (e.g., under_review, challan_pending, incorporated, etc.)
+  progressStatus: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

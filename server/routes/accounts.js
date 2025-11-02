@@ -5,6 +5,7 @@ import Account from '../models/Account.js';
 import ServiceDetail from '../models/Service.js';
 import ManualServiceSubmission from '../models/ManualServiceSubmission.js';
 import ConvertedLead from '../models/ConvertedLead.js';
+import Expense from '../models/Expense.js';
 import { servicePrices } from '../data/servicePrices.js';
 const router = express.Router();
 
@@ -124,11 +125,41 @@ router.get('/summary', async (req, res) => {
       ConvertedLead.find()
     ]);
 
+    // Parse optional date/month/year filters from query string and build a date range
+    const { date, month, year } = req.query || {};
+    let range = null;
+    if (date) {
+      // date expected in YYYY-MM-DD
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      range = { start, end };
+    } else if (month && year) {
+      const y = Number(year);
+      const m = Number(month) - 1; // JS months 0-11
+      const start = new Date(y, m, 1);
+      const end = new Date(y, m + 1, 1);
+      range = { start, end };
+    } else if (year) {
+      const y = Number(year);
+      const start = new Date(y, 0, 1);
+      const end = new Date(y + 1, 0, 1);
+      range = { start, end };
+    }
+
     // Helper to sum payments and pending for a list
-    function sumPayments(arr) {
+    function sumPayments(arr, range) {
       return arr.reduce((sum, svc) => {
         if (Array.isArray(svc.payments)) {
-          return sum + svc.payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+          return sum + svc.payments.reduce((s, p) => {
+            const amt = Number(p.amount || 0);
+            if (!range) return s + amt;
+            const pd = p.date ? new Date(p.date) : null;
+            if (!pd) return s; // skip payments without date when filtering
+            if (pd >= range.start && pd < range.end) return s + amt;
+            return s;
+          }, 0);
         }
         return sum;
       }, 0);
@@ -142,18 +173,22 @@ router.get('/summary', async (req, res) => {
       }, 0);
     }
 
-    const totalReceived = sumPayments(services) + sumPayments(manuals) + sumPayments(converteds);
+    const totalReceived = sumPayments(services, range) + sumPayments(manuals, range) + sumPayments(converteds, range);
     const totalPending = sumPending(services) + sumPending(manuals) + sumPending(converteds);
 
     // Salary paid from payrolls: sum all payroll records' salary values
     let payrolls = [];
     let salaryPaid = 0;
     try {
-    // Sum only payrolls with status 'Paid' for total salary paid
-    const paidPayrolls = await Payroll.find({ status: 'Paid' });
-    salaryPaid = paidPayrolls.reduce((acc, p) => acc + Number(p.salary || 0), 0);
-    // Also fetch all payrolls for display (no limit requested)
-    payrolls = await Payroll.find().sort({ createdAt: -1 });
+      // Sum payrolls with status 'Paid' and optional date range (paymentDate)
+      const payrollFilter = { status: 'Paid' };
+      if (range) {
+        payrollFilter.paymentDate = { $gte: range.start, $lt: range.end };
+      }
+      const paidPayrolls = await Payroll.find(payrollFilter);
+      salaryPaid = paidPayrolls.reduce((acc, p) => acc + Number(p.salary || 0), 0);
+      // Also fetch all payrolls for display (unfiltered) - keep previous behavior
+      payrolls = await Payroll.find().sort({ createdAt: -1 });
     } catch (e) {
       console.error('Error loading payrolls:', e);
       return res.status(500).json({ error: 'Error loading payrolls', details: e.message, stack: e.stack });
@@ -168,7 +203,13 @@ router.get('/summary', async (req, res) => {
         return sum;
       }, 0);
     }
-    const totalRevenue = sumTotalPayment(services) + sumTotalPayment(manuals) + sumTotalPayment(converteds);
+    // totalRevenue: show sum of payments in the selected range (if any), otherwise fall back to totalPayment
+    let totalRevenue = 0;
+    if (range) {
+      totalRevenue = sumPayments(services, range) + sumPayments(manuals, range) + sumPayments(converteds, range);
+    } else {
+      totalRevenue = sumTotalPayment(services) + sumTotalPayment(manuals) + sumTotalPayment(converteds);
+    }
 
     // Revenue by service (service name -> totalPayment sum)
     const revenueByServices = {};
@@ -184,14 +225,27 @@ router.get('/summary', async (req, res) => {
     addToRevenueByService(manuals, svc => svc.serviceType || 'Manual');
     addToRevenueByService(converteds, svc => svc.service || 'Converted');
 
-    // Profit: received - salaryPaid
-    const totalProfit = totalReceived - salaryPaid;
+    // Profit: received - salaryPaid - paidExpenses
+    let paidExpensesTotal = 0;
+    try {
+      if (range) {
+        const paidExpenses = await Expense.find({ paid: true, paidAt: { $gte: range.start, $lt: range.end } });
+        paidExpensesTotal = paidExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+      } else {
+        const paidExpenses = await Expense.find({ paid: true });
+        paidExpensesTotal = paidExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+      }
+    } catch (e) {
+      console.error('Error loading paid expenses:', e);
+    }
+    const totalProfit = totalReceived - salaryPaid - paidExpensesTotal;
     res.json({
       totalRevenue,
       totalReceived,
       totalPending,
       remainingAmount: totalPending,
       salaryPaid,
+      paidExpensesTotal,
       totalProfit,
       revenueByServices,
       latestPayrolls: payrolls
@@ -288,7 +342,7 @@ router.get('/services-stats', async (req, res) => {
         } else if (Array.isArray(row.payments) && row.payments.length > 0) {
           currentReceivingPayment = row.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
           remainingAmount = fixedPrice - currentReceivingPayment;
-          const last = row.payments[row.payments.length-1];
+          const last = row.payments[row.payments.length - 1];
           paymentMethod = last.method || '';
           accountNumber = last.accountNumber || '';
           paymentReceivedDate = last.date || '';
@@ -362,7 +416,7 @@ router.delete('/add-payment/:type/:id/:paymentIdx', async (req, res) => {
     let totalPaid = doc.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     if (doc.pricing) {
       // Use last payment for method/person/date if exists
-      const last = doc.payments.length > 0 ? doc.payments[doc.payments.length-1] : {};
+      const last = doc.payments.length > 0 ? doc.payments[doc.payments.length - 1] : {};
       doc.pricing.currentReceivingPayment = totalPaid;
       doc.pricing.remainingAmount = Math.max((doc.pricing.totalPayment || 0) - totalPaid, 0);
       doc.pricing.paymentMethod = last.method || '';

@@ -37,6 +37,8 @@ const ConvertedLeadSchema = new mongoose.Schema({
   email: String,
   assigned: { type: String, default: '' },
   service: String,
+  // Granular progress status (e.g., under_review, challan_pending, incorporated...)
+  progressStatus: { type: String, default: '' },
   status: { type: String, enum: ['pending', 'processing', 'converted', 'completed','rejected' , 'Follow-up', 'Mature', 'Contacted'], default: 'converted' },
   // Dynamic fields
   fields: { type: Object, default: {} },

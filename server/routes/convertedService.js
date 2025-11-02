@@ -58,6 +58,21 @@ router.put('/:id/status', async (req, res) => {
   }
 });
 
+// Update progressStatus for a converted lead
+router.patch('/:id/progress', async (req, res) => {
+  try {
+    const { progressStatus } = req.body;
+    const ConvertedLead = await import('../models/ConvertedLead.js');
+    const Model = ConvertedLead.default || ConvertedLead;
+    const updated = await Model.findByIdAndUpdate(req.params.id, { progressStatus }, { new: true });
+    if (!updated) return res.status(404).json({ error: 'Lead not found' });
+    res.json({ message: 'Progress status updated', progressStatus: updated.progressStatus });
+  } catch (err) {
+    console.error('Failed to update progress for converted lead:', err);
+    res.status(500).json({ error: 'Failed to update progress status' });
+  }
+});
+
 // General update endpoint for a converted lead (PATCH for partial update)
 router.patch('/:id', async (req, res) => {
   try {

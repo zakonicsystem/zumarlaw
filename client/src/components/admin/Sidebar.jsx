@@ -84,7 +84,7 @@ const Sidebar = () => {
             localStorage.removeItem('employeeToken');
             toast.success('Successfully logged out');
             if (isEmployee) {
-                navigate('/employee-login');
+                navigate('/admin/employee-login');
             } else {
                 navigate('/admin/login');
             }
@@ -129,12 +129,14 @@ const Sidebar = () => {
             ]
         },
         { name: 'Customers', icon: <FaUsers />, path: '/admin/customers' },
-        { name: 'Account', icon: <FaUserCog />, path: '/admin/account',
+        {
+            name: 'Account', icon: <FaUserCog />, path: '/admin/account',
             children: [
-                    { name: 'Expense', icon: <FaMoneyCheckAlt />, path: '/admin/expense' },
+                { name: 'Expense', icon: <FaMoneyCheckAlt />, path: '/admin/expense' },
+                { name: 'Expense Submissions', icon: <FaMoneyCheckAlt />, path: '/admin/expense-submissions' }
             ]
-         },
-    
+        },
+
     ];
 
     const menuItems = allMenuItems.map(item => {
@@ -213,8 +215,7 @@ const Sidebar = () => {
                                             <ul className={`ml-6 mt-1 space-y-1 overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'}`} style={{ transitionProperty: 'max-height, opacity' }}>
                                                 {visibleChildren.map(child => (
                                                     <li key={child.name}>
-                                                        <Link
-                                                            to={child.path}
+                                                        <Link to={child.path}
                                                             onClick={() => setSidebarOpen(false)}
                                                             className={`flex items-center gap-2 p-2 rounded-lg transition-colors text-[0.9rem] font-normal ${location.pathname === child.path
                                                                 ? 'bg-[#57123f] text-white'

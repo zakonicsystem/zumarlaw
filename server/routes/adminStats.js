@@ -208,11 +208,17 @@ router.get('/stats', async (req, res) => {
     ];
     const paymentSum = allCompletedPrices.reduce((acc, s) => acc + s.price, 0);
 
+    // Compute total number of services (all statuses) within the same date filter
+    const mainTotalCount = await Service.countDocuments({ ...serviceQuery });
+    const manualTotalCount = await ManualService.countDocuments({ ...serviceQuery });
+    const convertedTotalCount = await ConvertedLead.countDocuments({ ...serviceQuery });
+    const totalServicesCount = mainTotalCount + manualTotalCount + convertedTotalCount;
+
     res.json([
       { title: 'Completed Services', value: completedCount },
       { title: 'Pending Services', value: pendingCount },
       { title: 'Total Leads', value: totalLeads },
-      { title: 'Payment of Completed', value: paymentSum },
+      { title: 'Total Services', value: totalServicesCount },
       { title: 'Completed Service Prices', value: allCompletedPrices },
      ]);
   } catch (err) {

@@ -150,10 +150,34 @@ const PAGE_SIZE = 10;
 
 
 const ConvertedService = () => {
+  const PROGRESS_OPTIONS = [
+    { value: '', label: 'No Progress' },
+    { value: 'under_review', label: 'Under Review' },
+    { value: 'challan_pending', label: 'Challan Pending' },
+    { value: 'objection', label: 'Objection' },
+    { value: 'name_reserved', label: 'Name Reserved' },
+    { value: 'file_submitted', label: 'File Submitted' },
+    { value: 'objection_resolved', label: 'Objection Resolved' },
+    { value: 'incorporated', label: 'Incorporated' },
+    { value: 'case_holding', label: 'Case Holding' },
+    { value: 'case_rejected', label: 'Case Rejected' },
+    { value: 'case_refund', label: 'Case Refund' },
+  ];
+
+  const handleProgressChange = async (row, newProgress) => {
+    try {
+      await axios.patch(`https://app.zumarlawfirm.com/convertedService/${row._id}/progress`, { progressStatus: newProgress });
+      setLeads(prev => prev.map(l => l._id === row._id ? { ...l, progressStatus: newProgress } : l));
+      toast.success('Progress status updated');
+    } catch (err) {
+      toast.error('Failed to update progress status');
+    }
+  };
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterProgress, setFilterProgress] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRows, setSelectedRows] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
@@ -194,13 +218,14 @@ const ConvertedService = () => {
   const safeLeads = Array.isArray(leads) ? leads : [];
   const filtered = safeLeads.filter(row => {
     const matchesStatus = filterStatus ? (row.status === filterStatus) : true;
+    const matchesProgress = filterProgress ? (row.progressStatus === filterProgress) : true;
     const matchesSearch = searchQuery
       ? (
         (row.name && row.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (row.phone && row.phone.toLowerCase().includes(searchQuery.toLowerCase()))
       )
       : true;
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesProgress && matchesSearch;
   });
 
   // Pagination
@@ -250,10 +275,12 @@ const ConvertedService = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold text-[#57123f] mb-6">Converted Leads</h1>
-       
-        <div className="flex flex-wrap gap-4 mb-6 items-center">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-[#57123f]">Converted Leads</h1>
+          
+          </div>
+          <div className="relative w-80">
             <FaSearch className="absolute left-3 top-2 text-gray-400" />
             <input
               className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
@@ -266,6 +293,26 @@ const ConvertedService = () => {
               }}
             />
           </div>
+        </div>
+        <div className="flex flex-wrap gap-4 mb-6 items-center">
+            <select
+              value={filterProgress}
+              onChange={(e) => { setFilterProgress(e.target.value); setCurrentPage(1); }}
+              className="bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-sm focus:outline-none"
+              title="Filter by progress status"
+            >
+              <option value="">All Progress</option>
+              <option value="under_review">Under Review</option>
+              <option value="challan_pending">Challan Pending</option>
+              <option value="objection">Objection</option>
+              <option value="name_reserved">Name Reserved</option>
+              <option value="file_submitted">File Submitted</option>
+              <option value="objection_resolved">Objection Resolved</option>
+              <option value="incorporated">Incorporated</option>
+              <option value="case_holding">Case Holding</option>
+              <option value="case_rejected">Case Rejected</option>
+              <option value="case_refund">Case Refund</option>
+            </select>
           <select
             value={filterStatus}
             onChange={(e) => {
@@ -392,6 +439,17 @@ const ConvertedService = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div><span className="font-semibold">{row.name || 'N/A'}</span></div>
+                    <div className="mt-2">
+                      <select
+                        value={row.progressStatus || ''}
+                        onChange={(e) => handleProgressChange(row, e.target.value)}
+                        className="text-xs bg-gray-100 rounded px-2 py-1"
+                      >
+                        {PROGRESS_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div>{row.phone || 'N/A'}</div>

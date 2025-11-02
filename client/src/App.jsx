@@ -32,6 +32,7 @@ import Payroll from './pages/admin/Payroll';
 import NewPayroll from './pages/admin/NewPayroll';
 import Account from './pages/admin/Account';
 import Expense from './pages/admin/Expense';
+import ExpenseSubmissions from './pages/admin/ExpenseSubmissions';
 import AuthRedirectHandler from './components/AuthRedirectHandler';
 import ConvertedService from './pages/admin/ConvertedService';
 import NewEmployee from './pages/admin/NewEmployee';
@@ -93,6 +94,7 @@ const AppContent = () => {
           <Route path="/admin/payroll/add" element={<EmployeeProtectedRoute><NewPayroll /></EmployeeProtectedRoute>} />
           <Route path="/admin/account" element={<EmployeeProtectedRoute><Account /></EmployeeProtectedRoute>} />
           <Route path="/admin/expense" element={<EmployeeProtectedRoute><Expense /></EmployeeProtectedRoute>} />
+          <Route path="/admin/expense-submissions" element={<EmployeeProtectedRoute><ExpenseSubmissions /></EmployeeProtectedRoute>} />
           <Route path="/admin/roles/add" element={<EmployeeProtectedRoute><NewEmployee /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/followup' element={<EmployeeProtectedRoute><FollowUpLeads /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/mature' element={<EmployeeProtectedRoute><MatureLeads /></EmployeeProtectedRoute>} />

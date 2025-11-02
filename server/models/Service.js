@@ -45,6 +45,8 @@ const ServiceDetailSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Granular progress status for admin workflow steps
+  progressStatus: { type: String, default: '' },
   certificate: { type: String, default: null },
   invoiceSent: { type: Boolean, default: false },
   payments: [PaymentSchema],

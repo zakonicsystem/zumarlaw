@@ -40,6 +40,19 @@ const statusColors = {
   rejected: 'bg-red-500 text-white',
 };
 const statusOrder = ['pending', 'processing', 'completed', 'rejected'];
+const PROGRESS_OPTIONS = [
+  { value: '', label: 'No Progress' },
+  { value: 'under_review', label: 'Under Review' },
+  { value: 'challan_pending', label: 'Challan Pending' },
+  { value: 'objection', label: 'Objection' },
+  { value: 'name_reserved', label: 'Name Reserved' },
+  { value: 'file_submitted', label: 'File Submitted' },
+  { value: 'objection_resolved', label: 'Objection Resolved' },
+  { value: 'incorporated', label: 'Incorporated' },
+  { value: 'case_holding', label: 'Case Holding' },
+  { value: 'case_rejected', label: 'Case Rejected' },
+  { value: 'case_refund', label: 'Case Refund' },
+];
 
 
 
@@ -118,6 +131,7 @@ const ServiceProcessingPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterProgress, setFilterProgress] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRows, setSelectedRows] = useState([]);
   // Certificate modal state
@@ -184,6 +198,19 @@ const ServiceProcessingPage = () => {
     fetchServices();
     // eslint-disable-next-line
   }, []);
+
+  // Update progress status for a service (admin)
+  const handleProgressChange = async (row, newProgress) => {
+    try {
+      await adminRequest({ method: 'patch', url: `https://app.zumarlawfirm.com/admin/services/${row._id}/progress`, data: { progressStatus: newProgress } });
+      // refresh data
+      fetchServices();
+      toast.success('Progress status updated');
+    } catch (err) {
+      console.error('Failed to update progress status', err);
+      toast.error('Failed to update progress status');
+    }
+  };
 
   const fetchServices = async () => {
     setLoading(true);
@@ -395,7 +422,7 @@ const ServiceProcessingPage = () => {
     if (selectedRows.length === 0) return toast.error('Please select at least one row.');
     if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} row(s)?`)) return;
     try {
-  await adminRequest({ method: 'post', url: 'https://app.zumarlawfirm.com/invoices/delete-multiple', data: { ids: selectedRows } });
+      await adminRequest({ method: 'post', url: 'https://app.zumarlawfirm.com/invoices/delete-multiple', data: { ids: selectedRows } });
       toast.success('Selected services deleted!');
       setServices(prev => prev.filter(row => !selectedRows.includes(row._id)));
       setSelectedRows([]);
@@ -411,7 +438,8 @@ const ServiceProcessingPage = () => {
   const filteredData = safeServices.filter(item =>
     (item.personalId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.personalId?.cnic?.includes(searchQuery)) &&
-    (filterStatus ? item.status === filterStatus : true)
+    (filterStatus ? item.status === filterStatus : true) &&
+    (filterProgress ? item.progressStatus === filterProgress : true)
   );
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
   const currentData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -420,17 +448,34 @@ const ServiceProcessingPage = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-6xl mx-auto">
-        <div className="flex flex-wrap gap-4 mb-6 items-center">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-[#57123f]">Service Processing</h1>
+       
+          </div>
+          <div className="relative w-80">
             <FaSearch className="absolute left-3 top-2 text-gray-400" />
             <input
               className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
               type="text"
               placeholder="Search by Name or CNIC"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             />
           </div>
+        </div>
+
+        <div className="flex flex-wrap gap-4 mb-6 items-center">
+          <select
+            value={filterProgress}
+            onChange={(e) => { setFilterProgress(e.target.value); setCurrentPage(1); }}
+            className="bg-gray-100 text-gray-700 rounded-full px-4 py-2 text-sm focus:outline-none"
+          >
+            <option value="">All Progress</option>
+            {PROGRESS_OPTIONS.map(opt => (
+              opt.value ? <option key={opt.value} value={opt.value}>{opt.label}</option> : null
+            ))}
+          </select>
 
           <select
             value={filterStatus}
@@ -518,6 +563,7 @@ const ServiceProcessingPage = () => {
                         <span className="text-gray-500 text-[11px] block" title={row.personalId?.cnic || ''}>
                           {row.personalId?.cnic || 'N/A'}
                         </span>
+
                       </div>
                     </div>
                   </td>
@@ -533,13 +579,26 @@ const ServiceProcessingPage = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-3" title={row.serviceTitle || ''}>{row.serviceTitle || 'N/A'}</td>
+                  <td className="px-3 py-3" title={row.serviceTitle || ''}>{row.serviceTitle || 'N/A'}
+                    
+                  </td>
                   <td className="px-3 py-3" title={row.assignedTo || ''}>
                     <AssignedToDropdown
                       employees={employees}
                       assignedTo={row.assignedTo}
                       onAssign={empName => handleAssignEmployee(row, empName)}
                     />
+                    <div className="mt-2">
+                      <select
+                        value={row.progressStatus || ''}
+                        onChange={(e) => handleProgressChange(row, e.target.value)}
+                        className="text-xs bg-gray-100 rounded px-2 py-1 mt-1"
+                      >
+                        {PROGRESS_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
                   </td>
                   <td className="px-3 py-3 ">
                     <StatusButton status={row.status} onClick={() => handleStatusCycle(row)} />
@@ -648,12 +707,14 @@ const ServiceProcessingPage = () => {
                 onClick={async () => {
                   try {
                     console.log('Sending message to userId:', messageRow.userId, 'serviceId:', messageRow._id); // Debug
-                    await adminRequest({ method: 'post', url: 'https://app.zumarlawfirm.com/serviceMessage', data: {
-                      userId: messageRow.userId,
-                      serviceId: messageRow._id, // Use _id as serviceId
-                      type: messageType,
-                      message: messageText,
-                    } });
+                    await adminRequest({
+                      method: 'post', url: 'https://app.zumarlawfirm.com/serviceMessage', data: {
+                        userId: messageRow.userId,
+                        serviceId: messageRow._id, // Use _id as serviceId
+                        type: messageType,
+                        message: messageText,
+                      }
+                    });
                     toast.success('Message sent!');
                     setShowMessageModal(false);
                     setMessageText('');

@@ -159,6 +159,18 @@ router.patch('/admin/services/:id/status', tryVerify, async (req, res) => {
     res.status(500).json({ error: 'Failed to update status' });
   }
 });
+// Update granular progress status for an admin service
+router.patch('/admin/services/:id/progress', tryVerify, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { progressStatus } = req.body;
+    const updated = await ServiceDetail.findByIdAndUpdate(id, { progressStatus }, { new: true });
+    if (!updated) return res.status(404).json({ error: 'Service not found' });
+    res.json({ message: 'Progress status updated', service: updated });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update progress status' });
+  }
+});
 
 
 // Send invoice and certificate to user (email + dashboard)

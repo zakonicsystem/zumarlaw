@@ -150,16 +150,16 @@ function InvoiceContent({ invoiceData }) {
                       <td style={{ padding: '10px 8px', fontSize: 16 }}>
                         {Array.isArray(value)
                           ? value.filter(item => !isFileOrPath(item)).map((item, i) => (
-                              typeof item === 'object' && item !== null
-                                ? Object.entries(item).filter(([k, v]) => !isFileOrPath(v)).map(([k, v]) => (
-                                    <span key={k} style={{ color: '#555', marginRight: 8 }}>{k.charAt(0).toUpperCase() + k.slice(1)}: {v} </span>
-                                  ))
-                                : <span key={i} style={{ color: '#555', marginRight: 8 }}>{item}</span>
-                            ))
-                          : typeof value === 'object' && value !== null
-                            ? Object.entries(value).filter(([k, v]) => !isFileOrPath(v)).map(([k, v]) => (
+                            typeof item === 'object' && item !== null
+                              ? Object.entries(item).filter(([k, v]) => !isFileOrPath(v)).map(([k, v]) => (
                                 <span key={k} style={{ color: '#555', marginRight: 8 }}>{k.charAt(0).toUpperCase() + k.slice(1)}: {v} </span>
                               ))
+                              : <span key={i} style={{ color: '#555', marginRight: 8 }}>{item}</span>
+                          ))
+                          : typeof value === 'object' && value !== null
+                            ? Object.entries(value).filter(([k, v]) => !isFileOrPath(v)).map(([k, v]) => (
+                              <span key={k} style={{ color: '#555', marginRight: 8 }}>{k.charAt(0).toUpperCase() + k.slice(1)}: {v} </span>
+                            ))
                             : <span style={{ color: '#555' }}>{value}</span>
                         }
                       </td>
@@ -195,64 +195,78 @@ const ManualService = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterProgress, setFilterProgress] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRows, setSelectedRows] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
 
   // Dropdown for assigning employees (copied from ServiceProcessingPage)
-function AssignedToDropdown({ employees, assignedTo, onAssign }) {
-  return (
-    <select
-      value={assignedTo || ''}
-      onChange={e => onAssign(e.target.value)}
-      className="bg-gray-100 text-gray-700 rounded px-2 py-1 text-xs"
-    >
-      <option value="">Unassigned</option>
-      {employees.map(emp => (
-        <option key={emp._id || emp.name} value={emp.name}>
-          {emp.name}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-// Status button (copied from ServiceProcessingPage)
-const statusColors = {
-  pending: 'bg-yellow-400 text-black',
-  processing: 'bg-blue-400 text-white',
-  completed: 'bg-green-500 text-white',
-  rejected: 'bg-red-500 text-white'
-};
-const statusOrder = ['pending', 'processing', 'completed', 'rejected'];
-function StatusButton({ status, onClick }) {
-  const [isAnimating, setIsAnimating] = useState(false);
-  const safeStatus = status || 'pending';
-  const color = statusColors[safeStatus] || 'bg-gray-300 text-gray-700';
-  let label = 'Unknown';
-  if (typeof safeStatus === 'string') {
-    label = safeStatus.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  function AssignedToDropdown({ employees, assignedTo, onAssign }) {
+    return (
+      <select
+        value={assignedTo || ''}
+        onChange={e => onAssign(e.target.value)}
+        className="bg-gray-100 text-gray-700 rounded px-2 py-1 text-xs"
+      >
+        <option value="">Unassigned</option>
+        {employees.map(emp => (
+          <option key={emp._id || emp.name} value={emp.name}>
+            {emp.name}
+          </option>
+        ))}
+      </select>
+    );
   }
-  const handleClick = async (e) => {
-    setIsAnimating(true);
-    try {
-      await onClick(e);
-    } finally {
-      setTimeout(() => setIsAnimating(false), 400);
-    }
+
+  // Status button (copied from ServiceProcessingPage)
+  const statusColors = {
+    pending: 'bg-yellow-400 text-black',
+    processing: 'bg-blue-400 text-white',
+    completed: 'bg-green-500 text-white',
+    rejected: 'bg-red-500 text-white'
   };
-  return (
-    <button
-      type="button"
-      className={`px-3 py-1 rounded text-gray-600 text-xs font-semibold focus:outline-none transition ${color} ${isAnimating ? 'ring-2 ring-[#57123f] scale-105 shadow-lg' : ''}`}
-      style={{ transition: 'all 0.3s cubic-bezier(.4,2,.6,1)' }}
-      onClick={handleClick}
-      disabled={isAnimating}
-    >
-      {label}
-    </button>
-  );
-}
+  const statusOrder = ['pending', 'processing', 'completed', 'rejected'];
+  const PROGRESS_OPTIONS = [
+    { value: '', label: 'No Progress' },
+    { value: 'under_review', label: 'Under Review' },
+    { value: 'challan_pending', label: 'Challan Pending' },
+    { value: 'objection', label: 'Objection' },
+    { value: 'name_reserved', label: 'Name Reserved' },
+    { value: 'file_submitted', label: 'File Submitted' },
+    { value: 'objection_resolved', label: 'Objection Resolved' },
+    { value: 'incorporated', label: 'Incorporated' },
+    { value: 'case_holding', label: 'Case Holding' },
+    { value: 'case_rejected', label: 'Case Rejected' },
+    { value: 'case_refund', label: 'Case Refund' },
+  ];
+  function StatusButton({ status, onClick }) {
+    const [isAnimating, setIsAnimating] = useState(false);
+    const safeStatus = status || 'pending';
+    const color = statusColors[safeStatus] || 'bg-gray-300 text-gray-700';
+    let label = 'Unknown';
+    if (typeof safeStatus === 'string') {
+      label = safeStatus.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    const handleClick = async (e) => {
+      setIsAnimating(true);
+      try {
+        await onClick(e);
+      } finally {
+        setTimeout(() => setIsAnimating(false), 400);
+      }
+    };
+    return (
+      <button
+        type="button"
+        className={`px-3 py-1 rounded text-gray-600 text-xs font-semibold focus:outline-none transition ${color} ${isAnimating ? 'ring-2 ring-[#57123f] scale-105 shadow-lg' : ''}`}
+        style={{ transition: 'all 0.3s cubic-bezier(.4,2,.6,1)' }}
+        onClick={handleClick}
+        disabled={isAnimating}
+      >
+        {label}
+      </button>
+    );
+  }
   // Fetch employees for assignment
   const [employees, setEmployees] = useState([]);
   useEffect(() => {
@@ -299,6 +313,17 @@ function StatusButton({ status, onClick }) {
       toast.error('Failed to update status');
     }
   };
+
+  // Update progress status for a row
+  const handleProgressChange = async (row, newProgress) => {
+    try {
+      await axios.patch(`https://app.zumarlawfirm.com/manualService/${row._id}/progress`, { progressStatus: newProgress });
+      setServices(prev => prev.map(r => r._id === row._id ? { ...r, progressStatus: newProgress } : r));
+      toast.success('Progress status updated');
+    } catch (err) {
+      toast.error('Failed to update progress status');
+    }
+  };
   // Fetch manual service submissions from backend
   useEffect(() => {
     const fetchServices = async () => {
@@ -308,10 +333,10 @@ function StatusButton({ status, onClick }) {
         // Ensure status and assignedTo are always present for each row
         const data = Array.isArray(res.data)
           ? res.data.map(row => ({
-              ...row,
-              status: row.status || 'pending',
-              assignedTo: typeof row.assignedTo === 'string' ? row.assignedTo : '',
-            }))
+            ...row,
+            status: row.status || 'pending',
+            assignedTo: typeof row.assignedTo === 'string' ? row.assignedTo : '',
+          }))
           : [];
         setServices(data);
       } catch (err) {
@@ -327,13 +352,14 @@ function StatusButton({ status, onClick }) {
   const safeServices = Array.isArray(services) ? services : [];
   const filtered = safeServices.filter(row => {
     const matchesStatus = filterStatus ? (row.status === filterStatus) : true;
+    const matchesProgress = filterProgress ? (row.progressStatus === filterProgress) : true;
     const matchesSearch = searchQuery
       ? (
         (row.name && row.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (row.cnic && row.cnic.toLowerCase().includes(searchQuery.toLowerCase()))
       )
       : true;
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesProgress && matchesSearch;
   });
 
   // Pagination
@@ -395,10 +421,9 @@ function StatusButton({ status, onClick }) {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold text-[#57123f] mb-6">Manual Service Submissions</h1>
-        <div className="flex flex-wrap gap-4 mb-6 items-center">
-
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-[#57123f]">Manual Service Submissions</h1>
+          <div className="relative w-[50%]">
             <FaSearch className="absolute left-3 top-2 text-gray-400" />
             <input
               className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-full text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
@@ -411,6 +436,8 @@ function StatusButton({ status, onClick }) {
               }}
             />
           </div>
+        </div>
+        <div className="flex flex-wrap gap-4 mb-6 items-center">
           <select
             value={filterStatus}
             onChange={(e) => {
@@ -424,6 +451,26 @@ function StatusButton({ status, onClick }) {
             <option value="processing">Processing</option>
             <option value="completed">Completed</option>
             <option value="rejected">Rejected</option>
+          </select>
+          <select
+            value={filterProgress}
+            onChange={(e) => {
+              setFilterProgress(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="bg-gray-100 text-gray-700 rounded-full px-4 py-2 text-sm focus:outline-none"
+          >
+            <option value="">All Progress</option>
+            <option value="under_review">Under Review</option>
+            <option value="challan_pending">Challan Pending</option>
+            <option value="objection">Objection</option>
+            <option value="name_reserved">Name Reserved</option>
+            <option value="file_submitted">File Submitted</option>
+            <option value="objection_resolved">Objection Resolved</option>
+            <option value="incorporated">Incorporated</option>
+            <option value="case_holding">Case Holding</option>
+            <option value="case_rejected">Case Rejected</option>
+            <option value="case_refund">Case Refund</option>
           </select>
           <button
             className="bg-[#57123f] text-sm text-white px-6 py-2 rounded-full hover:bg-[#4a0f35] font-semibold"
@@ -540,13 +587,27 @@ function StatusButton({ status, onClick }) {
                   </td>
                   <td className="px-4 py-3">
                     <div><span className="font-semibold">{row.name || 'N/A'}</span></div>
-                    <div className="text-xs text-gray-500">{row.cnic || 'N/A'}</div>
+                    <div className="text-xs text-gray-500 mb-2">{row.cnic || 'N/A'}</div>
+                   
                   </td>
                   <td className="px-4 py-3">
                     <div>{row.phone || 'N/A'}</div>
                     <div className="text-xs text-gray-500">{row.email || 'N/A'}</div>
                   </td>
-                  <td className="px-4 py-3">{row.serviceType || 'N/A'}</td>
+                  <td className="px-4 py-3">
+                    {row.serviceType || 'N/A'}
+ <div>
+                      <select
+                        value={row.progressStatus || ''}
+                        onChange={(e) => handleProgressChange(row, e.target.value)}
+                        className="text-xs bg-gray-100 rounded px-2 py-1"
+                      >
+                        {PROGRESS_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <AssignedToDropdown
                       employees={employees}
@@ -630,7 +691,7 @@ function StatusButton({ status, onClick }) {
                         if (!printArea) return toast.error('Invoice content not found');
                         // Wait for images to load
                         const images = printArea.querySelectorAll('img');
-                        await Promise.all(Array.from(images).map(img => img.complete ? Promise.resolve() : new Promise(res => { img.onload = res; }))); 
+                        await Promise.all(Array.from(images).map(img => img.complete ? Promise.resolve() : new Promise(res => { img.onload = res; })));
                         await new Promise(res => setTimeout(res, 200));
                         // Fix unsupported oklch() color by overriding all color/backgroundColor styles
                         const elements = printArea.querySelectorAll('*');
@@ -835,8 +896,8 @@ function StatusButton({ status, onClick }) {
               onClick={() => setCurrentPage(i + 1)}
               disabled={currentPage === i + 1}
               className={`px-3 py-1 rounded-full text-sm ${currentPage === i + 1
-                  ? 'bg-[#57123f] text-white'
-                  : 'bg-gray-200 text-gray-600'
+                ? 'bg-[#57123f] text-white'
+                : 'bg-gray-200 text-gray-600'
                 }`}
             >
               {i + 1}

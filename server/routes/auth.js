@@ -3,7 +3,7 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import User from '../models/User.js';
-import { verifyJWT } from '../middleware/authMiddleware.js'; // ✅ Import JWT middleware
+import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js'; // ✅ Import JWT middleware
 
 const router = express.Router();
 
@@ -209,5 +209,13 @@ router.get('/verify-user', async (req, res) => {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 });
+// Lightweight whoami endpoint that returns decoded user/employee role when token present
+router.get('/whoami', tryVerify, (req, res) => {
+  if (req.user) {
+    return res.status(200).json({ user: req.user });
+  }
+  return res.status(401).json({ message: 'Not authenticated' });
+});
 
 export default router;
+

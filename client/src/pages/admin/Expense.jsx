@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Expense = () => {
   const [editIdx, setEditIdx] = useState(null);
@@ -15,9 +16,12 @@ const Expense = () => {
 
   const handleUpdate = async (id) => {
     try {
-      await axios.put(`https://app.zumarlawfirm.com/expense/${id}`, { type: editType, amount: parseFloat(editAmount) });
-      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense');
-      setExpenses(expenseRes.data || []);
+      const token = localStorage.getItem('token');
+      const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      await axios.put(`https://app.zumarlawfirm.com/expense/${id}`, { type: editType, amount: parseFloat(editAmount) }, cfg);
+  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+  const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
+  setExpenses(expenseData);
       setEditIdx(null);
       setEditType('');
       setEditAmount('');
@@ -29,28 +33,38 @@ const Expense = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`https://app.zumarlawfirm.com/expense/${id}`);
-      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense');
-      setExpenses(expenseRes.data || []);
+      const token = localStorage.getItem('token');
+      const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      await axios.delete(`https://app.zumarlawfirm.com/expense/${id}`, cfg);
+  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+  const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
+  setExpenses(expenseData);
       setMessage('Expense deleted successfully!');
     } catch (err) {
       setMessage('Failed to delete expense');
     }
   };
   const [expenses, setExpenses] = useState([]);
+  const [role, setRole] = useState(null);
   const [profit, setProfit] = useState(0);
   const [form, setForm] = useState({
-    officeBoyName: '',
-    officeBoyBranch: '',
+    senderName: '',
+    senderEmail: '',
+    senderPhone: '',
+    senderDesignation: '',
+    senderBranch: '',
+    expenseTypeNumber: 1,
+    expenseCategory: 'Rent',
+    expenseSubCategory: '',
+    otherDetails: '',
     amount: '',
-    type: 'Salary',
-    branchName: '',
-    branchExpenseAmount: '',
-    branchExpenseType: '',
-    expenseType: 'Expense',
-    beverageAmount: '',
-    beverageType: '',
-    beverageBranch: '',
+    expenseDate: '',
+    branch: '',
+    senderBankName: '',
+    senderAccountNumber: '',
+    senderAccountTitle: '',
+    paymentMethod: 'Cash',
+    remarks: '',
   });
   const [message, setMessage] = useState('');
 
@@ -58,20 +72,50 @@ const Expense = () => {
     // Fetch profit and expenses from backend
     const fetchData = async () => {
       try {
+        // prepare config (may include token)
+        const token = localStorage.getItem('token');
+        const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+        // whoami to get role (only if token exists) to avoid unnecessary 401s
+        if (token && token !== 'null') {
+          try {
+            const who = await axios.get('https://app.zumarlawfirm.com/auth/whoami', cfg);
+            setRole(who.data.user?.role || null);
+          } catch (e) {
+            // if whoami fails even with token, clear role
+            setRole(null);
+          }
+        } else {
+          // no token: ensure role is null and skip calling whoami
+          setRole(null);
+        }
+
         const profitRes = await axios.get('https://app.zumarlawfirm.com/accounts/summary');
         setProfit(profitRes.data.totalProfit || 0);
-        const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense');
-        setExpenses(expenseRes.data || []);
+
+        const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+        const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
+        setExpenses(expenseData);
       } catch (err) {
         setMessage('Failed to fetch data');
       }
     };
     fetchData();
+
+    // Listen for payments made elsewhere (Submissions page) and refresh
+    const onPaid = () => {
+      fetchData();
+    };
+    window.addEventListener('expense:paid', onPaid);
+    return () => window.removeEventListener('expense:paid', onPaid);
   }, []);
 
-  // Calculate net profit (profit minus expenses)
-  const totalExpenses = expenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
-  const netProfit = profit - totalExpenses;
+  // Calculate totals: split paid vs unpaid so unpaid expenses don't reduce accounts
+  const totalExpensesPaid = expenses.reduce((sum, exp) => sum + ((exp && exp.paid) ? (parseFloat(exp.amount) || 0) : 0), 0);
+  const totalExpensesUnpaid = expenses.reduce((sum, exp) => sum + ((exp && !exp.paid) ? (parseFloat(exp.amount) || 0) : 0), 0);
+  // `profit` is loaded from /accounts/summary and already deducts paid expenses on the server.
+  // Use it directly as the profit-after-expenses value.
+  const netProfit = profit;
 
   // Form handlers
   const handleChange = (e) => {
@@ -81,47 +125,66 @@ const Expense = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Office Boy Salary
-      if (form.type === 'Salary' && form.officeBoyName && form.amount && form.officeBoyBranch) {
-        await axios.post('https://app.zumarlawfirm.com/expense', {
-          type: `Office Boy Salary - ${form.officeBoyName}`,
-          amount: parseFloat(form.amount),
-          officeBoyName: form.officeBoyName,
-          officeBoyBranch: form.officeBoyBranch,
-        });
-      }
-      // Branch Expense
-      if (form.type === 'Expense' && form.branchName && form.branchExpenseAmount && form.branchExpenseType) {
-        await axios.post('https://app.zumarlawfirm.com/expense', {
-          type: 'Expense', // Always set type to 'Expense' for branch expenses
-          amount: parseFloat(form.branchExpenseAmount),
-          branchName: form.branchName,
-          expenseWorkType: form.branchExpenseType,
-        });
-      }
-      // Beverage
-      if (form.type === 'Beverage' && form.beverageAmount && form.beverageType && form.beverageBranch) {
-        await axios.post('https://app.zumarlawfirm.com/expense', {
-          type: `Beverage - ${form.beverageType}`,
-          amount: parseFloat(form.beverageAmount),
-          beverageType: form.beverageType,
-          beverageBranch: form.beverageBranch,
-        });
-      }
-      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense');
-      setExpenses(expenseRes.data || []);
+      // New expense submission payload
+      // Map of main categories and their subcategories
+      const mainCategories = {
+        1: { name: 'Rent' },
+        2: { name: 'Utility Bills', subs: ['Electricity', 'Internet', 'Gas'] },
+        3: { name: 'Traveling' },
+        4: { name: 'Stationery' },
+        5: { name: 'Foods' },
+        6: { name: 'Furniture' },
+        7: { name: 'Electronic Items' },
+        8: { name: 'Marketing', subs: ['Digital Marketing', 'IT Team', 'Social Media Team', 'Poster', 'Visiting Card', 'Banners'] },
+        9: { name: 'Mobile Bills' },
+        10: { name: 'Office Maintenance', subs: ['Paling', 'Varing', 'Color'] },
+        11: { name: 'Crockery' },
+      };
+
+      const main = mainCategories[Number(form.expenseTypeNumber)] || { name: form.expenseCategory };
+      const payload = {
+        senderName: form.senderName,
+        senderEmail: form.senderEmail,
+        senderDesignation: form.senderDesignation,
+        senderPhone: form.senderPhone,
+        senderBranch: form.senderBranch || undefined,
+        paymentMethod: form.paymentMethod || 'Cash',
+        senderAccountTitle: form.senderAccountTitle || undefined,
+        senderBankName: form.senderBankName,
+        senderAccountNumber: form.senderAccountNumber,
+        expenseTypeNumber: Number(form.expenseTypeNumber),
+        expenseCategory: main.name,
+        expenseSubCategory: form.expenseSubCategory || undefined,
+        otherDetails: form.expenseSubCategory === 'Other' ? form.otherDetails : (form.expenseTypeNumber && !main.subs ? form.otherDetails : undefined),
+        remarks: form.remarks || undefined,
+        amount: parseFloat(form.amount),
+        expenseDate: form.expenseDate || undefined,
+        branch: form.branch || undefined,
+      };
+      const token = localStorage.getItem('token');
+      const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      await axios.post('https://app.zumarlawfirm.com/expense', payload, cfg);
+  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+  const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
+  setExpenses(expenseData);
       setForm({
-        officeBoyName: '',
-        officeBoyBranch: '',
+        senderName: '',
+        senderEmail: '',
+        senderPhone: '',
+        senderDesignation: '',
+        senderBranch: '',
+        expenseTypeNumber: 1,
+        expenseCategory: 'Rent',
+        expenseSubCategory: '',
+        otherDetails: '',
         amount: '',
-        type: 'Salary',
-        branchName: '',
-        branchExpenseAmount: '',
-        branchExpenseType: '',
-        expenseType: 'Expense',
-  beverageAmount: '',
-  beverageType: '',
-  beverageBranch: '',
+        expenseDate: '',
+        branch: '',
+        senderBankName: '',
+        senderAccountNumber: '',
+        senderAccountTitle: '',
+        paymentMethod: 'Cash',
+        remarks: '',
       });
       setMessage('Expense(s) added successfully!');
     } catch (err) {
@@ -131,254 +194,188 @@ const Expense = () => {
 
   return (
     <div>
-      <div className="max-w-5xl p-8 rounded-2xl">
-        <h2 className="text-3xl font-bold mb-8 text-[#57123f] text-center">Expense Management</h2>
-        <div className="flex gap-8 mb-8">
-          <div className="bg-green-100 text-green-800 rounded-xl p-4 shadow font-bold text-lg">
-            Profit After Expenses: Rs {netProfit}
+      {role && !(['Admin', 'CEO', 'Director', 'Branch Manager'].includes(role)) && (
+        <div className="p-6 text-red-600">You are not authorized to access the Expense page.</div>
+      )}
+      {!role || (['Admin', 'CEO', 'Director', 'Branch Manager'].includes(role)) ? (
+        <div className="max-w-5xl rounded-2xl">
+          <h2 className="text-3xl font-bold mb-8 text-[#57123f] text-center">Expense Management</h2>
+          <div className="flex gap-8 mb-8">
+            <div className="bg-green-100 text-green-800 rounded-xl p-4 shadow font-bold text-lg">
+              Profit After Expenses: Rs {netProfit}
+            </div>
+            <div className="bg-red-100 text-red-800 rounded-xl p-4 shadow font-bold text-lg">
+              Total Expenses (Paid): Rs {totalExpensesPaid}
+            </div>
+            <div className="ml-auto">
+              {role && (['Admin', 'CEO'].includes(role)) && (
+                <Link to="/admin/expense-submissions" className="bg-[#57123f] text-white px-4 py-2 rounded">View Submissions</Link>
+              )}
+            </div>
           </div>
-          <div className="bg-red-100 text-red-800 rounded-xl p-4 shadow font-bold text-lg">
-            Total Expenses: Rs {totalExpenses}
-          </div>
-        </div>
-        <form onSubmit={handleSubmit} className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-[#f8e6f2] p-6 rounded-xl shadow">
-          <div>
-            <label className="block font-medium mb-1">Type</label>
-            <select name="type" value={form.type} onChange={handleChange} className="w-full border rounded px-3 py-2">
-              <option value="Salary">Salary</option>
-              <option value="Expense">Expense</option>
-              <option value="Beverage">Beverage</option>
-            </select>
-          </div>
-          {form.type === 'Salary' && (
-            <>
-              <div>
-                <label className="block font-medium mb-1">Office Boy Name</label>
-                <input
-                  type="text"
-                  name="officeBoyName"
-                  value={form.officeBoyName}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Enter office boy's name"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Office Boy Branch</label>
-                <input
-                  type="text"
-                  name="officeBoyBranch"
-                  value={form.officeBoyBranch}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Enter branch name"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Amount (Salary)</label>
-                <input
-                  type="number"
-                  name="amount"
-                  value={form.amount}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2"
-                  min="0"
-                />
-              </div>
-            </>
-          )}
-          {form.type === 'Expense' && (
-            <>
-              <div>
-                <label className="block font-medium mb-1">Branch Name</label>
-                <input
-                  type="text"
-                  name="branchName"
-                  value={form.branchName}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Enter branch name"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Branch Expense (Amount)</label>
-                <input
-                  type="number"
-                  name="branchExpenseAmount"
-                  value={form.branchExpenseAmount}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2"
-                  min="0"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Type of Expense (Work)</label>
-                <input
-                  type="text"
-                  name="branchExpenseType"
-                  value={form.branchExpenseType}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="e.g. Electricity, Rent, Supplies"
-                />
-              </div>
-            </>
-          )}
-          {form.type === 'Beverage' && (
-            <>
-              <div>
-                <label className="block font-medium mb-1">Beverage Type</label>
-                <input
-                  type="text"
-                  name="beverageType"
-                  value={form.beverageType}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="e.g. Tea, Coffee, Water"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Beverage Amount</label>
-                <input
-                  type="number"
-                  name="beverageAmount"
-                  value={form.beverageAmount}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2"
-                  min="0"
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Beverage Branch</label>
-                <input
-                  type="text"
-                  name="beverageBranch"
-                  value={form.beverageBranch}
-                  onChange={handleChange}
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Enter branch name"
-                />
-              </div>
-            </>
-          )}
-          <div className="flex items-end justify-end mt-2 md:mt-0">
-            <button type="submit" className="bg-[#57123f] text-white px-6 py-2 rounded font-semibold shadow hover:bg-[#6d2c5b]">Add Expense</button>
-          </div>
-        </form>
-        <h3 className="text-xl font-bold mb-4 text-[#57123f]">Daily Beverage Expense</h3>
-        <div className="overflow-x-auto mb-8">
-          <table className="min-w-[700px] w-full text-sm border rounded-xl shadow">
-            <thead>
-              <tr className="bg-[#f3e8ff] text-[#57123f]">
-                <th className="p-3 text-left">Beverage Type</th>
-                <th className="p-3 text-left">Amount</th>
-                <th className="p-3 text-left">Branch</th>
-                <th className="p-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.filter(exp => exp.type && exp.type.startsWith('Beverage')).map((exp, idx) => (
-                <tr key={exp._id || idx} className="border-b">
-                  <td className="p-3">{exp.beverageType || (exp.type ? exp.type.replace('Beverage - ', '') : '')}</td>
-                  <td className="p-3">{editIdx === idx ? (
-                    <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="border rounded px-2 py-1 w-full" />
-                  ) : exp.amount}</td>
-                  <td className="p-3">{exp.beverageBranch || ''}</td>
-                  <td className="p-3">
-                    {editIdx === idx ? (
-                      <>
-                        <button className="bg-green-600 text-white px-2 py-1 rounded mr-2" onClick={() => handleUpdate(exp._id)}>Save</button>
-                        <button className="bg-gray-400 text-white px-2 py-1 rounded" onClick={() => setEditIdx(null)}>Cancel</button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="bg-blue-600 text-white px-2 py-1 rounded mr-2" onClick={() => handleEdit(idx, exp)}><FaEdit /></button>
-                        <button className="bg-red-600 text-white px-2 py-1 rounded" onClick={() => handleDelete(exp._id)}><FaTrash /></button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {message && <div className="mb-4 text-green-600 font-semibold text-center">{message}</div>}
-        <h3 className="text-xl font-bold mb-4 text-[#57123f]">Office Boy Salary</h3>
-        <div className="overflow-x-auto mb-8">
-          <table className="min-w-[700px] w-full text-sm border rounded-xl shadow">
-            <thead>
-              <tr className="bg-[#f3e8ff] text-[#57123f]">
-                <th className="p-3 text-left">Office Boy Name</th>
-                <th className="p-3 text-left">Office Boy Branch</th>
-                <th className="p-3 text-left">Amount</th>
-                <th className="p-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.filter(exp => exp.type === 'Salary' || (exp.type && exp.type.startsWith('Office Boy Salary'))).map((exp, idx) => (
-                <tr key={exp._id || idx} className="border-b">
-                  <td className="p-3">{exp.officeBoyName || (exp.type ? exp.type.replace('Office Boy Salary - ', '') : '')}</td>
-                  <td className="p-3">{exp.officeBoyBranch || ''}</td>
-                  <td className="p-3">{editIdx === idx ? (
-                    <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="border rounded px-2 py-1 w-full" />
-                  ) : exp.amount}</td>
-                  <td className="p-3">
-                    {editIdx === idx ? (
-                      <>
-                        <button className="bg-green-600 text-white px-2 py-1 rounded mr-2" onClick={() => handleUpdate(exp._id)}>Save</button>
-                        <button className="bg-gray-400 text-white px-2 py-1 rounded" onClick={() => setEditIdx(null)}>Cancel</button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="bg-blue-600 text-white px-2 py-1 rounded mr-2" onClick={() => handleEdit(idx, exp)}><FaEdit /></button>
-                        <button className="bg-red-600 text-white px-2 py-1 rounded" onClick={() => handleDelete(exp._id)}><FaTrash /></button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          <form onSubmit={handleSubmit} className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-xl shadow-2xl ">
+            {/* Person Details */}
+            <div className="md:col-span-2">
+              <h3 className="text-2xl font-semibold text-[#57123f] mb-3">Person Details</h3>
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Name</label>
+              <input type="text" name="senderName" value={form.senderName} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Email</label>
+              <input type="email" name="senderEmail" value={form.senderEmail} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Designation</label>
+              <input type="text" name="senderDesignation" value={form.senderDesignation} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Phone</label>
+              <input type="text" name="senderPhone" value={form.senderPhone} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Branch</label>
+              <select name="senderBranch" value={form.senderBranch} onChange={handleChange} className="w-full border rounded px-3 py-2">
+                <option value="">Select Branch</option>
+                <option value="Lahore">Lahore</option>
+                <option value="Islamabad">Islamabad</option>
+              </select>
+            </div>
 
-        <h3 className="text-xl font-bold mb-4 text-[#57123f]">Branch Expense</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-[900px] w-full text-sm border rounded-xl shadow">
-            <thead>
-              <tr className="bg-[#f3e8ff] text-[#57123f]">
-                <th className="p-3 text-left">Branch Name</th>
-                <th className="p-3 text-left">Amount</th>
-                <th className="p-3 text-left">Type of Expense (Work)</th>
-                <th className="p-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.filter(exp => exp.type === 'Expense').map((exp, idx) => (
-                <tr key={exp._id || idx} className="border-b">
-                  <td className="p-3">{exp.branchName || (exp.type && exp.type.includes(' - ') ? exp.type.split(' - ')[0] : '')}</td>
-                  <td className="p-3">{editIdx === idx ? (
-                    <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="border rounded px-2 py-1 w-full" />
-                  ) : exp.amount}</td>
-                  <td className="p-3">{exp.expenseWorkType || (exp.type && exp.type.includes(' - ') ? exp.type.split(' - ')[1] : '')}</td>
-                  <td className="p-3">
-                    {editIdx === idx ? (
-                      <>
-                        <button className="bg-green-600 text-white px-2 py-1 rounded mr-2" onClick={() => handleUpdate(exp._id)}>Save</button>
-                        <button className="bg-gray-400 text-white px-2 py-1 rounded" onClick={() => setEditIdx(null)}>Cancel</button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="bg-blue-600 text-white px-2 py-1 rounded mr-2" onClick={() => handleEdit(idx, exp)}><FaEdit /></button>
-                        <button className="bg-red-600 text-white px-2 py-1 rounded" onClick={() => handleDelete(exp._id)}><FaTrash /></button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            {/* Expense Details */}
+            <div className="md:col-span-2">
+              <h3 className="text-2xl font-semibold text-[#57123f] mb-3">Expense Details</h3>
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Expense Main Category (Number)</label>
+              <select name="expenseTypeNumber" value={form.expenseTypeNumber} onChange={(e) => {
+                const v = e.target.value;
+                const map = { 1: 'Rent', 2: 'Utility Bills', 3: 'Traveling', 4: 'Stationery', 5: 'Foods', 6: 'Furniture', 7: 'Electronic Items', 8: 'Marketing', 9: 'Mobile Bills', 10: 'Office Maintenance', 11: 'Crockery' };
+                setForm({ ...form, expenseTypeNumber: Number(v), expenseCategory: map[Number(v)], expenseSubCategory: '' });
+              }} className="w-full border rounded px-3 py-2">
+                <option value={1}>Rent</option>
+                <option value={2}>Utility Bills</option>
+                <option value={3}>Traveling</option>
+                <option value={4}>Stationery</option>
+                <option value={5}>Foods</option>
+                <option value={6}>Furniture</option>
+                <option value={7}>Electronic Items</option>
+                <option value={8}>Marketing</option>
+                <option value={9}>Mobile Bills</option>
+                <option value={10}>Office Maintenance</option>
+                <option value={11}>Crockery</option>
+              </select>
+            </div>
+            {/* show subcategory select or remarks depending on main category */}
+            {(() => {
+              const n = Number(form.expenseTypeNumber);
+              // Utility Bills
+              if (n === 2) {
+                return (
+                  <div>
+                    <label className="block font-medium mb-1">Subcategory</label>
+                    <select name="expenseSubCategory" value={form.expenseSubCategory} onChange={handleChange} className="w-full border rounded px-3 py-2">
+                      <option value="">Select</option>
+                      <option>Electricity</option>
+                      <option>Internet</option>
+                      <option>Gas</option>
+                    </select>
+                  </div>
+                );
+              }
+              // Marketing
+              if (n === 8) {
+                return (
+                  <div>
+                    <label className="block font-medium mb-1">Marketing Subcategory</label>
+                    <select name="expenseSubCategory" value={form.expenseSubCategory} onChange={handleChange} className="w-full border rounded px-3 py-2">
+                      <option value="">Select</option>
+                      <option>Digital Marketing</option>
+                      <option>IT Team</option>
+                      <option>Social Media Team</option>
+                      <option>Poster</option>
+                      <option>Visiting Card</option>
+                      <option>Banners</option>
+                    </select>
+                  </div>
+                );
+              }
+              // Office Maintenance
+              if (n === 10) {
+                return (
+                  <div>
+                    <label className="block font-medium mb-1">Maintenance Subcategory</label>
+                    <select name="expenseSubCategory" value={form.expenseSubCategory} onChange={handleChange} className="w-full border rounded px-3 py-2">
+                      <option value="">Select</option>
+                      <option>Paling</option>
+                      <option>Vairing</option>
+                      <option>Color</option>
+                    </select>
+                  </div>
+                );
+              }
+
+              // Categories that should show a remarks textarea: 3,4,6,7,9,11
+              const remarkCategories = [3, 4, 6, 7, 9, 11];
+              if (remarkCategories.includes(n)) {
+                return (
+                  <div className="md:col-span-2">
+                    <label className="block font-medium mb-1">Remarks / Details</label>
+                    <textarea name="remarks" value={form.remarks} onChange={handleChange} className="w-full border rounded px-3 py-2" rows={4} />
+                  </div>
+                );
+              }
+
+              // For categories like Rent (1) and Foods (5) show no extra input by default
+              return null;
+            })()}
+
+            <div>
+              <label className="block font-medium mb-1">Date</label>
+              <input type="date" name="expenseDate" value={form.expenseDate} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+            </div>
+            <div>
+              <label className="block font-medium mb-1">Amount</label>
+              <input type="number" name="amount" value={form.amount} onChange={handleChange} className="w-full border rounded px-3 py-2" min="0" />
+            </div>
+           
+
+            {/* Account Details */}
+            <div className="md:col-span-2">
+              <h1 className="text-2xl font-semibold text-[#57123f] mb-3">Account Details</h1>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block font-medium mb-1">Payment Method</label>
+              <select name="paymentMethod" value={form.paymentMethod} onChange={handleChange} className="w-full border rounded px-3 py-2">
+                <option value="Cash">Cash</option>
+                <option value="Bank">Bank</option>
+              </select>
+            </div>
+
+            {form.paymentMethod === 'Bank' && (
+              <>
+                <div>
+                  <label className="block font-medium mb-1">Bank Name</label>
+                  <input type="text" name="senderBankName" value={form.senderBankName} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+                </div>
+                <div>
+                  <label className="block font-medium mb-1">Account Title</label>
+                  <input type="text" name="senderAccountTitle" value={form.senderAccountTitle} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+                </div>
+                <div>
+                  <label className="block font-medium mb-1">Sender Account Number</label>
+                  <input type="text" name="senderAccountNumber" value={form.senderAccountNumber} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+                </div>
+              </>
+            )}
+
+            <div className="flex items-end justify-end mt-2 md:mt-0 md:col-span-2">
+              <button type="submit" className="bg-[#57123f] text-white px-6 py-2 rounded font-semibold shadow hover:bg-[#6d2c5b]">Add Expense</button>
+            </div>
+          </form>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 };
