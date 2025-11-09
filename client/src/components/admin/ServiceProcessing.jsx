@@ -16,10 +16,10 @@ const ServiceProcessing = () => {
     // Fetch service status counts and latest completed services from backend
     const fetchStats = async () => {
       try {
-        const statsRes = await axios.get('https://app.zumarlawfirm.com/admin/service-status-counts');
+        const statsRes = await axios.get('http://localhost:5000/admin/service-status-counts');
         setServiceStats(statsRes.data);
         // Fetch only latest 4 completed services from all models
-        const completedRes = await axios.get('https://app.zumarlawfirm.com/admin/latest-completed-services?limit=4');
+        const completedRes = await axios.get('http://localhost:5000/admin/latest-completed-services?limit=4');
         // Log the response for debugging
         console.log('Latest completed services:', completedRes.data);
         setLatestCompleted(Array.isArray(completedRes.data) ? completedRes.data : []);

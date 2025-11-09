@@ -40,6 +40,7 @@ const NewEmployee = ({ onEmployeeAdded }) => {
         { label: 'Converted Services', path: '/admin/services/converted' },
         { label: 'Manual Services', path: '/admin/services/manual' },
         { label: 'Add Manual Service', path: '/admin/add-service' },
+        { label: 'Refunds Admin', path: '/admin/refunds' },
       ]
     },
     { label: 'Payroll', path: '/admin/payroll',
@@ -107,8 +108,8 @@ const NewEmployee = ({ onEmployeeAdded }) => {
     try {
       setLoading(true);
       const endpoint = isEditing
-        ? `https://app.zumarlawfirm.com/admin/roles/${editId}`
-        : 'https://app.zumarlawfirm.com/admin/roles';
+        ? `http://localhost:5000/admin/roles/${editId}`
+        : 'http://localhost:5000/admin/roles';
 
       const method = isEditing ? 'put' : 'post';
 

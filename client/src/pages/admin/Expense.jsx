@@ -18,8 +18,8 @@ const Expense = () => {
     try {
       const token = localStorage.getItem('token');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.put(`https://app.zumarlawfirm.com/expense/${id}`, { type: editType, amount: parseFloat(editAmount) }, cfg);
-  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+      await axios.put(`http://localhost:5000/expense/${id}`, { type: editType, amount: parseFloat(editAmount) }, cfg);
+  const expenseRes = await axios.get('http://localhost:5000/expense', cfg);
   const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
   setExpenses(expenseData);
       setEditIdx(null);
@@ -35,8 +35,8 @@ const Expense = () => {
     try {
       const token = localStorage.getItem('token');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.delete(`https://app.zumarlawfirm.com/expense/${id}`, cfg);
-  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+      await axios.delete(`http://localhost:5000/expense/${id}`, cfg);
+  const expenseRes = await axios.get('http://localhost:5000/expense', cfg);
   const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
   setExpenses(expenseData);
       setMessage('Expense deleted successfully!');
@@ -79,7 +79,7 @@ const Expense = () => {
         // whoami to get role (only if token exists) to avoid unnecessary 401s
         if (token && token !== 'null') {
           try {
-            const who = await axios.get('https://app.zumarlawfirm.com/auth/whoami', cfg);
+            const who = await axios.get('http://localhost:5000/auth/whoami', cfg);
             setRole(who.data.user?.role || null);
           } catch (e) {
             // if whoami fails even with token, clear role
@@ -90,10 +90,10 @@ const Expense = () => {
           setRole(null);
         }
 
-        const profitRes = await axios.get('https://app.zumarlawfirm.com/accounts/summary');
+        const profitRes = await axios.get('http://localhost:5000/accounts/summary');
         setProfit(profitRes.data.totalProfit || 0);
 
-        const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+        const expenseRes = await axios.get('http://localhost:5000/expense', cfg);
         const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
         setExpenses(expenseData);
       } catch (err) {
@@ -137,8 +137,9 @@ const Expense = () => {
         7: { name: 'Electronic Items' },
         8: { name: 'Marketing', subs: ['Digital Marketing', 'IT Team', 'Social Media Team', 'Poster', 'Visiting Card', 'Banners'] },
         9: { name: 'Mobile Bills' },
-        10: { name: 'Office Maintenance', subs: ['Paling', 'Varing', 'Color'] },
+        10: { name: 'Office Maintenance', subs: ['Paling', 'Varing', 'Color', 'Other'] },
         11: { name: 'Crockery' },
+        12: { name: 'Others' },
       };
 
       const main = mainCategories[Number(form.expenseTypeNumber)] || { name: form.expenseCategory };
@@ -163,8 +164,8 @@ const Expense = () => {
       };
       const token = localStorage.getItem('token');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.post('https://app.zumarlawfirm.com/expense', payload, cfg);
-  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+      await axios.post('http://localhost:5000/expense', payload, cfg);
+  const expenseRes = await axios.get('http://localhost:5000/expense', cfg);
   const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
   setExpenses(expenseData);
       setForm({
@@ -251,7 +252,7 @@ const Expense = () => {
               <label className="block font-medium mb-1">Expense Main Category (Number)</label>
               <select name="expenseTypeNumber" value={form.expenseTypeNumber} onChange={(e) => {
                 const v = e.target.value;
-                const map = { 1: 'Rent', 2: 'Utility Bills', 3: 'Traveling', 4: 'Stationery', 5: 'Foods', 6: 'Furniture', 7: 'Electronic Items', 8: 'Marketing', 9: 'Mobile Bills', 10: 'Office Maintenance', 11: 'Crockery' };
+                const map = { 1: 'Rent', 2: 'Utility Bills', 3: 'Traveling', 4: 'Stationery', 5: 'Foods', 6: 'Furniture', 7: 'Electronic Items', 8: 'Marketing', 9: 'Mobile Bills', 10: 'Office Maintenance', 11: 'Crockery', 12: 'Others' };
                 setForm({ ...form, expenseTypeNumber: Number(v), expenseCategory: map[Number(v)], expenseSubCategory: '' });
               }} className="w-full border rounded px-3 py-2">
                 <option value={1}>Rent</option>
@@ -265,6 +266,7 @@ const Expense = () => {
                 <option value={9}>Mobile Bills</option>
                 <option value={10}>Office Maintenance</option>
                 <option value={11}>Crockery</option>
+                <option value={12}>Others</option>
               </select>
             </div>
             {/* show subcategory select or remarks depending on main category */}
@@ -311,13 +313,20 @@ const Expense = () => {
                       <option>Paling</option>
                       <option>Vairing</option>
                       <option>Color</option>
+                      <option>Other</option>
                     </select>
+                    {form.expenseSubCategory === 'Other' && (
+                      <div className="mt-3">
+                        <label className="block font-medium mb-1">Remarks / Details (Other)</label>
+                        <textarea name="otherDetails" value={form.otherDetails} onChange={handleChange} className="w-full border rounded px-3 py-2" rows={3} />
+                      </div>
+                    )}
                   </div>
                 );
               }
 
               // Categories that should show a remarks textarea: 3,4,6,7,9,11
-              const remarkCategories = [3, 4, 6, 7, 9, 11];
+              const remarkCategories = [3, 4, 6, 7, 9, 11, 12];
               if (remarkCategories.includes(n)) {
                 return (
                   <div className="md:col-span-2">

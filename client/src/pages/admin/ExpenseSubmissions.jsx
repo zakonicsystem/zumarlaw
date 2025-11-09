@@ -63,14 +63,14 @@ export default function ExpenseSubmissions() {
       try {
         const token = localStorage.getItem('token');
         const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-        const res = await axios.get('https://app.zumarlawfirm.com/expense/submissions', cfg);
+        const res = await axios.get('http://localhost:5000/expense/submissions', cfg);
         const payload = res.data;
         const items = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.data) ? payload.data : []);
         setSubmissions(items);
       } catch (err) {
         console.error('Failed to load submissions', err);
         try {
-          const res = await axios.get('https://app.zumarlawfirm.com/expense/submissions');
+          const res = await axios.get('http://localhost:5000/expense/submissions');
           const payload = res.data;
           const items = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.data) ? payload.data : []);
           setSubmissions(items);
@@ -117,7 +117,7 @@ export default function ExpenseSubmissions() {
     try {
       const token = localStorage.getItem('token');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.delete(`https://app.zumarlawfirm.com/expense/${id}`, cfg);
+      await axios.delete(`http://localhost:5000/expense/${id}`, cfg);
       setSubmissions(prev => prev.filter(p => p._id !== id));
     } catch (err) {
       console.error('Delete failed', err.response?.data || err);
@@ -312,7 +312,7 @@ export default function ExpenseSubmissions() {
       // Attempt to embed proof image (if any)
       if (expense.proof) {
         try {
-          const proofUrl = String(expense.proof).startsWith('http') ? expense.proof : `https://app.zumarlawfirm.com/${expense.proof}`;
+          const proofUrl = String(expense.proof).startsWith('http') ? expense.proof : `http://localhost:5000/${expense.proof}`;
           // image extensions
           if (/\.(jpg|jpeg|png|gif)$/i.test(proofUrl)) {
             // fetch as blob then convert to dataURL
@@ -347,7 +347,7 @@ export default function ExpenseSubmissions() {
             y += drawH + 8;
           } else {
             // not an image — print link to file
-            const proofUrlText = String(expense.proof).startsWith('http') ? expense.proof : `https://app.zumarlawfirm.com/${expense.proof}`;
+            const proofUrlText = String(expense.proof).startsWith('http') ? expense.proof : `http://localhost:5000/${expense.proof}`;
             pdf.setFontSize(10);
             pdf.setTextColor(0, 0, 200);
             pdf.text(`Proof: ${proofUrlText}`, margin, y + 12);
@@ -356,7 +356,7 @@ export default function ExpenseSubmissions() {
         } catch (e) {
           // ignore embedding errors, fallback to showing proof path
           try {
-            const proofUrlText = String(expense.proof).startsWith('http') ? expense.proof : `https://app.zumarlawfirm.com/${expense.proof}`;
+            const proofUrlText = String(expense.proof).startsWith('http') ? expense.proof : `http://localhost:5000/${expense.proof}`;
             pdf.setFontSize(10);
             pdf.setTextColor(0, 0, 200);
             pdf.text(`Proof: ${proofUrlText}`, margin, y + 12);
@@ -413,7 +413,7 @@ export default function ExpenseSubmissions() {
       fd.append('chequeNumber', paymentForm.chequeNumber || '');
 
 
-      const res = await axios.post(`https://app.zumarlawfirm.com/expense/${id}/pay`, fd, cfg);
+      const res = await axios.post(`http://localhost:5000/expense/${id}/pay`, fd, cfg);
       console.log('pay response', res.data);
       // update local submissions state with returned expense if available
       const returned = res.data && (res.data.expense || res.data);
@@ -476,7 +476,7 @@ export default function ExpenseSubmissions() {
         if (filtered.length) payload.accountantDetails = filtered;
       }
 
-      const res = await axios.put(`https://app.zumarlawfirm.com/expense/${editable._id}`, payload, cfg);
+      const res = await axios.put(`http://localhost:5000/expense/${editable._id}`, payload, cfg);
       const returned = res.data || null;
       if (returned && returned._id) {
         setSubmissions(prev => prev.map(it => it._id === returned._id ? ({ ...it, ...returned }) : it));
@@ -659,7 +659,7 @@ export default function ExpenseSubmissions() {
                     <div className="flex flex-col gap-2">
                       {/* render image preview if image, else link */}
                       {(selected.proof.match(/\.(jpg|jpeg|png|gif)$/i)) ? (
-                        <img src={`https://app.zumarlawfirm.com/${selected.proof}`} alt="proof" className="max-h-60 rounded" />
+                        <img src={`http://localhost:5000/${selected.proof}`} alt="proof" className="max-h-60 rounded" />
                       ) : (
                         <div className="text-sm text-gray-700">Uploaded file: <span className="font-medium">{selected.proof.split('/').pop()}</span></div>
                       )}

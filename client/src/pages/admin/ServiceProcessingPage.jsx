@@ -45,6 +45,7 @@ const PROGRESS_OPTIONS = [
   { value: 'under_review', label: 'Under Review' },
   { value: 'challan_pending', label: 'Challan Pending' },
   { value: 'objection', label: 'Objection' },
+  { value: 'completed_in_progress', label: 'Completed In Progress' },
   { value: 'name_reserved', label: 'Name Reserved' },
   { value: 'file_submitted', label: 'File Submitted' },
   { value: 'objection_resolved', label: 'Objection Resolved' },
@@ -53,6 +54,21 @@ const PROGRESS_OPTIONS = [
   { value: 'case_rejected', label: 'Case Rejected' },
   { value: 'case_refund', label: 'Case Refund' },
 ];
+
+// Map progress values to badge classes (colors requested by user)
+const getProgressClass = (status) => {
+  if (!status) return 'bg-gray-100 text-gray-700';
+  const s = status.toString().toLowerCase();
+  // Red: Reject, Objection, Case Refund
+  if (['objection', 'case_refund', 'case_rejected'].includes(s)) return 'bg-red-500 text-white';
+  // Green: Objection Resolved, Completed, File Submitted, Completed In Progress
+  if (['objection_resolved', 'file_submitted', 'incorporated', 'completed_in_progress'].includes(s)) return 'bg-green-500 text-white';
+  // Light black: Under Review
+  if (s === 'under_review') return 'bg-gray-800 text-white';
+  // Yellow: pending, processing and similar waiting states
+  if (['pending', 'processing', 'challan_pending', 'case_holding'].includes(s)) return 'bg-yellow-400 text-black';
+  return 'bg-gray-100 text-gray-700';
+};
 
 
 
@@ -180,7 +196,7 @@ const ServiceProcessingPage = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/admin/roles', { headers: getAuthHeaders() });
+        const res = await axios.get('http://localhost:5000/admin/roles', { headers: getAuthHeaders() });
         console.log('Employees API response:', res.data); // Debug log
         const employeesArr = Array.isArray(res.data)
           ? res.data.filter(emp => typeof emp.name === 'string' && emp.name.trim() !== '')
@@ -202,7 +218,7 @@ const ServiceProcessingPage = () => {
   // Update progress status for a service (admin)
   const handleProgressChange = async (row, newProgress) => {
     try {
-      await adminRequest({ method: 'patch', url: `https://app.zumarlawfirm.com/admin/services/${row._id}/progress`, data: { progressStatus: newProgress } });
+      await adminRequest({ method: 'patch', url: `http://localhost:5000/admin/services/${row._id}/progress`, data: { progressStatus: newProgress } });
       // refresh data
       fetchServices();
       toast.success('Progress status updated');
@@ -215,7 +231,7 @@ const ServiceProcessingPage = () => {
   const fetchServices = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('https://app.zumarlawfirm.com/admin/services', { headers: getAuthHeaders() });
+      const res = await axios.get('http://localhost:5000/admin/services', { headers: getAuthHeaders() });
       setServices(res.data);
     } catch (err) {
       toast.error('Failed to fetch services');
@@ -234,7 +250,7 @@ const ServiceProcessingPage = () => {
     try {
       await adminRequest({
         method: 'patch',
-        url: `https://app.zumarlawfirm.com/admin/services/${row._id}/assign`,
+        url: `http://localhost:5000/admin/services/${row._id}/assign`,
         data: { assignedTo: employeeName }
       });
       fetchServices();
@@ -249,8 +265,8 @@ const ServiceProcessingPage = () => {
     const currentIdx = statusOrder.indexOf(row.status);
     const nextStatus = statusOrder[(currentIdx + 1) % statusOrder.length];
     try {
-      const primaryUrl = `https://app.zumarlawfirm.com/admin/services/${row._id}/status`;
-      const altUrl = `https://app.zumarlawfirm.com/admin/services/status/${row._id}`;
+      const primaryUrl = `http://localhost:5000/admin/services/${row._id}/status`;
+      const altUrl = `http://localhost:5000/admin/services/status/${row._id}`;
       try {
         await adminRequest({ method: 'patch', url: primaryUrl, data: { status: nextStatus } });
       } catch (err) {
@@ -273,7 +289,7 @@ const ServiceProcessingPage = () => {
     const currentIdx = paymentOrder.indexOf(row.paymentStatus || 'pending');
     const nextStatus = paymentOrder[(currentIdx + 1) % paymentOrder.length];
     try {
-      await adminRequest({ method: 'patch', url: `https://app.zumarlawfirm.com/admin/services/${row._id}/payment-status`, data: { paymentStatus: nextStatus } });
+      await adminRequest({ method: 'patch', url: `http://localhost:5000/admin/services/${row._id}/payment-status`, data: { paymentStatus: nextStatus } });
       fetchServices();
       toast.success('Payment status updated');
     } catch (error) {
@@ -327,7 +343,7 @@ const ServiceProcessingPage = () => {
     formData.append('certificate', selectedFile);
 
     try {
-      await adminRequest({ method: 'post', url: `https://app.zumarlawfirm.com/admin/services/${selectedRow._id}/certificate?pending=true`, data: formData, config: { headers: { 'Content-Type': 'multipart/form-data' } } });
+      await adminRequest({ method: 'post', url: `http://localhost:5000/admin/services/${selectedRow._id}/certificate?pending=true`, data: formData, config: { headers: { 'Content-Type': 'multipart/form-data' } } });
       toast.success('Certificate uploaded (pending, not sent to user)');
       setShowUploadModal(false);
       setSelectedFile(null);
@@ -422,7 +438,7 @@ const ServiceProcessingPage = () => {
     if (selectedRows.length === 0) return toast.error('Please select at least one row.');
     if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} row(s)?`)) return;
     try {
-      await adminRequest({ method: 'post', url: 'https://app.zumarlawfirm.com/invoices/delete-multiple', data: { ids: selectedRows } });
+      await adminRequest({ method: 'post', url: 'http://localhost:5000/invoices/delete-multiple', data: { ids: selectedRows } });
       toast.success('Selected services deleted!');
       setServices(prev => prev.filter(row => !selectedRows.includes(row._id)));
       setSelectedRows([]);
@@ -469,7 +485,7 @@ const ServiceProcessingPage = () => {
           <select
             value={filterProgress}
             onChange={(e) => { setFilterProgress(e.target.value); setCurrentPage(1); }}
-            className="bg-gray-100 text-gray-700 rounded-full px-4 py-2 text-sm focus:outline-none"
+            className={`rounded-full px-4 py-2 text-sm focus:outline-none ${getProgressClass(filterProgress)}`}
           >
             <option value="">All Progress</option>
             {PROGRESS_OPTIONS.map(opt => (
@@ -592,7 +608,7 @@ const ServiceProcessingPage = () => {
                       <select
                         value={row.progressStatus || ''}
                         onChange={(e) => handleProgressChange(row, e.target.value)}
-                        className="text-xs bg-gray-100 rounded px-2 py-1 mt-1"
+                        className={`text-xs rounded px-2 py-1 mt-1 ${getProgressClass(row.progressStatus)}`}
                       >
                         {PROGRESS_OPTIONS.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -708,7 +724,7 @@ const ServiceProcessingPage = () => {
                   try {
                     console.log('Sending message to userId:', messageRow.userId, 'serviceId:', messageRow._id); // Debug
                     await adminRequest({
-                      method: 'post', url: 'https://app.zumarlawfirm.com/serviceMessage', data: {
+                      method: 'post', url: 'http://localhost:5000/serviceMessage', data: {
                         userId: messageRow.userId,
                         serviceId: messageRow._id, // Use _id as serviceId
                         type: messageType,
@@ -879,7 +895,7 @@ const ServiceProcessingPage = () => {
                       const JSZip = (await import('jszip')).default;
                       const zip = new JSZip();
                       await Promise.all(imageFiles.map(async (file) => {
-                        const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
+                        const url = `http://localhost:5000/uploads/${encodeURIComponent(file)}`;
                         try {
                           const response = await fetch(url);
                           if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -927,7 +943,7 @@ const ServiceProcessingPage = () => {
                       const JSZip = (await import('jszip')).default;
                       const zip = new JSZip();
                       await Promise.all(docFiles.map(async (file) => {
-                        const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
+                        const url = `http://localhost:5000/uploads/${encodeURIComponent(file)}`;
                         try {
                           const response = await fetch(url);
                           if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -958,7 +974,7 @@ const ServiceProcessingPage = () => {
                       const userEmail = selectedRow.personalId?.email;
                       if (!userEmail) return toast.error('No user email found for this service');
                       try {
-                        await adminRequest({ method: 'post', url: `https://app.zumarlawfirm.com/admin/services/${selectedRow._id}/send-invoice`, data: { email: userEmail } });
+                        await adminRequest({ method: 'post', url: `http://localhost:5000/admin/services/${selectedRow._id}/send-invoice`, data: { email: userEmail } });
                         toast.success('Invoice, certificate, images, and documents sent to user dashboard and email!');
                         fetchServices();
                       } catch (err) {

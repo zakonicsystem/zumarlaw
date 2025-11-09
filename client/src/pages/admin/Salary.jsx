@@ -22,15 +22,15 @@ const Salary = () => {
       const [yearStr, monthStr] = selectedMonth.split('-');
       const year = Number(yearStr);
       const month = Number(monthStr);
-      const res = await axios.post('https://app.zumarlawfirm.com/autoSalary/calculate', { month, year });
+      const res = await axios.post('http://localhost:5000/autoSalary/calculate', { month, year });
       console.log('autoSalary/calculate response:', res.data);
       let data = res.data || [];
       // If backend returned empty, try to compute client-side using roles + attendance
       if ((!data || data.length === 0)) {
         try {
           const [rolesRes, attRes] = await Promise.all([
-            axios.get('https://app.zumarlawfirm.com/admin/roles'),
-            axios.get('https://app.zumarlawfirm.com/attendance/history', { params: { year, month } })
+            axios.get('http://localhost:5000/admin/roles'),
+            axios.get('http://localhost:5000/attendance/history', { params: { year, month } })
           ]);
           const employees = rolesRes.data || [];
           const attendance = attRes.data || [];
@@ -121,7 +121,7 @@ const Salary = () => {
     setSaving(true);
     try {
       const { year, month } = lastQuery;
-      const res = await axios.post('https://app.zumarlawfirm.com/autoSalary', { month, year });
+      const res = await axios.post('http://localhost:5000/autoSalary', { month, year });
       if (res.data && res.data.success) {
         alert(`Payroll created for ${res.data.payrolls.length} employees`);
       } else {

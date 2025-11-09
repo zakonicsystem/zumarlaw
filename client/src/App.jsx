@@ -33,6 +33,8 @@ import NewPayroll from './pages/admin/NewPayroll';
 import Account from './pages/admin/Account';
 import Expense from './pages/admin/Expense';
 import ExpenseSubmissions from './pages/admin/ExpenseSubmissions';
+import Refund from './pages/Refund';
+import RefundsAdmin from './pages/admin/RefundsAdmin';
 import AuthRedirectHandler from './components/AuthRedirectHandler';
 import ConvertedService from './pages/admin/ConvertedService';
 import NewEmployee from './pages/admin/NewEmployee';
@@ -61,6 +63,7 @@ const AppContent = () => {
           element={<Payment />}
         />
         <Route path="/add-details/:serviceTitle" element={<AddServiceDetails />} />
+        <Route path="/refund" element={<Refund />} />
         <Route path="/userpanel" element={<UserDashboard />} />
         {/* User Protected Route */}
         <Route path="/" element={
@@ -80,7 +83,7 @@ const AppContent = () => {
           {/* This index route renders inside AdminLayout's <Outlet /> */}
           <Route path='/admin' index element={<Dashboard />} />
           <Route path='/admin/add-Service' element={<DirectService />} />
-          <Route path='/admin/salary' element={<Salary   />} />
+          <Route path='/admin/salary' element={<Salary />} />
           <Route path='/admin/announcment' element={<EmployeeProtectedRoute><AnnouncementForm /></EmployeeProtectedRoute>} />
           <Route path="leads" element={<EmployeeProtectedRoute><LeadsManagment /></EmployeeProtectedRoute>} />
           <Route path="services" element={<EmployeeProtectedRoute><ServiceProcessingPage /></EmployeeProtectedRoute>} />
@@ -95,6 +98,7 @@ const AppContent = () => {
           <Route path="/admin/account" element={<EmployeeProtectedRoute><Account /></EmployeeProtectedRoute>} />
           <Route path="/admin/expense" element={<EmployeeProtectedRoute><Expense /></EmployeeProtectedRoute>} />
           <Route path="/admin/expense-submissions" element={<EmployeeProtectedRoute><ExpenseSubmissions /></EmployeeProtectedRoute>} />
+          <Route path="/admin/refunds" element={<EmployeeProtectedRoute><RefundsAdmin /></EmployeeProtectedRoute>} />
           <Route path="/admin/roles/add" element={<EmployeeProtectedRoute><NewEmployee /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/followup' element={<EmployeeProtectedRoute><FollowUpLeads /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/mature' element={<EmployeeProtectedRoute><MatureLeads /></EmployeeProtectedRoute>} />
@@ -103,7 +107,7 @@ const AppContent = () => {
 
           <Route path="/admin/services/converted" element={<EmployeeProtectedRoute><ConvertedService /></EmployeeProtectedRoute>} />
 
-        <Route path='/admin/attendance' element={<EmployeeProtectedRoute><Attendance /></EmployeeProtectedRoute>} />
+          <Route path='/admin/attendance' element={<EmployeeProtectedRoute><Attendance /></EmployeeProtectedRoute>} />
         </Route>
       </Routes>
     </>

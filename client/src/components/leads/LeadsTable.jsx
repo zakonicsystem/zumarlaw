@@ -28,7 +28,7 @@ const LeadsTable = ({
   const handleEditSave = async () => {
     if (!editModal.lead?._id) return;
     try {
-      await axios.put(`https://app.zumarlawfirm.com/leads/${editModal.lead._id}`, editModal.lead);
+      await axios.put(`http://localhost:5000/leads/${editModal.lead._id}`, editModal.lead);
       toast.success('Lead updated successfully');
       setEditModal({ open: false, lead: null });
       // Optionally: refresh leads list or update UI here

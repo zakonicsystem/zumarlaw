@@ -87,7 +87,7 @@ const Account = () => {
                 }
                 // year: include only when set (non-empty)
                 if (selectedYear) params.append('year', String(selectedYear));
-                const url = `https://app.zumarlawfirm.com/accounts/summary?${params.toString()}`;
+                const url = `http://localhost:5000/accounts/summary?${params.toString()}`;
                 const res = await axios.get(url);
                 setSummary(res.data);
             } catch (err) {
@@ -125,7 +125,7 @@ const Account = () => {
         if (!modalOpen) return;
         const fetchModalData = async () => {
             try {
-                const res = await axios.get('https://app.zumarlawfirm.com/accounts/services-stats');
+                const res = await axios.get('http://localhost:5000/accounts/services-stats');
                 setModalDataByType(res.data);
             } catch (err) {
                 setModalDataByType({ converted: [], manual: [], processing: [] });

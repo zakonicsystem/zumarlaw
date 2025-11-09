@@ -61,7 +61,7 @@ const UserDashboard = () => {
       if (userInfo && userInfo._id) {
         const params = { userId: String(userInfo._id) };
         console.log('Calling notification API with params:', params);
-        axios.get('https://app.zumarlawfirm.com/serviceMessage', { params })
+        axios.get('http://localhost:5000/serviceMessage', { params })
           .then(res => {
             console.log('Fetched notifications:', res.data);
             setServiceMessages(res.data);
@@ -93,7 +93,7 @@ const UserDashboard = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
 
-      const response = await axios.get('https://app.zumarlawfirm.com/userpanel/services', {
+      const response = await axios.get('http://localhost:5000/userpanel/services', {
         headers: {
           Authorization: `Bearer ${token}`
         },
@@ -111,7 +111,7 @@ const UserDashboard = () => {
   // Helper to get certificate file URL (assuming backend saves filename in service.certificate)
   const getCertificateUrl = (service) => {
     if (!service.certificate) return null;
-    return `https://app.zumarlawfirm.com/uploads/${service.certificate}`;
+    return `http://localhost:5000/uploads/${service.certificate}`;
   };
 
   // View certificate handler
@@ -359,7 +359,7 @@ const UserDashboard = () => {
                               // Immediately fetch notifications for this service
                               if (userInfo && userInfo._id && service._id) {
                                 const params = { userId: String(userInfo._id), serviceId: String(service._id) };
-                                axios.get('https://app.zumarlawfirm.com/serviceMessage', { params })
+                                axios.get('http://localhost:5000/serviceMessage', { params })
                                   .then(res => {
                                     console.log('Fetched modal notifications (on bell click):', res.data);
                                     setModalServiceMessages(res.data);
@@ -637,7 +637,7 @@ const UserDashboard = () => {
                                 if (userInfo && userInfo._id && service._id) {
                                   const params = { userId: String(userInfo._id), serviceId: String(service._id) };
                                   axios
-                                    .get("https://app.zumarlawfirm.com/serviceMessage", { params })
+                                    .get("http://localhost:5000/serviceMessage", { params })
                                     .then(res => setModalServiceMessages(res.data))
                                     .catch(() => setModalServiceMessages([]));
                                 }

@@ -22,7 +22,7 @@ const EmployeeLogin = () => {
         setLoading(true);
 
         try {
-            const res = await axios.post("https://app.zumarlawfirm.com/employee-login", {
+            const res = await axios.post("http://localhost:5000/employee-login", {
                 email,
                 password
             });
@@ -126,7 +126,7 @@ const EmployeeLogin = () => {
                                     onClick={async () => {
                                         if (!resetEmail) return toast.error('Enter your email');
                                         try {
-                                            const res = await axios.post('https://app.zumarlawfirm.com/employee-forgot-password', { email: resetEmail });
+                                            const res = await axios.post('http://localhost:5000/employee-forgot-password', { email: resetEmail });
                                             setResetToken(res.data.resetToken);
                                             setResetStep(2);
                                             toast.success('Reset token generated. Check your email or paste below.');
@@ -160,7 +160,7 @@ const EmployeeLogin = () => {
                                     onClick={async () => {
                                         if (!resetToken || !newPassword) return toast.error('Fill all fields');
                                         try {
-                                            await axios.post('https://app.zumarlawfirm.com/employee-reset-password', { resetToken, newPassword });
+                                            await axios.post('http://localhost:5000/employee-reset-password', { resetToken, newPassword });
                                             toast.success('Password reset! You can now log in.');
                                             setShowResetModal(false);
                                             setResetStep(1);

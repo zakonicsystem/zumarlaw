@@ -112,6 +112,9 @@ export const getExpenses = async (req, res) => {
       obj.senderAccountNumber = obj.sender?.accountNumber || obj.senderAccountNumber;
       obj.senderAccountTitle = obj.sender?.accountTitle || obj.senderAccountTitle;
       obj.paymentMethod = obj.sender?.paymentMethod || obj.paymentMethod;
+      // Ensure subcategory and otherDetails are available at top-level for client compatibility
+      obj.expenseSubCategory = obj.expenseSubCategory || obj.subCategory || obj.subcategory;
+      obj.otherDetails = obj.otherDetails || obj.otherDetails;
       return obj;
     });
     res.json({ total, page: p, limit: l, data: expenses });
@@ -148,6 +151,9 @@ export const getAllSubmissions = async (req, res) => {
       obj.senderAccountNumber = obj.sender?.accountNumber || obj.senderAccountNumber;
       obj.senderAccountTitle = obj.sender?.accountTitle || obj.senderAccountTitle;
       obj.paymentMethod = obj.sender?.paymentMethod || obj.paymentMethod;
+      // Ensure subcategory and otherDetails are available at top-level for client compatibility
+      obj.expenseSubCategory = obj.expenseSubCategory || obj.subCategory || obj.subcategory;
+      obj.otherDetails = obj.otherDetails || obj.otherDetails;
       return obj;
     });
     res.json({ total, page: p, limit: l, data: expenses });

@@ -37,7 +37,7 @@ const SignUp = () => {
     }
 
     try {
-      const response = await axios.post('https://app.zumarlawfirm.com/auth/signup', {
+      const response = await axios.post('http://localhost:5000/auth/signup', {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
@@ -59,7 +59,7 @@ const SignUp = () => {
 
   const handleGoogleSignup = () => {
     toast.loading('Redirecting to Google...');
-    window.location.href = 'https://app.zumarlawfirm.com/auth/google';
+    window.location.href = 'http://localhost:5000/auth/google';
   };
 
   useEffect(() => {

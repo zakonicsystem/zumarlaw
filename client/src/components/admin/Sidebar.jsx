@@ -79,7 +79,7 @@ const Sidebar = () => {
 
     const handleLogout = async () => {
         try {
-            await axios.get('https://app.zumarlawfirm.com/admin/logout', { withCredentials: true });
+            await axios.get('http://localhost:5000/admin/logout', { withCredentials: true });
             localStorage.removeItem('adminToken');
             localStorage.removeItem('employeeToken');
             toast.success('Successfully logged out');
@@ -111,6 +111,7 @@ const Sidebar = () => {
                 { name: 'Converted Service', path: '/admin/services/converted', icon: <FaExchangeAlt /> },
                 { name: 'Manual Service', path: '/admin/services/manual', icon: <FaFileImport /> },
                 { name: 'Add Manual Service', path: '/admin/add-service', icon: <FaPlus /> },
+                        { name: 'Refunds Admin', path: '/admin/refunds', icon: <FaMoneyCheckAlt /> },
 
             ]
         },

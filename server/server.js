@@ -30,6 +30,8 @@ import convertedServiceRoutes from './routes/convertedService.js';
 import adminServiceStats from './routes/adminServiceStats.js'; // Import the new route
 import latestCompletedServices from './routes/latestCompletedServices.js';
 import attendanceRoutes from './routes/attendance.js';
+import refundRoutes from './routes/refund.js';
+import smsRoutes from './routes/sms.js';
 
 import './config/passport.js';
 import path from 'path';
@@ -95,6 +97,8 @@ app.use('/admin', adminServiceStats); // Register the new route
 app.use('/admin', latestCompletedServices); // Register the latestCompletedServices route
 app.use('/accounts', accountsRouter);
 app.use('/expense', expenseRouter);
+app.use('/refund', refundRoutes);
+app.use('/sms', smsRoutes);
 app.use('/attendance', attendanceRoutes); // Register attendance routes
 app.get('/test', (req, res) => res.json({ test: 'server ok' }));
 
@@ -118,3 +122,4 @@ mongoose.connect(process.env.MONGO_URI)
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
 export default app;
+// I Want to CHange Expense Form Remove Salary In Expense And Also I Want to Make Logic Like this Add One More Page ANd SHow Data Like this The Roles Which Are Admin , CEO , Director And Branch manager Are Only Eligible Expense Page And Only CEO and Admin are Eligible To see Data Of Submit By Expense Page On A New Page We Make For See Data. But Logic Is Fields Of Exxpense Form Are Sender information , name , Email , Phone Number , Type Of Expense , Wood work , Beverage , Billing , Other If Select Other Show A Text Area In WHich Write Type Of Expense , Date , Amount And Branch . ANd These All Data Are SHow On Page Only View By Admin or CEO . Make This logic Frontend And Backend . 
