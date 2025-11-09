@@ -21,7 +21,7 @@ const RefundsAdmin = () => {
     setLoading(true);
     try {
       // Fetch refunds without attaching any auth header (public read)
-      const res = await axios.get('http://localhost:5000/refund');
+      const res = await axios.get('https://app.zumarlawfirm.com/refund');
       setRefunds(res.data || []);
     } catch (err) {
       console.error('Failed to fetch refunds', err);
@@ -43,7 +43,7 @@ const RefundsAdmin = () => {
     if (!window.confirm('Delete this refund? This action cannot be undone.')) return;
     try {
       // Allow public deletion (server also updated). No auth headers attached.
-      await axios.delete(`http://localhost:5000/refund/${id}`);
+      await axios.delete(`https://app.zumarlawfirm.com/refund/${id}`);
       toast.success('Refund deleted');
       setRefunds(prev => prev.filter(r => r._id !== id));
     } catch (err) {

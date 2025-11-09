@@ -18,8 +18,8 @@ const Expense = () => {
     try {
       const token = localStorage.getItem('token');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.put(`http://localhost:5000/expense/${id}`, { type: editType, amount: parseFloat(editAmount) }, cfg);
-  const expenseRes = await axios.get('http://localhost:5000/expense', cfg);
+      await axios.put(`https://app.zumarlawfirm.com/expense/${id}`, { type: editType, amount: parseFloat(editAmount) }, cfg);
+  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
   const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
   setExpenses(expenseData);
       setEditIdx(null);
@@ -35,8 +35,8 @@ const Expense = () => {
     try {
       const token = localStorage.getItem('token');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.delete(`http://localhost:5000/expense/${id}`, cfg);
-  const expenseRes = await axios.get('http://localhost:5000/expense', cfg);
+      await axios.delete(`https://app.zumarlawfirm.com/expense/${id}`, cfg);
+  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
   const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
   setExpenses(expenseData);
       setMessage('Expense deleted successfully!');
@@ -79,7 +79,7 @@ const Expense = () => {
         // whoami to get role (only if token exists) to avoid unnecessary 401s
         if (token && token !== 'null') {
           try {
-            const who = await axios.get('http://localhost:5000/auth/whoami', cfg);
+            const who = await axios.get('https://app.zumarlawfirm.com/auth/whoami', cfg);
             setRole(who.data.user?.role || null);
           } catch (e) {
             // if whoami fails even with token, clear role
@@ -90,10 +90,10 @@ const Expense = () => {
           setRole(null);
         }
 
-        const profitRes = await axios.get('http://localhost:5000/accounts/summary');
+        const profitRes = await axios.get('https://app.zumarlawfirm.com/accounts/summary');
         setProfit(profitRes.data.totalProfit || 0);
 
-        const expenseRes = await axios.get('http://localhost:5000/expense', cfg);
+        const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
         const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
         setExpenses(expenseData);
       } catch (err) {
@@ -164,8 +164,8 @@ const Expense = () => {
       };
       const token = localStorage.getItem('token');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.post('http://localhost:5000/expense', payload, cfg);
-  const expenseRes = await axios.get('http://localhost:5000/expense', cfg);
+      await axios.post('https://app.zumarlawfirm.com/expense', payload, cfg);
+  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
   const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
   setExpenses(expenseData);
       setForm({

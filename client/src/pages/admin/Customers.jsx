@@ -19,7 +19,7 @@ const Customers = () => {
 
   const fetchSingleUser = async (id) => {
     try {
-      const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const base = import.meta.env.VITE_API_URL || 'https://app.zumarlawfirm.com';
       const url = `${base.replace(/\/$/, '')}/admin/customers/${id}`;
       const res = await axios.get(url, { headers: getAuthHeaders() });
       if (res && res.data) {
@@ -38,7 +38,7 @@ const Customers = () => {
   useEffect(() => {
     const fetchUsers = async () => {
   try {
-  const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_URL || 'https://app.zumarlawfirm.com';
   const url = `${base.replace(/\/$/, '')}/admin/customers`;
   const res = await axios.get(url);
     console.log('Fetched customers:', res.data);
@@ -96,7 +96,7 @@ const Customers = () => {
                   const userId = confirmResetId;
                   setConfirmResetId(null);
                   try {
-                    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                    const base = import.meta.env.VITE_API_URL || 'https://app.zumarlawfirm.com';
                     const url = `${base.replace(/\/$/, '')}/admin/customers/${userId}/reset-password`;
                     const res = await axios.post(url, {}, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } });
                     if (res && res.data && res.data.newPassword) {

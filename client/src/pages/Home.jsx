@@ -24,7 +24,7 @@ const Home = () => {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/announcements');
+        const res = await axios.get('https://app.zumarlawfirm.com/announcements');
         setAnnouncements(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         setAnnouncements([]);
@@ -73,7 +73,7 @@ const Home = () => {
 
       const verifyUser = async () => {
         try {
-          const res = await fetch('http://localhost:5000/auth/verify-user', {
+          const res = await fetch('https://app.zumarlawfirm.com/auth/verify-user', {
             headers: {
               Authorization: `Bearer ${token}`,
             },

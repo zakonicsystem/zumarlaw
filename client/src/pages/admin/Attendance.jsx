@@ -13,7 +13,7 @@ const Attendance = () => {
 
   useEffect(() => {
     let mounted = true;
-    axios.get('http://localhost:5000/admin/roles')
+    axios.get('https://app.zumarlawfirm.com/admin/roles')
       .then(res => {
         if (!mounted) return;
         setEmployees(res.data);
@@ -33,7 +33,7 @@ const Attendance = () => {
         params.month = opts.month;
       }
       if (opts.employeeId) params.employeeId = opts.employeeId;
-      const res = await axios.get('http://localhost:5000/attendance/history', { params });
+      const res = await axios.get('https://app.zumarlawfirm.com/attendance/history', { params });
       // If employeeId provided, we just set/merge for that employee
       if (opts.employeeId) {
         // merge into attendanceHistory: remove existing for that employee then add
@@ -83,7 +83,7 @@ const Attendance = () => {
   const handleEditAttendance = async (id, date, status) => {
     setMarking(true);
     try {
-      await axios.patch('http://localhost:5000/attendance/edit', {
+      await axios.patch('https://app.zumarlawfirm.com/attendance/edit', {
         employeeId: id,
         date,
         present: status === 'present',
