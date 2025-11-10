@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { serviceData } from '../data/serviceSchemas';
 import jsPDF from 'jspdf';
 import axios from 'axios';
@@ -6,6 +7,8 @@ import { FaEye, FaDownload, FaMoneyBillWave, FaUserCheck, FaRegFileAlt, FaBell }
 
 
 const UserDashboard = () => {
+    const navigate = useNavigate();
+  
   // Add missing state for message sending
   const [messageText, setMessageText] = useState('');
   const [messageType, setMessageType] = useState('update');
@@ -256,6 +259,15 @@ const UserDashboard = () => {
               Hey {userInfo?.firstName || 'User'} 👋
             </h2>
             <p className="text-gray-500 mt-1">Welcome to your Dashboard</p>
+          </div>
+          <div className="mt-3 md:mt-0 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/refund')}
+              className="bg-[#57123f] text-white rounded-full px-4 py-2 text-sm font-semibold shadow-md hover:opacity-95"
+            >
+              Request Refund
+            </button>
           </div>
         </div>
       </div>

@@ -146,6 +146,15 @@ const Home = () => {
             </h2>
             <p className="text-gray-600 text-lg md:text-xl">Select your Services</p>
           </div>
+          <div className="mt-4 md:mt-0">
+            <button
+              type="button"
+              onClick={() => navigate('/refund')}
+              className="bg-[#57123f] text-white rounded-full px-4 py-2 text-sm font-semibold shadow-md hover:opacity-95"
+            >
+              Request Refund
+            </button>
+          </div>
         </div>
       </div>
       <Services />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState , useEffect } from 'react';
 import ServiceCard from './ServiceCard';
 import NTNSalaried from '../assets/icons/NTN-Salaried.svg'
 import NTNPartner from '../assets/icons/NTN -partnership.svg'
@@ -298,6 +298,15 @@ const services = [
 const Services = () => {
   const [selectedTab, setSelectedTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile width to switch tabs layout to a select dropdown
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // Filter services based on search query
   const filteredServices = services.filter(service =>
@@ -337,30 +346,49 @@ const Services = () => {
       </div>
 
       {/* Category Tabs */}
-      <div className="mb-8 overflow-x-auto">
-        <div className="flex gap-2 text-xs pb-2">
-          <button
-            onClick={() => setSelectedTab("All")}
-            className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${selectedTab === "All"
-              ? "bg-[#57123f] text-white"
-              : "bg-[#ecd4bc] bg-opacity-20 text-[#57123f] hover:bg-opacity-30"
-              }`}
-          >
-            All Services
-          </button>
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedTab(category)}
-              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${selectedTab === category
-                ? "bg-[#57123f] text-white"
-                : "bg-[#ecd4bc] bg-opacity-20 text-[#57123f] hover:bg-opacity-30"
-                }`}
+      <div className="mb-8">
+        {isMobile ? (
+          <div className="w-full">
+            <label htmlFor="service-category" className="sr-only">Select category</label>
+            <select
+              id="service-category"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#57123f]"
+              value={selectedTab}
+              onChange={(e) => setSelectedTab(e.target.value)}
             >
-              {category}
-            </button>
-          ))}
-        </div>
+              <option value="All">All Services</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="mb-8 overflow-x-auto">
+            <div className="flex gap-2 text-xs pb-2">
+              <button
+                onClick={() => setSelectedTab("All")}
+                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${selectedTab === "All"
+                  ? "bg-[#57123f] text-white"
+                  : "bg-[#ecd4bc] bg-opacity-20 text-[#57123f] hover:bg-opacity-30"
+                  }`}
+              >
+                All Services
+              </button>
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedTab(category)}
+                  className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors ${selectedTab === category
+                    ? "bg-[#57123f] text-white"
+                    : "bg-[#ecd4bc] bg-opacity-20 text-[#57123f] hover:bg-opacity-30"
+                    }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
 
