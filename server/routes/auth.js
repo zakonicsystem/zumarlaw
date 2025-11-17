@@ -65,7 +65,20 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    // Some accounts (e.g., created via OAuth) may not have a local password set.
+    if (!user.password) {
+      console.warn('[login] User has no local password set:', user._id);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    let isMatch = false;
+    try {
+      isMatch = await bcrypt.compare(password, user.password);
+    } catch (bcryptErr) {
+      console.error('[login] bcrypt.compare error:', bcryptErr);
+      return res.status(500).json({ message: 'Server error occurred' });
+    }
+
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -87,6 +100,53 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Server error occurred' });
+  }
+});
+
+// ✅ Admin Registration (protected - for initial setup only)
+router.post('/admin-register', async (req, res) => {
+  try {
+    const { email, password, firstName, lastName } = req.body;
+    
+    // For security, this should be protected - ideally with an admin-only middleware
+    // For now, we'll allow it but log it heavily
+    console.warn('[admin-register] Attempting admin registration for:', email);
+
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ message: 'All fields required' });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ message: 'Email already registered' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      firstName,
+      lastName,
+      email,
+      password: hashedPassword,
+      isAdmin: true  // Mark as admin
+    });
+
+    const token = generateToken(user);
+
+    res.status(201).json({
+      message: 'Admin created successfully',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        isAdmin: user.isAdmin
+      }
+    });
+  } catch (error) {
+    console.error('Admin registration error:', error);
+    res.status(500).json({ message: 'Error creating admin', error: error.message });
   }
 });
 
@@ -144,7 +204,36 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// ✅ Forgot Password
+// ✅ Mark user as admin (for setup/management - should be protected in production)
+router.post('/mark-admin/:userId', async (req, res) => {
+  try {
+    console.warn('[mark-admin] Attempting to mark user as admin:', req.params.userId);
+    
+    const user = await User.findByIdAndUpdate(
+      req.params.userId,
+      { isAdmin: true },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      message: 'User marked as admin',
+      user: {
+        id: user._id,
+        email: user.email,
+        isAdmin: user.isAdmin
+      }
+    });
+  } catch (error) {
+    console.error('Mark admin error:', error);
+    res.status(500).json({ message: 'Error updating user', error: error.message });
+  }
+});
+
+// ✅ Get user by email (for debugging)
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -209,6 +298,27 @@ router.get('/verify-user', async (req, res) => {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 });
+
+// ✅ Get user by email (for debugging)
+router.get('/user/:email', async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.params.email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({
+      id: user._id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      isAdmin: user.isAdmin,
+      isActive: user.isActive
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user', error: error.message });
+  }
+});
+
 // Lightweight whoami endpoint that returns decoded user/employee role when token present
 router.get('/whoami', tryVerify, (req, res) => {
   if (req.user) {

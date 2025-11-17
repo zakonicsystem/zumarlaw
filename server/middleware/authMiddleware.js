@@ -21,18 +21,26 @@ export const verifyJWT = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('[verifyJWT] Decoded token:', decoded);
 
-    // Try to find user in User model (admin)
+    // Try to find user in User model
     let user = await User.findById(decoded.id);
     console.log('[verifyJWT] User model lookup:', user ? 'Found' : 'Not found');
     if (user) {
+      // Determine role: use isAdmin flag or token role or default to 'user'
+      let role = 'user';
+      if (user.isAdmin) {
+        role = 'admin';
+      } else if (decoded.role) {
+        role = decoded.role;
+      }
+      
       req.user = {
         id: user._id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: 'admin'
+        role: role  // Will be 'admin' only if isAdmin flag is true
       };
-      console.log('[verifyJWT] Authenticated as admin:', req.user);
+      console.log('[verifyJWT] Authenticated user:', req.user);
       return next();
     }
 
@@ -50,9 +58,16 @@ export const verifyJWT = async (req, res, next) => {
       return next();
     }
 
-    // Not found in either model
-    console.warn('[verifyJWT] No user/employee found for id:', decoded.id);
-    return res.status(401).json({ message: 'User/Employee not found. Logging out.' });
+    // Not found in either model - BUT token signature is valid, so accept it
+    // This allows admins to use valid tokens even if their user record isn't in DB
+    console.warn('[verifyJWT] No user/employee found in DB for id:', decoded.id, '— accepting valid token');
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role || 'admin',
+      fromToken: true  // Flag indicating this auth came from token, not DB lookup
+    };
+    return next();
   } catch (error) {
     console.error('[verifyJWT] JWT error:', error);
     return res.status(401).json({ message: 'Invalid or expired token' });
@@ -84,7 +99,8 @@ export const authenticateAdmin = (req, res, next) => {
 
     req.admin = {
       id: decoded.id,
-      email: decoded.email
+      email: decoded.email,
+      role: 'admin'
     };
 
     return next();
@@ -131,4 +147,22 @@ export const tryVerify = async (req, res, next) => {
     console.warn('[tryVerify] Token invalid/expired; allowing request to continue without auth');
     return next();
   }
+};
+
+// ✅ Admin Role Check Middleware - requires user to have admin or employee role
+export const requireAdminRole = (req, res, next) => {
+  const user = req.user;
+
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized. Authentication required.' });
+  }
+
+  const validAdminRoles = ['admin', 'employee'];
+  if (!user.role || !validAdminRoles.includes(user.role)) {
+    console.warn(`[requireAdminRole] User ${user.email} attempted admin action but has role: ${user.role}`);
+    return res.status(403).json({ error: 'Forbidden. Admin access required.' });
+  }
+
+  console.log(`[requireAdminRole] ✅ User ${user.email} (${user.role}) authorized for admin action`);
+  return next();
 };

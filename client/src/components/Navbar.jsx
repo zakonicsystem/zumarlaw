@@ -47,6 +47,12 @@ const Navbar = () => {
             <Link to="/userpanel" className={getLinkStyles('/userpanel')}>
               <FaTachometerAlt className="text-2xl" />
             </Link>
+            <Link to="/chat" className={getLinkStyles('/chat')} title="Support Chat">
+              <span className="relative flex items-center">
+                <FaUserCircle className="text-2xl" />
+                <span className="ml-2 text-sm font-semibold">Chat</span>
+              </span>
+            </Link>
             <button
               onClick={handleLogout}
               className={getLinkStyles('/logout')}

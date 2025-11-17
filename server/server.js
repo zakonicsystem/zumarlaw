@@ -32,6 +32,7 @@ import latestCompletedServices from './routes/latestCompletedServices.js';
 import attendanceRoutes from './routes/attendance.js';
 import refundRoutes from './routes/refund.js';
 import smsRoutes from './routes/sms.js';
+import chatRoutes from './routes/chat.js';
 
 import './config/passport.js';
 import path from 'path';
@@ -99,6 +100,7 @@ app.use('/accounts', accountsRouter);
 app.use('/expense', expenseRouter);
 app.use('/refund', refundRoutes);
 app.use('/sms', smsRoutes);
+app.use('/chat', chatRoutes);
 app.use('/attendance', attendanceRoutes); // Register attendance routes
 app.get('/test', (req, res) => res.json({ test: 'server ok' }));
 

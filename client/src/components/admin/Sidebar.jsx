@@ -6,7 +6,7 @@ import logo from '../../assets/ZumarLogo.png';
 import {
     FaTachometerAlt, FaUsers, FaTasks, FaSignOutAlt, FaBars, FaMoneyCheckAlt,
     FaUserShield, FaUserFriends, FaUserCog, FaChevronDown, FaPlus,
-    FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck
+    FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck, FaComments
 } from 'react-icons/fa';
 import { jwtDecode } from 'jwt-decode';
 
@@ -111,8 +111,7 @@ const Sidebar = () => {
                 { name: 'Converted Service', path: '/admin/services/converted', icon: <FaExchangeAlt /> },
                 { name: 'Manual Service', path: '/admin/services/manual', icon: <FaFileImport /> },
                 { name: 'Add Manual Service', path: '/admin/add-service', icon: <FaPlus /> },
-                        { name: 'Refunds Admin', path: '/admin/refunds', icon: <FaMoneyCheckAlt /> },
-
+                { name: 'Refund Management', path: '/admin/refund-management', icon: <FaMoneyCheckAlt /> },
             ]
         },
         {
@@ -130,6 +129,7 @@ const Sidebar = () => {
             ]
         },
         { name: 'Customers', icon: <FaUsers />, path: '/admin/customers' },
+        { name: 'Support Chat', icon: <FaComments />, path: '/admin/chat' },
         {
             name: 'Account', icon: <FaUserCog />, path: '/admin/account',
             children: [
@@ -137,7 +137,6 @@ const Sidebar = () => {
                 { name: 'Expense Submissions', icon: <FaMoneyCheckAlt />, path: '/admin/expense-submissions' }
             ]
         },
-
     ];
 
     const menuItems = allMenuItems.map(item => {

@@ -34,7 +34,7 @@ import Account from './pages/admin/Account';
 import Expense from './pages/admin/Expense';
 import ExpenseSubmissions from './pages/admin/ExpenseSubmissions';
 import Refund from './pages/Refund';
-import RefundsAdmin from './pages/admin/RefundsAdmin';
+import MyRefundRequests from './pages/MyRefundRequests';
 import AuthRedirectHandler from './components/AuthRedirectHandler';
 import ConvertedService from './pages/admin/ConvertedService';
 import NewEmployee from './pages/admin/NewEmployee';
@@ -43,6 +43,9 @@ import FollowUpLeads from './pages/admin/FollowupLeads';
 import MatureLeads from './pages/admin/MatureLeads';
 import ContactedLeads from './pages/admin/ContactedLeads';
 import Attendance from './pages/admin/Attendance';
+import RefundManagement from './pages/admin/RefundManagement';
+import UserChat from './pages/UserChat';
+import AdminChat from './pages/admin/AdminChat';
 
 const AppContent = () => {
   const location = useLocation();
@@ -64,6 +67,16 @@ const AppContent = () => {
         />
         <Route path="/add-details/:serviceTitle" element={<AddServiceDetails />} />
         <Route path="/refund" element={<Refund />} />
+        <Route path="/my-refund-requests" element={
+          <UserPrivateRoute>
+            <MyRefundRequests />
+          </UserPrivateRoute>
+        } />
+        <Route path="/chat" element={
+          <UserPrivateRoute>
+            <UserChat />
+          </UserPrivateRoute>
+        } />
         <Route path="/userpanel" element={<UserDashboard />} />
         {/* User Protected Route */}
         <Route path="/" element={
@@ -98,7 +111,6 @@ const AppContent = () => {
           <Route path="/admin/account" element={<EmployeeProtectedRoute><Account /></EmployeeProtectedRoute>} />
           <Route path="/admin/expense" element={<EmployeeProtectedRoute><Expense /></EmployeeProtectedRoute>} />
           <Route path="/admin/expense-submissions" element={<EmployeeProtectedRoute><ExpenseSubmissions /></EmployeeProtectedRoute>} />
-          <Route path="/admin/refunds" element={<EmployeeProtectedRoute><RefundsAdmin /></EmployeeProtectedRoute>} />
           <Route path="/admin/roles/add" element={<EmployeeProtectedRoute><NewEmployee /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/followup' element={<EmployeeProtectedRoute><FollowUpLeads /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/mature' element={<EmployeeProtectedRoute><MatureLeads /></EmployeeProtectedRoute>} />
@@ -108,6 +120,8 @@ const AppContent = () => {
           <Route path="/admin/services/converted" element={<EmployeeProtectedRoute><ConvertedService /></EmployeeProtectedRoute>} />
 
           <Route path='/admin/attendance' element={<EmployeeProtectedRoute><Attendance /></EmployeeProtectedRoute>} />
+          <Route path='/admin/refund-management' element={<EmployeeProtectedRoute><RefundManagement /></EmployeeProtectedRoute>} />
+          <Route path='/admin/chat' element={<AdminChat />} />
         </Route>
       </Routes>
     </>

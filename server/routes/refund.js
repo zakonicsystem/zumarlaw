@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
-import { createRefund, getRefunds, getRefund, deleteRefund } from '../controllers/refundController.js';
-import { tryVerify, verifyJWT } from '../middleware/authMiddleware.js';
+import { createRefund, getRefunds, getRefund, updateRefundStatus, deleteRefund, updateRefundDetails } from '../controllers/refundController.js';
+import { tryVerify, verifyJWT, requireAdminRole } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -19,11 +19,17 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Public submission (non-blocking tryVerify so token optional)
-router.post('/', tryVerify, upload.single('evidence'), createRefund);
+router.post('/', tryVerify, upload.single('paymentEvidence'), createRefund);
+
+// Update refund details (user adds refund info after admin approval)
+router.put('/:id/details', tryVerify, upload.single('paymentEvidence'), updateRefundDetails);
 
 // Read endpoints: allow optional auth so admin users can be attached but public reads are allowed
 router.get('/', tryVerify, getRefunds);
 router.get('/:id', tryVerify, getRefund);
+
+// Update status (admin only - requires valid JWT token)
+router.put('/:id/status', verifyJWT, requireAdminRole, updateRefundStatus);
 
 // Delete is allowed for any user (per product request) — no authentication middleware
 router.delete('/:id', deleteRefund);
