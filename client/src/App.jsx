@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
-
+import ChallanManagement from './pages/admin/ChallanManagement';
 import UserPrivateRoute from './routes/UserPrivateRoute';
 import AdminPrivateRoute from './routes/AdminPrivareRoute';
 import EmployeeProtectedRoute from './routes/EmployeeProtectedRoute';
@@ -39,6 +39,7 @@ import AuthRedirectHandler from './components/AuthRedirectHandler';
 import ConvertedService from './pages/admin/ConvertedService';
 import NewEmployee from './pages/admin/NewEmployee';
 import ManualService from './pages/admin/ManualService';
+import MergeService from './pages/admin/Mergeservices';
 import FollowUpLeads from './pages/admin/FollowupLeads';
 import MatureLeads from './pages/admin/MatureLeads';
 import ContactedLeads from './pages/admin/ContactedLeads';
@@ -116,12 +117,14 @@ const AppContent = () => {
           <Route path='/admin/leads/mature' element={<EmployeeProtectedRoute><MatureLeads /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/contacted' element={<EmployeeProtectedRoute><ContactedLeads /></EmployeeProtectedRoute>} />
           <Route path='/admin/services/manual' element={<EmployeeProtectedRoute><ManualService /></EmployeeProtectedRoute>} />
+          <Route path='/admin/services/merged' element={<EmployeeProtectedRoute><MergeService /></EmployeeProtectedRoute>} />
 
           <Route path="/admin/services/converted" element={<EmployeeProtectedRoute><ConvertedService /></EmployeeProtectedRoute>} />
 
           <Route path='/admin/attendance' element={<EmployeeProtectedRoute><Attendance /></EmployeeProtectedRoute>} />
           <Route path='/admin/refund-management' element={<EmployeeProtectedRoute><RefundManagement /></EmployeeProtectedRoute>} />
           <Route path='/admin/chat' element={<AdminChat />} />
+          <Route path='/admin/challan' element={< ChallanManagement/>} />
         </Route>
       </Routes>
     </>

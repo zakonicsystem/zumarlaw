@@ -38,7 +38,8 @@ const NewEmployee = ({ onEmployeeAdded }) => {
       children: [
         { label: 'Service Processing', path: '/admin/services' },
         { label: 'Converted Services', path: '/admin/services/converted' },
-        { label: 'Manual Services', path: '/admin/services/manual' },
+            { label: 'Manual Services', path: '/admin/services/manual' },
+            { label: 'Merged Services', path: '/admin/services/merged' },
         { label: 'Add Manual Service', path: '/admin/add-service' },
         { label: 'Refunds Admin', path: '/admin/refunds' },
       ]

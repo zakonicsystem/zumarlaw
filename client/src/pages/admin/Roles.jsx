@@ -27,6 +27,7 @@ const pages = [
       { label: 'Service Processing', path: '/admin/services' },
       { label: 'Converted Services', path: '/admin/services/converted' },
       { label: 'Manual Services', path: '/admin/services/manual' },
+      { label: 'Merged Services', path: '/admin/services/merged' },
       { label: 'Add Manual Service', path: '/admin/add-service' },
       { label: 'Refunds Admin', path: '/admin/refunds' },
     ]
@@ -156,6 +157,7 @@ const Roles = () => {
     '/admin/leads': 'Leads Management',
     '/admin/leads/add': 'Leads Management',
     '/admin/leads/import': 'Leads Management',
+    '/admin/services/merged': 'Service Processing',
   };
 
   return (
