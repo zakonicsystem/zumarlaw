@@ -556,6 +556,13 @@ const AddServiceDetails = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Validate required top inputs before starting submission
+    const { name, email, phone, cnic } = personalDetails || {};
+    if (!name || !email || !phone || !cnic) {
+      toast.error('Please fill Name, Email, CNIC and Phone before submitting');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -640,35 +647,47 @@ const AddServiceDetails = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <input
             name="name"
+            value={personalDetails.name}
             onChange={handleInputChange}
             className="border rounded p-3"
             type='text'
             placeholder="Add Full Name"
+            required
+            aria-required="true"
           />
 
           <input
             name="email"
             type='email'
+            value={personalDetails.email}
             onChange={handleInputChange}
             className="border rounded p-3"
             placeholder="Add Email"
+            required
+            aria-required="true"
           />
 
           <input
             name="cnic"
             type='text'
+            value={personalDetails.cnic}
             onChange={handleInputChange}
             className="border rounded p-3"
             placeholder="CNIC : *************"
+            required
+            aria-required="true"
           />
 
           <div className="flex items-center border rounded p-3">
             <input
               name="phone"
               type='tel'
+              value={personalDetails.phone}
               onChange={handleInputChange}
               className="flex-1 outline-none"
               placeholder="Phone : ************"
+              required
+              aria-required="true"
             />
           </div>
         </div>
