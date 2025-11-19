@@ -37,6 +37,7 @@ import chatRoutes from './routes/chat.js';
 import './config/passport.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -75,7 +76,12 @@ app.use('/admin', roleRoutes);
 
 app.use(cookieParser());
 app.use('/autoSalary', autoSalaryRoutes);
-app.use('/uploads', express.static('uploads'));
+// Ensure uploads directory exists and serve it statically
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
 app.use('/admin', manualServiceRoutes);
 app.use('/admin', adminServiceRoutes);
 app.use('/serviceMessage', serviceMessageRoutes);

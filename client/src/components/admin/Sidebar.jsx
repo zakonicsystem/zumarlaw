@@ -110,6 +110,7 @@ const Sidebar = () => {
             children: [
                 { name: 'Converted Service', path: '/admin/services/converted', icon: <FaExchangeAlt /> },
                 { name: 'Manual Service', path: '/admin/services/manual', icon: <FaFileImport /> },
+                { name: 'Merged Services', path: '/admin/services/merged', icon: <FaFileImport /> },
                 { name: 'Add Manual Service', path: '/admin/add-service', icon: <FaPlus /> },
                 { name: 'Refund Management', path: '/admin/refund-management', icon: <FaMoneyCheckAlt /> },
             ]
@@ -134,7 +135,8 @@ const Sidebar = () => {
             name: 'Account', icon: <FaUserCog />, path: '/admin/account',
             children: [
                 { name: 'Expense', icon: <FaMoneyCheckAlt />, path: '/admin/expense' },
-                { name: 'Expense Submissions', icon: <FaMoneyCheckAlt />, path: '/admin/expense-submissions' }
+                { name: 'Expense Submissions', icon: <FaMoneyCheckAlt />, path: '/admin/expense-submissions' },
+                { name: 'Challan', icon: <FaMoneyCheckAlt />, path: '/admin/challan' }
             ]
         },
     ];

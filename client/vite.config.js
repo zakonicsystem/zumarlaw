@@ -15,7 +15,7 @@ export default defineConfig({
       '/processing': 'https://app.zumarlawfirm.com', // <-- add this line
       '/uploads': 'https://app.zumarlawfirm.com',
       '/accounts': 'https://app.zumarlawfirm.com',
-      '/autoSalary': 'http://localhost:5000',
+      '/autoSalary': 'https://app.zumarlawfirm.com',
     },
   },
 })

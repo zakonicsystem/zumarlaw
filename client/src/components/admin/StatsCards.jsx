@@ -1,14 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FaUsers, FaBoxOpen, FaChartLine, FaClock } from 'react-icons/fa';
-import { FiArrowUpRight, FiArrowDownRight } from 'react-icons/fi';
 import axios from 'axios';
-
-const statIcons = {
-  "New Leads": <FaUsers className="text-[#57123f]" />,
-  "Services Booked": <FaBoxOpen className="text-[#57123f]" />,
-  "Total Sales": <FaChartLine className="text-[#57123f]" />,
-  "Pending Cases": <FaClock className="text-[#57123f]" />,
-};
 
 const FILTERS = [
   { label: 'Day', value: 'day' },

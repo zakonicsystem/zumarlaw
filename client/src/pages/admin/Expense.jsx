@@ -16,12 +16,12 @@ const Expense = () => {
 
   const handleUpdate = async (id) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token') || localStorage.getItem('employeeToken');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
       await axios.put(`https://app.zumarlawfirm.com/expense/${id}`, { type: editType, amount: parseFloat(editAmount) }, cfg);
-  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
-  const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
-  setExpenses(expenseData);
+      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+      const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
+      setExpenses(expenseData);
       setEditIdx(null);
       setEditType('');
       setEditAmount('');
@@ -33,19 +33,18 @@ const Expense = () => {
 
   const handleDelete = async (id) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token') || localStorage.getItem('employeeToken');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
       await axios.delete(`https://app.zumarlawfirm.com/expense/${id}`, cfg);
-  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
-  const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
-  setExpenses(expenseData);
+      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+      const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
+      setExpenses(expenseData);
       setMessage('Expense deleted successfully!');
     } catch (err) {
       setMessage('Failed to delete expense');
     }
   };
   const [expenses, setExpenses] = useState([]);
-  const [role, setRole] = useState(null);
   const [profit, setProfit] = useState(0);
   const [form, setForm] = useState({
     senderName: '',
@@ -72,23 +71,8 @@ const Expense = () => {
     // Fetch profit and expenses from backend
     const fetchData = async () => {
       try {
-        // prepare config (may include token)
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('adminToken') || localStorage.getItem('token') || localStorage.getItem('employeeToken');
         const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-
-        // whoami to get role (only if token exists) to avoid unnecessary 401s
-        if (token && token !== 'null') {
-          try {
-            const who = await axios.get('https://app.zumarlawfirm.com/auth/whoami', cfg);
-            setRole(who.data.user?.role || null);
-          } catch (e) {
-            // if whoami fails even with token, clear role
-            setRole(null);
-          }
-        } else {
-          // no token: ensure role is null and skip calling whoami
-          setRole(null);
-        }
 
         const profitRes = await axios.get('https://app.zumarlawfirm.com/accounts/summary');
         setProfit(profitRes.data.totalProfit || 0);
@@ -162,12 +146,12 @@ const Expense = () => {
         expenseDate: form.expenseDate || undefined,
         branch: form.branch || undefined,
       };
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token') || localStorage.getItem('employeeToken');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
       await axios.post('https://app.zumarlawfirm.com/expense', payload, cfg);
-  const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
-  const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
-  setExpenses(expenseData);
+      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+      const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
+      setExpenses(expenseData);
       setForm({
         senderName: '',
         senderEmail: '',
@@ -195,12 +179,8 @@ const Expense = () => {
 
   return (
     <div>
-      {role && !(['Admin', 'CEO', 'Director', 'Branch Manager'].includes(role)) && (
-        <div className="p-6 text-red-600">You are not authorized to access the Expense page.</div>
-      )}
-      {!role || (['Admin', 'CEO', 'Director', 'Branch Manager'].includes(role)) ? (
-        <div className="max-w-5xl rounded-2xl">
-          <h2 className="text-3xl font-bold mb-8 text-[#57123f] text-center">Expense Management</h2>
+      <div className="max-w-5xl rounded-2xl">
+        <h2 className="text-3xl font-bold mb-8 text-[#57123f] text-center">Expense Management</h2>
           <div className="flex gap-8 mb-8">
             <div className="bg-green-100 text-green-800 rounded-xl p-4 shadow font-bold text-lg">
               Profit After Expenses: Rs {netProfit}
@@ -209,9 +189,7 @@ const Expense = () => {
               Total Expenses (Paid): Rs {totalExpensesPaid}
             </div>
             <div className="ml-auto">
-              {role && (['Admin', 'CEO'].includes(role)) && (
-                <Link to="/admin/expense-submissions" className="bg-[#57123f] text-white px-4 py-2 rounded">View Submissions</Link>
-              )}
+              <Link to="/admin/expense-submissions" className="bg-[#57123f] text-white px-4 py-2 rounded">View Submissions</Link>
             </div>
           </div>
           <form onSubmit={handleSubmit} className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-xl shadow-2xl ">
@@ -348,7 +326,7 @@ const Expense = () => {
               <label className="block font-medium mb-1">Amount</label>
               <input type="number" name="amount" value={form.amount} onChange={handleChange} className="w-full border rounded px-3 py-2" min="0" />
             </div>
-           
+
 
             {/* Account Details */}
             <div className="md:col-span-2">
@@ -384,7 +362,6 @@ const Expense = () => {
             </div>
           </form>
         </div>
-      ) : null}
     </div>
   );
 };

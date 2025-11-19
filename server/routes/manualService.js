@@ -32,8 +32,13 @@ router.post('/:id/send-invoice', async (req, res) => {
     // Only attach certificate
     let attachments = [];
     if (submission.certificate) {
-      const certPath = path.join('uploads', submission.certificate);
-      attachments.push({ filename: submission.certificate, path: certPath });
+      const uploadsPath = path.join(process.cwd(), 'uploads');
+      const certPath = path.join(uploadsPath, submission.certificate);
+      if (fs.existsSync(certPath)) {
+        attachments.push({ filename: submission.certificate, path: certPath });
+      } else {
+        console.warn(`Certificate file not found for submission ${req.params.id}: ${certPath}`);
+      }
     }
 
     // Send email to user (Gmail, not SMTP)
@@ -45,15 +50,19 @@ router.post('/:id/send-invoice', async (req, res) => {
       }
     });
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: submission.email,
-      subject: `Your Certificate for ${submission.serviceType || submission.service || ''}`,
-      text: `Dear ${submission.name},\n\nPlease find attached your certificate for the service: ${submission.serviceType || submission.service || ''}.\n\nThank you for choosing Zumar Law Firm.`,
-      attachments
-    });
-
-    res.json({ message: 'Certificate sent to user email!' });
+    try {
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: submission.email,
+        subject: `Your Certificate for ${submission.serviceType || submission.service || ''}`,
+        text: `Dear ${submission.name},\n\nPlease find attached your certificate for the service: ${submission.serviceType || submission.service || ''}.\n\nThank you for choosing Zumar Law Firm.`,
+        attachments
+      });
+      res.json({ message: 'Certificate sent to user email!' });
+    } catch (mailErr) {
+      console.error('Failed to send certificate email for manual service:', mailErr);
+      return res.status(500).json({ error: 'Failed to send certificate email' });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

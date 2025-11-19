@@ -23,7 +23,7 @@ router.post('/services/:id/certificate', tryVerify, upload.single('certificate')
     const service = await Service.findById(req.params.id);
     if (!service) return res.status(404).json({ error: 'Service not found' });
 
-    service.certificate = req.file.filename;
+   service.certificate = req.file.filename;
 
     await service.save();
 

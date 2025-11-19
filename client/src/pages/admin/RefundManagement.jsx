@@ -11,11 +11,14 @@ export default function RefundManagement() {
     const [showDetails, setShowDetails] = useState(false);
     const [statusFilter, setStatusFilter] = useState('all');
     const [statusUpdate, setStatusUpdate] = useState({ status: '', notes: '' });
+    
 
     // Fetch refunds
     useEffect(() => {
         fetchRefunds();
     }, []);
+
+    // No client-side authorization gating: page is accessible to all users
 
     const fetchRefunds = async () => {
         try {
@@ -37,7 +40,6 @@ export default function RefundManagement() {
     // Handle status update (supports both inline and modal)
     const handleStatusUpdate = async (refundId, newStatus = null) => {
         const status = newStatus || statusUpdate.status;
-
         if (!status) {
             toast.error('Please select a status');
             return;
@@ -65,6 +67,11 @@ export default function RefundManagement() {
                 toast.error('Session expired. Please log in again.');
                 // Redirect to admin login
                 window.location.href = '/admin/login';
+                return;
+            }
+
+            if (err.response?.status === 403) {
+                toast.error('You are not authorized to update refund status');
                 return;
             }
 
@@ -239,6 +246,7 @@ export default function RefundManagement() {
                 return 'bg-gray-100 text-gray-800';
         }
     };
+
 
     return (
         <div className=" bg-gray-50 min-h-screen">

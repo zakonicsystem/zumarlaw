@@ -5,7 +5,6 @@ import ChallanManagement from './pages/admin/ChallanManagement';
 import UserPrivateRoute from './routes/UserPrivateRoute';
 import AdminPrivateRoute from './routes/AdminPrivareRoute';
 import EmployeeProtectedRoute from './routes/EmployeeProtectedRoute';
-
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -15,7 +14,6 @@ import Payment from './pages/Payment';
 import ForgotPassword from './pages/ForgotPassword';
 import DirectService from './pages/admin/DirectService';
 import UserDashboard from './pages/userDashboard';
-
 import EmployeeLogin from './pages/admin/EmployeeLogin';
 import Salary from './pages/admin/Salary';
 import AnnouncementForm from './pages/admin/AnnouncementForm';

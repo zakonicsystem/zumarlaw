@@ -14,7 +14,8 @@ const api = axios.create({
 // Attach token automatically if present
 api.interceptors.request.use((config) => {
   try {
-    const token = localStorage.getItem('token') || localStorage.getItem('adminToken') || localStorage.getItem('employeeToken');
+    // Prefer adminToken if present so admin UI actions send the admin JWT.
+    const token = localStorage.getItem('adminToken') || localStorage.getItem('token') || localStorage.getItem('employeeToken');
     if (token && token !== 'null') {
       config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;

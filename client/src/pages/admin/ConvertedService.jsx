@@ -366,9 +366,9 @@ const ConvertedService = () => {
               formData.append('certificate', file);
               try {
                 toast('Uploading certificate...');
-                await axios.post(`https://app.zumarlawfirm.com/convertedService/${selectedRows[0]}/certificate`, formData, {
-                  headers: { 'Content-Type': 'multipart/form-data' },
-                });
+                // Do NOT set the Content-Type header manually — let the browser/axios set the
+                // correct multipart boundary so multer can parse the file correctly.
+                await axios.post(`https://app.zumarlawfirm.com/convertedService/${selectedRows[0]}/certificate`, formData);
                 toast.success('Certificate uploaded');
                 // Optionally refresh leads
                 setLeads(prev => prev.map(l => l._id === selectedRows[0] ? { ...l, certificate: true } : l));

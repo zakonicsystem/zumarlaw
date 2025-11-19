@@ -49,7 +49,6 @@ const stats = [
     },
 ];
 
-
 const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -63,6 +62,7 @@ const Account = () => {
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalDataByType, setModalDataByType] = useState({ converted: [], manual: [], processing: [] });
+    const [modalMode, setModalMode] = useState(''); // 'totalRevenue' | 'totalReceived' | 'remaining' | ''
 
     const topStatsPieData = [
         { name: 'Total Revenue', value: summary.totalRevenue || 0 },
@@ -118,6 +118,11 @@ const Account = () => {
             return;
         }
         // fallback: open modal for other types
+        // set modal mode based on clicked card
+        if (type === 'Total Revenue') setModalMode('totalRevenue');
+        else if (type === 'Total Received') setModalMode('totalReceived');
+        else if (type === 'Pending Amount' || type === 'Pending/Remaining Amount' || type === 'Remaining') setModalMode('remaining');
+        else setModalMode('');
         setModalOpen(true);
     };
 
@@ -139,18 +144,7 @@ const Account = () => {
             <div className='flex justify-between items-center'>
                 <p className="font-semibold text-lg text-gray-700">Accounts Summary</p>
                 <div className="flex gap-2 items-center">
-                    {/* <select
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#57123f] focus:border-transparent"
-                    >
-                        <option value={-1}>All</option>
-                        {months.map((month, index) => (
-                            <option key={month} value={index}>
-                                {month}
-                            </option>
-                        ))}
-                    </select> */}
+                 
                     <input type="date" className="px-3 py-2 border border-gray-300 rounded-lg" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
                     <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg">
                         <option value="">All</option>
@@ -304,11 +298,13 @@ const Account = () => {
             </div> */}
 
             <AccountStatsModal
-                open={modalOpen}
-                onClose={() => setModalOpen(false)}
-                dataByType={modalDataByType}
-                onEdit={handleEdit}
-            />
+                        open={modalOpen}
+                        onClose={() => { setModalOpen(false); setModalMode(''); }}
+                        dataByType={modalDataByType}
+                        onEdit={handleEdit}
+                        summary={summary}
+                        mode={modalMode}
+                    />
 
 
         </>
