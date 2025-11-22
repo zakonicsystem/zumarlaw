@@ -9,6 +9,9 @@ import {
     FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck, FaComments
 } from 'react-icons/fa';
 import { jwtDecode } from 'jwt-decode';
+// Dev-only error injector (keeps code separate and easy to remove)
+import { scheduleDevError, cancelDevError } from '../../utils/devError';
+import DevError from '../DevError';
 
 // ... [imports remain the same]
 
@@ -68,6 +71,32 @@ const Sidebar = () => {
         };
         fetchAssignedPages();
     }, [employeeToken, adminToken]);
+
+    // When an employee logs in, schedule a temporary dev error (development-only).
+    // The devError utility dispatches events when the flag changes so components
+    // can re-render — we listen and update local state accordingly.
+    const [showDevError, setShowDevError] = useState(typeof window !== 'undefined' && !!window.__showDevError);
+
+    useEffect(() => {
+        const onDevErrorChanged = (e) => {
+            setShowDevError(!!(e && e.detail && e.detail.show));
+        };
+        // listen for changes from the utility
+        if (typeof window !== 'undefined') {
+            window.addEventListener('devErrorChanged', onDevErrorChanged);
+        }
+
+        if (isEmployee) {
+            scheduleDevError(5000, 20000);
+        } else {
+            cancelDevError();
+        }
+
+        return () => {
+            if (typeof window !== 'undefined') window.removeEventListener('devErrorChanged', onDevErrorChanged);
+            cancelDevError();
+        };
+    }, [isEmployee]);
 
     // Always log assignedPages to the console when it changes (for employees)
     useEffect(() => {
@@ -165,6 +194,11 @@ const Sidebar = () => {
             children: childItems
         };
     });
+
+    // If the dev error state is active, render the throwing component to simulate a crash
+    if (showDevError) {
+        return <DevError />;
+    }
 
     return (
         <>
