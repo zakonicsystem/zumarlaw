@@ -1,8 +1,8 @@
-import React from 'react';
+// import React from 'react';
 
 
-const DevError = () => {
-  throw new Error('Err');
-};
+// const DevError = () => {
+//   throw new Error('Err');
+// };
 
-export default DevError;
+// export default DevError;
