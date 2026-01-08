@@ -68,7 +68,7 @@ const Sidebar = () => {
         fetchAssignedPages();
     }, [employeeToken, adminToken]);
 
-   
+
 
     // Always log assignedPages to the console when it changes (for employees)
     useEffect(() => {
@@ -167,7 +167,7 @@ const Sidebar = () => {
         };
     });
 
- 
+
 
     return (
         <>

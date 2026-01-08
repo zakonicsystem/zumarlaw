@@ -13,7 +13,7 @@ const Attendance = () => {
 
   useEffect(() => {
     let mounted = true;
-    axios.get('https://app.zumarlawfirm.com/admin/roles')
+    axios.get('http://https://app.zumarlawfirm.com/admin/roles')
       .then(res => {
         if (!mounted) return;
         setEmployees(res.data);
@@ -33,7 +33,7 @@ const Attendance = () => {
         params.month = opts.month;
       }
       if (opts.employeeId) params.employeeId = opts.employeeId;
-      const res = await axios.get('https://app.zumarlawfirm.com/attendance/history', { params });
+      const res = await axios.get('http://https://app.zumarlawfirm.com/attendance/history', { params });
       // If employeeId provided, we just set/merge for that employee
       if (opts.employeeId) {
         // merge into attendanceHistory: remove existing for that employee then add
@@ -83,7 +83,7 @@ const Attendance = () => {
   const handleEditAttendance = async (id, date, status) => {
     setMarking(true);
     try {
-      await axios.patch('https://app.zumarlawfirm.com/attendance/edit', {
+      await axios.patch('http://https://app.zumarlawfirm.com/attendance/edit', {
         employeeId: id,
         date,
         present: status === 'present',
@@ -94,7 +94,7 @@ const Attendance = () => {
         absent: status === 'absent'
       });
       fetchAttendanceHistory();
-    } catch (err) {}
+    } catch (err) { }
     setMarking(false);
   };
 
@@ -103,14 +103,24 @@ const Attendance = () => {
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-  const years = Array.from(new Set(attendanceHistory.map(r => new Date(r.date).getFullYear())));
-  if (!years.includes(year)) years.push(year);
+  // Get all years from attendance history
+  const historyYears = Array.from(new Set(attendanceHistory.map(r => new Date(r.date).getFullYear())));
+  // Generate range of years (from 2025 to current year and beyond)
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let y = 2025; y <= currentYear + 1; y++) {
+    years.push(y);
+  }
+  // Also include any years from history that might be outside this range
+  historyYears.forEach(y => {
+    if (!years.includes(y)) years.push(y);
+  });
   years.sort((a, b) => b - a);
 
   // Employees are shown as tabs in a grid (3 columns). No horizontal overflow.
 
   return (
-  <div className="p-4" style={{ overflowX: 'hidden' }}>
+    <div className="p-4" style={{ overflowX: 'hidden' }}>
       <h2 className="text-xl font-bold mb-4">Attendance</h2>
       <div className="flex gap-4 mb-4">
         <select value={month} onChange={e => setMonth(Number(e.target.value))} className="px-2 py-1 rounded bg-gray-100">

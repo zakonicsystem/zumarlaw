@@ -73,8 +73,8 @@ const ActiveClients = () => {
                   <td className="py-4 px-4">{client.assigned || 'N/A'}</td>
                   <td className="py-4 px-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${client.status === 'Active' ? 'bg-green-500 text-white' :
-                        client.status === 'On Hold' ? 'bg-red-500 text-white' :
-                          'bg-yellow-400 text-black'
+                      client.status === 'On Hold' ? 'bg-red-500 text-white' :
+                        'bg-yellow-400 text-black'
                       }`}>
                       {client.status}
                     </span>

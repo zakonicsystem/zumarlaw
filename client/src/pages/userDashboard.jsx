@@ -7,8 +7,8 @@ import { FaEye, FaDownload, FaMoneyBillWave, FaUserCheck, FaRegFileAlt, FaBell }
 
 
 const UserDashboard = () => {
-    const navigate = useNavigate();
-  
+  const navigate = useNavigate();
+
   // Add missing state for message sending
   const [messageText, setMessageText] = useState('');
   const [messageType, setMessageType] = useState('update');
@@ -64,7 +64,7 @@ const UserDashboard = () => {
       if (userInfo && userInfo._id) {
         const params = { userId: String(userInfo._id) };
         console.log('Calling notification API with params:', params);
-        axios.get('https://app.zumarlawfirm.com/serviceMessage', { params })
+        axios.get('http://https://app.zumarlawfirm.com/serviceMessage', { params })
           .then(res => {
             console.log('Fetched notifications:', res.data);
             setServiceMessages(res.data);
@@ -96,7 +96,7 @@ const UserDashboard = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
 
-      const response = await axios.get('https://app.zumarlawfirm.com/userpanel/services', {
+      const response = await axios.get('http://https://app.zumarlawfirm.com/userpanel/services', {
         headers: {
           Authorization: `Bearer ${token}`
         },
@@ -114,7 +114,7 @@ const UserDashboard = () => {
   // Helper to get certificate file URL (assuming backend saves filename in service.certificate)
   const getCertificateUrl = (service) => {
     if (!service.certificate) return null;
-    return `https://app.zumarlawfirm.com/uploads/${service.certificate}`;
+    return `http://https://app.zumarlawfirm.com/uploads/${service.certificate}`;
   };
 
   // View certificate handler
@@ -236,7 +236,7 @@ const UserDashboard = () => {
     y += 6;
     doc.setFontSize(11);
     doc.setTextColor(40, 40, 40);
-    doc.text('WhatsApp: +92 325 4992099', 20, y); y += 10;
+    doc.text('WhatsApp: +92 303 5988574', 20, y); y += 10;
 
     // Footer with colored background
     doc.setFillColor(87, 18, 63);
@@ -244,7 +244,7 @@ const UserDashboard = () => {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(11);
     doc.text('Thank you for choosing Zumar Law Firm.', 105, 287, { align: 'center' });
-    doc.text('For queries, contact: +92 325 4992099', 105, 293, { align: 'center' });
+    doc.text('For queries, contact: +92 303 5988574', 105, 293, { align: 'center' });
 
     doc.save('PaymentSlip.pdf');
   };
@@ -371,7 +371,7 @@ const UserDashboard = () => {
                               // Immediately fetch notifications for this service
                               if (userInfo && userInfo._id && service._id) {
                                 const params = { userId: String(userInfo._id), serviceId: String(service._id) };
-                                axios.get('https://app.zumarlawfirm.com/serviceMessage', { params })
+                                axios.get('http://https://app.zumarlawfirm.com/serviceMessage', { params })
                                   .then(res => {
                                     console.log('Fetched modal notifications (on bell click):', res.data);
                                     setModalServiceMessages(res.data);
@@ -485,7 +485,7 @@ const UserDashboard = () => {
                   <div className="mb-4">
                     <h3 className="font-semibold mb-2">WhatsApp for Payment Screenshot</h3>
                     <div className="bg-green-50 p-3 rounded text-sm">
-                      <span className="font-bold">WhatsApp Number:</span> <a href="https://wa.me/923254992099" target="_blank" rel="noopener noreferrer" className="text-green-700 underline">+92 325 4992099</a>
+                      <span className="font-bold">WhatsApp Number:</span> <a href="https://wa.me/923035988574" target="_blank" rel="noopener noreferrer" className="text-green-700 underline">+92 303 5988574</a>
                       <div className="mt-2 text-xs text-gray-600">Send your payment screenshot here after submitting your fee.</div>
                     </div>
                   </div>
@@ -576,8 +576,8 @@ const UserDashboard = () => {
                           {service.paymentStatus ? (
                             <span
                               className={`text-xs px-2 py-1 rounded-full font-semibold shadow ${service.paymentStatus === "submit"
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-yellow-100 text-yellow-700"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-yellow-100 text-yellow-700"
                                 }`}
                             >
                               {service.paymentStatus.charAt(0).toUpperCase() + service.paymentStatus.slice(1)}
@@ -649,7 +649,7 @@ const UserDashboard = () => {
                                 if (userInfo && userInfo._id && service._id) {
                                   const params = { userId: String(userInfo._id), serviceId: String(service._id) };
                                   axios
-                                    .get("https://app.zumarlawfirm.com/serviceMessage", { params })
+                                    .get("http://https://app.zumarlawfirm.com/serviceMessage", { params })
                                     .then(res => setModalServiceMessages(res.data))
                                     .catch(() => setModalServiceMessages([]));
                                 }
