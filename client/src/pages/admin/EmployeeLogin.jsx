@@ -39,8 +39,8 @@ const EmployeeLogin = () => {
                     console.log('EmployeeLogin: assignedPages saved to localStorage', assignedPages);
                 }
                 toast.success("Login successful");
-                // Force reload so Sidebar picks up assignedPages from localStorage
-                window.location.href = "/admin";
+                const firstAssignedPage = Array.isArray(assignedPages) ? assignedPages.find(Boolean) : null;
+                window.location.href = firstAssignedPage || "/admin/employee-login";
             } else {
                 toast.error("Unauthorized access");
             }
