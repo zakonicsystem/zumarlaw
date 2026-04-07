@@ -113,9 +113,8 @@ app.get('/test', (req, res) => res.json({ test: 'server ok' }));
 // ✅ Serve compiled frontend from dist directory
 const distDir = path.join(__dirname, '../client/dist');
 if (fs.existsSync(distDir)) {
-  app.use('/', express.static(distDir));
-  // SPA fallback: serve index.html for client-side routes that don't match API routes
-  app.get('*', (req, res) => {
+  app.use(express.static(distDir));
+  app.get('/{*any}', (req, res) => {
     res.sendFile(path.join(distDir, 'index.html'));
   });
 }
