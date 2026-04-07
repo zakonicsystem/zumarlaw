@@ -26,6 +26,8 @@ const AdminLogin = () => {
       const { token } = res.data;
 
       if (token) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('employeeToken');
         localStorage.setItem('adminToken', token); // Save admin token
         toast.success("Admin login successful");
         navigate("/admin"); // Redirect to admin

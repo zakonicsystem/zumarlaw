@@ -31,6 +31,8 @@ const EmployeeLogin = () => {
             const { token, assignedPages } = res.data;
 
             if (token) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('adminToken');
                 localStorage.setItem("employeeToken", token);
                 if (assignedPages) {
                     localStorage.setItem("assignedPages", JSON.stringify(assignedPages));

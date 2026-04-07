@@ -32,6 +32,8 @@ const Login = () => {
 
       if (token) {
         // ✅ Only store token, not full user object
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('employeeToken');
         localStorage.setItem('token', token);
 
         toast.success('Welcome to Zumar Law Firm!');
@@ -62,6 +64,8 @@ const Login = () => {
     if (token) {
       try {
         // ✅ Only store token from Google OAuth, not full user data
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('employeeToken');
         localStorage.setItem('token', token);
         navigate('/');
       } catch (error) {
