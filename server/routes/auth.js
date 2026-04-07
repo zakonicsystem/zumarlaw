@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import User from '../models/User.js';
 import Roles from '../models/Roles.js';
+import Admin from '../models/Admin.js';
 import Session from '../models/Session.js';
 import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js';
 import { issueToken, verifyAppToken, forceLogoutAllDevices } from '../utils/tokenService.js';
@@ -285,22 +286,54 @@ router.post('/reset-password', async (req, res) => {
     }
 
     const logoutAt = new Date();
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Try User model first
+    let user = await User.findOne({ email });
+    if (user) {
+      user.password = hashedPassword;
+      user.lastLogoutAt = logoutAt; // ✅ Invalidate all previous tokens
+      await user.save();
+
+      await Session.updateMany(
+        { userId: user._id, isActive: true },
+        { isActive: false }
+      );
+
+      return res.status(200).json({ message: 'Password reset successful. Please login again with your new password.' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    user.lastLogoutAt = logoutAt; // ✅ Invalidate all previous tokens
-    await user.save();
+    // ✅ Try Admin model
+    let admin = await Admin.findOne({ email });
+    if (admin) {
+      admin.password = hashedPassword;
+      admin.lastLogoutAt = logoutAt;
+      await admin.save();
 
-    await Session.updateMany(
-      { userId: user._id, isActive: true },
-      { isActive: false }
-    );
+      await Session.updateMany(
+        { userId: admin._id, isActive: true },
+        { isActive: false }
+      );
 
-    res.status(200).json({ message: 'Password reset successful. Please login again with your new password.' });
+      return res.status(200).json({ message: 'Password reset successful. Please login again with your new password.' });
+    }
+
+    // ✅ Try Roles model (employee)
+    let employee = await Roles.findOne({ 'login.email': email });
+    if (employee) {
+      employee.login.password = hashedPassword;
+      employee.lastLogoutAt = logoutAt;
+      await employee.save();
+
+      await Session.updateMany(
+        { userId: employee._id, isActive: true },
+        { isActive: false }
+      );
+
+      return res.status(200).json({ message: 'Password reset successful. Please login again with your new password.' });
+    }
+
+    return res.status(404).json({ message: 'User not found' });
   } catch (err) {
     console.error('Reset password error:', err);
     res.status(500).json({ message: 'Server error' });
@@ -410,7 +443,7 @@ router.post('/logout-all', verifyJWT, async (req, res) => {
       { isActive: false }
     );
 
-    // ✅ Mark user/employee's lastLogoutAt to invalidate all tokens issued before this time
+    // ✅ Mark user/employee/admin's lastLogoutAt to invalidate all tokens issued before this time
     // Try User model first
     let updated = await User.findByIdAndUpdate(
       userId,
@@ -427,6 +460,15 @@ router.post('/logout-all', verifyJWT, async (req, res) => {
       );
     }
 
+    // ✅ If not found in Roles, try Admin
+    if (!updated) {
+      updated = await Admin.findByIdAndUpdate(
+        userId,
+        { lastLogoutAt: logoutAt },
+        { new: true }
+      );
+    }
+
     res.status(200).json({
       message: 'Logged out from all devices successfully. New login required.',
       sessionsRemoved: result.modifiedCount,
@@ -435,25 +477,6 @@ router.post('/logout-all', verifyJWT, async (req, res) => {
   } catch (error) {
     console.error('Logout all error:', error);
     res.status(500).json({ message: 'Error logging out from all devices', error: error.message });
-  }
-});
-
-router.post('/logout-all-devices-now', verifyJWT, async (req, res) => {
-  try {
-    if (req.user?.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
-
-    const logoutAt = await forceLogoutAllDevices();
-    await Session.updateMany({ isActive: true }, { isActive: false });
-
-    res.status(200).json({
-      message: 'All logged-in devices have been logged out',
-      logoutAt,
-    });
-  } catch (error) {
-    console.error('Global logout error:', error);
-    res.status(500).json({ message: 'Error logging out all devices', error: error.message });
   }
 });
 

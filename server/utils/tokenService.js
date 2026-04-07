@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import AuthState from '../models/AuthState.js';
 import User from '../models/User.js';
 import Roles from '../models/Roles.js';
+import Admin from '../models/Admin.js';
 
 const DEFAULT_TOKEN_EXPIRY = '1d';
 
@@ -65,6 +66,18 @@ export const assertUserTokenValid = async (decoded) => {
   if (employee && employee.lastLogoutAt) {
     const issuedAtMs = decoded?.iat ? decoded.iat * 1000 : 0;
     if (issuedAtMs && issuedAtMs < employee.lastLogoutAt.getTime()) {
+      const error = new Error('Token invalidated by user logout');
+      error.name = 'TokenRevokedError';
+      throw error;
+    }
+    return;
+  }
+
+  // ✅ Try Admin model for admin accounts
+  let admin = await Admin.findById(userId).select('lastLogoutAt').lean();
+  if (admin && admin.lastLogoutAt) {
+    const issuedAtMs = decoded?.iat ? decoded.iat * 1000 : 0;
+    if (issuedAtMs && issuedAtMs < admin.lastLogoutAt.getTime()) {
       const error = new Error('Token invalidated by user logout');
       error.name = 'TokenRevokedError';
       throw error;
