@@ -27,7 +27,7 @@ const EmployeeProtectedRoute = ({ children }) => {
 
         if (active) {
           const isAdmin = role === 'admin';
-          const isEmployeeAllowed = role === 'employee' && pages.includes(location.pathname);
+          const isEmployeeAllowed = Boolean(employeeToken && role && role !== 'admin' && pages.includes(location.pathname));
           const isAllowed = Boolean(isAdmin || isEmployeeAllowed);
           setStatus(isAllowed ? 'authorized' : 'unauthorized');
         }

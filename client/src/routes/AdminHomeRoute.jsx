@@ -12,6 +12,7 @@ const AdminHomeRoute = () => {
 
     const resolveHome = async () => {
       try {
+        const employeeToken = localStorage.getItem('employeeToken');
         const res = await api.get('/auth/whoami');
         const role = res?.data?.user?.role;
         const pages = res?.data?.user?.assignedPages || [];
@@ -25,7 +26,7 @@ const AdminHomeRoute = () => {
           return;
         }
 
-        if (role === 'employee') {
+        if (employeeToken && role && role !== 'admin') {
           const firstAssignedPage = Array.isArray(pages) ? pages.find(Boolean) : null;
           setTargetPath(firstAssignedPage || '/admin/employee-login');
           setStatus('employee');

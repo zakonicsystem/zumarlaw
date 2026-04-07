@@ -22,7 +22,10 @@ const AdminPrivateRoute = ({ children }) => {
       try {
         const res = await api.get('/auth/whoami');
         const role = res?.data?.user?.role;
-        const allowed = Boolean(role && ['admin', 'employee'].includes(role));
+        const allowed = Boolean(
+          (adminToken && role === 'admin') ||
+          (employeeToken && role && role !== 'admin')
+        );
 
         if (active) {
           setStatus(allowed ? 'authorized' : 'unauthorized');
