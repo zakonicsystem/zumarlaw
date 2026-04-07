@@ -5,15 +5,15 @@ import api from '../utils/api';
 const EmployeeProtectedRoute = ({ children }) => {
   const location = useLocation();
   const [status, setStatus] = useState('checking');
-  const [assignedPages, setAssignedPages] = useState([]);
 
   useEffect(() => {
     let active = true;
 
     const verifyAccess = async () => {
+      const adminToken = localStorage.getItem('adminToken');
       const employeeToken = localStorage.getItem('employeeToken');
 
-      if (!employeeToken) {
+      if (!adminToken && !employeeToken) {
         if (active) {
           setStatus('unauthorized');
         }
@@ -26,9 +26,9 @@ const EmployeeProtectedRoute = ({ children }) => {
         const pages = res?.data?.user?.assignedPages || [];
 
         if (active) {
-          setAssignedPages(pages);
-          // Check if current path is in assigned pages
-          const isAllowed = Boolean(role === 'employee' && pages.includes(location.pathname));
+          const isAdmin = role === 'admin';
+          const isEmployeeAllowed = role === 'employee' && pages.includes(location.pathname);
+          const isAllowed = Boolean(isAdmin || isEmployeeAllowed);
           setStatus(isAllowed ? 'authorized' : 'unauthorized');
         }
       } catch (error) {
@@ -57,7 +57,9 @@ const EmployeeProtectedRoute = ({ children }) => {
     return null;
   }
 
-  return status === 'authorized' ? children : <Navigate to="/admin/employee-login" replace />;
+  return status === 'authorized'
+    ? children
+    : <Navigate to={localStorage.getItem('adminToken') ? '/admin/login' : '/admin/employee-login'} replace />;
 };
 
 export default EmployeeProtectedRoute;
