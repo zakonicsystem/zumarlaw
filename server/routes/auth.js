@@ -3,6 +3,7 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import User from '../models/User.js';
+import Roles from '../models/Roles.js';
 import Session from '../models/Session.js';
 import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js';
 import { issueToken, verifyAppToken, forceLogoutAllDevices } from '../utils/tokenService.js';
@@ -283,6 +284,7 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Email and new password are required' });
     }
 
+    const logoutAt = new Date();
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -290,6 +292,7 @@ router.post('/reset-password', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
+    user.lastLogoutAt = logoutAt; // ✅ Invalidate all previous tokens
     await user.save();
 
     await Session.updateMany(
@@ -399,15 +402,35 @@ router.post('/logout', verifyJWT, async (req, res) => {
 router.post('/logout-all', verifyJWT, async (req, res) => {
   try {
     const userId = req.user.id;
+    const logoutAt = new Date();
 
+    // Update session records
     const result = await Session.updateMany(
       { userId, isActive: true },
       { isActive: false }
     );
 
+    // ✅ Mark user/employee's lastLogoutAt to invalidate all tokens issued before this time
+    // Try User model first
+    let updated = await User.findByIdAndUpdate(
+      userId,
+      { lastLogoutAt: logoutAt },
+      { new: true }
+    );
+
+    // If not found in User, try Roles (employee)
+    if (!updated) {
+      updated = await Roles.findByIdAndUpdate(
+        userId,
+        { lastLogoutAt: logoutAt },
+        { new: true }
+      );
+    }
+
     res.status(200).json({
-      message: 'Logged out from all devices successfully',
+      message: 'Logged out from all devices successfully. New login required.',
       sessionsRemoved: result.modifiedCount,
+      logoutAt,
     });
   } catch (error) {
     console.error('Logout all error:', error);
@@ -484,6 +507,45 @@ router.post('/logout-device/:sessionId', verifyJWT, async (req, res) => {
   } catch (error) {
     console.error('Logout device error:', error);
     res.status(500).json({ message: 'Error logging out from device', error: error.message });
+  }
+});
+
+// ✅ Admin endpoint to clear a user's logout status (reactivate user)
+router.post('/admin/reactivate-user/:userId', verifyJWT, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const { userId } = req.params;
+
+    // Clear lastLogoutAt for User
+    let user = await User.findByIdAndUpdate(
+      userId,
+      { lastLogoutAt: null },
+      { new: true }
+    );
+
+    // If not found, try Roles
+    if (!user) {
+      user = await Roles.findByIdAndUpdate(
+        userId,
+        { lastLogoutAt: null },
+        { new: true }
+      );
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({
+      message: 'User reactivated. They can now log in again.',
+      userId: user._id,
+    });
+  } catch (error) {
+    console.error('Reactivate user error:', error);
+    res.status(500).json({ message: 'Error reactivating user', error: error.message });
   }
 });
 
