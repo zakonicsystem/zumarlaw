@@ -44,15 +44,23 @@ const UserDashboard = () => {
     );
   };
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const userObj = JSON.parse(storedUser);
-      // Support both 'id' and '_id' fields
-      if (!userObj._id && userObj.id) {
-        userObj._id = userObj.id;
+    // ✅ Extract user ID from JWT token instead of localStorage
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decodedToken = JSON.parse(atob(token.split('.')[1]));
+        const userObj = {
+          _id: decodedToken.id || decodedToken._id || decodedToken.userId,
+          id: decodedToken.id || decodedToken._id || decodedToken.userId,
+          email: decodedToken.email,
+          firstName: decodedToken.firstName || '',
+          lastName: decodedToken.lastName || '',
+        };
+        console.log('Loaded user from token:', userObj);
+        setUserInfo(userObj);
+      } catch (error) {
+        console.error('Error decoding token:', error);
       }
-      console.log('Loaded user from localStorage:', userObj);
-      setUserInfo(userObj);
     }
     fetchUserServices();
   }, []);

@@ -12,25 +12,29 @@ export default function UserChat() {
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const messagesEndRef = useRef(null);
-    // Determine current user id from localStorage token/user
+    // ✅ Extract current user ID from JWT token instead of localStorage
     const getCurrentUserId = () => {
         try {
-            const stored = localStorage.getItem('user');
-            if (!stored) return null;
-            const parsed = JSON.parse(stored);
-            return parsed.id || parsed._id || parsed.userId || parsed.sub || null;
+            const token = localStorage.getItem('token');
+            if (!token) return null;
+            const decoded = JSON.parse(atob(token.split('.')[1]));
+            return decoded.id || decoded._id || decoded.userId || decoded.sub || null;
         } catch (err) {
+            console.error('Error decoding token:', err);
             return null;
         }
     };
     const currentUserId = getCurrentUserId();
+
+    // ✅ Extract current user email from JWT token instead of localStorage
     const getCurrentUserEmail = () => {
         try {
-            const stored = localStorage.getItem('user');
-            if (!stored) return null;
-            const parsed = JSON.parse(stored);
-            return parsed.email || parsed.userEmail || null;
+            const token = localStorage.getItem('token');
+            if (!token) return null;
+            const decoded = JSON.parse(atob(token.split('.')[1]));
+            return decoded.email || decoded.userEmail || null;
         } catch (err) {
+            console.error('Error decoding token:', err);
             return null;
         }
     };
@@ -280,10 +284,10 @@ export default function UserChat() {
                                 <p>No messages yet</p>
                                 <p className="text-xs mt-2">Send a message to start chatting with admin</p>
                             </div>
-                            ) : (
+                        ) : (
                             messages.map((msg) => {
-                                            // Use senderRole to determine ownership: 'user' = current user (left), anything else = admin/employee (right)
-                                            const isFromCurrentUser = msg.senderRole === 'user';
+                                // Use senderRole to determine ownership: 'user' = current user (left), anything else = admin/employee (right)
+                                const isFromCurrentUser = msg.senderRole === 'user';
                                 // Desired layout: admin/employee messages on the right, user messages on the left
                                 const alignmentClass = isFromCurrentUser ? 'justify-start' : 'justify-end';
                                 const bubbleClass = isFromCurrentUser ? 'bg-gray-200 text-gray-900' : 'bg-[#57123f] text-white';

@@ -4,7 +4,6 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
 import axios from 'axios';
 import { Toaster, toast } from 'react-hot-toast';
-import { jwtDecode } from 'jwt-decode'; // ✅ CORRECT
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -32,10 +31,8 @@ const Login = () => {
       const { token } = response.data;
 
       if (token) {
+        // ✅ Only store token, not full user object
         localStorage.setItem('token', token);
-
-        const decodedUser = jwtDecode(token);
-        localStorage.setItem('user', JSON.stringify(decodedUser));
 
         toast.success('Welcome to Zumar Law Firm!');
         navigate('/');
@@ -61,22 +58,11 @@ const Login = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    const userParam = urlParams.get('user');
 
-    if (token && userParam) {
+    if (token) {
       try {
-        // Decode and parse the user data
-        const userData = JSON.parse(decodeURIComponent(userParam));
-        console.log('Received user data:', userData); // Debug log
-        
-        // Store token in localStorage
+        // ✅ Only store token from Google OAuth, not full user data
         localStorage.setItem('token', token);
-        
-        // Store the complete user data
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        toast.success('Logged in with Google successfully!');
-        window.history.replaceState({}, '', '/');
         navigate('/');
       } catch (error) {
         console.error('Error processing login data:', error);

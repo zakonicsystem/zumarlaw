@@ -34,37 +34,35 @@ const Home = () => {
   }, []);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
     const token = localStorage.getItem('token');
 
-    if (storedUser && token) {
+    if (token) {
       const expired = isTokenExpired(token);
       if (expired) {
         console.log('Token expired — logging out');
-        localStorage.removeItem('user');
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('employeeToken');
         navigate('/login');
         return;
       }
 
       try {
-        // Decode token first
+        // Decode token only (don't store large user object in localStorage)
         const decodedToken = JSON.parse(atob(token.split('.')[1]));
         console.log('Decoded token:', decodedToken);
 
-        // Parse stored user data
-        const parsedUser = JSON.parse(storedUser);
-        console.log('Stored user:', parsedUser);
-
-        // Use the data from the token as it's more reliable
+        // Set user info from token claims (in memory only)
         const userData = {
-          ...decodedToken,
-          firstName: decodedToken.firstName || parsedUser.firstName || '',
+          id: decodedToken.id,
+          email: decodedToken.email,
+          firstName: decodedToken.firstName || '',
+          lastName: decodedToken.lastName || '',
         };
 
         console.log('Final user data:', userData);
-        // Update stored user data
-        localStorage.setItem('user', JSON.stringify(userData));
+        // ✅ Don't store large objects - keep in memory
         setUserInfo(userData);
       } catch (error) {
         console.error('Error parsing user data:', error);
@@ -80,13 +78,17 @@ const Home = () => {
           });
 
           if (res.status === 401) {
-            localStorage.removeItem('user');
             localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('employeeToken');
             navigate('/login');
           }
         } catch (error) {
-          localStorage.removeItem('user');
           localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('adminToken');
+          localStorage.removeItem('employeeToken');
           navigate('/login');
         }
       };
@@ -94,7 +96,6 @@ const Home = () => {
       verifyUser();
     }
   }, []);
-
 
   return (
     <div className="min-h-[calc(100vh-80px)] bg-gray-50">

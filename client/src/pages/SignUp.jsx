@@ -9,12 +9,12 @@ import toast, { Toaster } from 'react-hot-toast';
 const SignUp = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-  firstName: '',
-  lastName: '',
-  email: '',
-  phoneNumber: '',
-  password: '',
-  confirmPassword: ''
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    password: '',
+    confirmPassword: ''
   });
 
   const handleChange = (e) => {
@@ -45,9 +45,8 @@ const SignUp = () => {
         password: formData.password
       });
 
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      // ✅ Only store token, not full user object
       localStorage.setItem('token', response.data.token);
-
 
       toast.success('Signup successful! Please login.');
       navigate('/login');
@@ -55,7 +54,6 @@ const SignUp = () => {
       toast.error(error.response?.data?.message || 'Signup failed');
     }
   };
-
 
   const handleGoogleSignup = () => {
     toast.loading('Redirecting to Google...');
@@ -155,7 +153,7 @@ const SignUp = () => {
 
 
 
-  <div className="text-center mt-4">
+        <div className="text-center mt-4">
           <Link to="/login" className="text-[#57123f] hover:text-black transition duration-200">
             Already have an account? Sign in
           </Link>

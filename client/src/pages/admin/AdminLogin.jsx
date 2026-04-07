@@ -18,7 +18,7 @@ const AdminLogin = () => {
 
     try {
       const res = await axios.post(
-        "https://app.zumarlawfirm.com/admin/login",
+        "https://app.zumarlawfirm.com/auth/login",
         { email, password },
         { withCredentials: true }
       );

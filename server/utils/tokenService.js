@@ -49,38 +49,53 @@ export const assertUserTokenValid = async (decoded) => {
   const userId = decoded?.id;
   if (!userId) return;
 
-  // Try User model first
-  let user = await User.findById(userId).select('lastLogoutAt').lean();
-  if (user && user.lastLogoutAt) {
-    const issuedAtMs = decoded?.iat ? decoded.iat * 1000 : 0;
-    if (issuedAtMs && issuedAtMs < user.lastLogoutAt.getTime()) {
-      const error = new Error('Token invalidated by user logout');
-      error.name = 'TokenRevokedError';
-      throw error;
-    }
-    return;
-  }
+  // Grace period: allow 2 seconds after logout for immediate re-login
+  const LOGOUT_GRACE_PERIOD_MS = 2000;
 
-  // Try Roles model for employees
-  let employee = await Roles.findById(userId).select('lastLogoutAt').lean();
-  if (employee && employee.lastLogoutAt) {
-    const issuedAtMs = decoded?.iat ? decoded.iat * 1000 : 0;
-    if (issuedAtMs && issuedAtMs < employee.lastLogoutAt.getTime()) {
-      const error = new Error('Token invalidated by user logout');
-      error.name = 'TokenRevokedError';
-      throw error;
+  try {
+    // Try User model first
+    let user = await User.findById(userId).select('lastLogoutAt').lean();
+    if (user && user.lastLogoutAt && typeof user.lastLogoutAt === 'object') {
+      const issuedAtMs = decoded?.iat ? decoded.iat * 1000 : 0;
+      const logoutAtMs = user.lastLogoutAt.getTime();
+      // Only reject if token issued MORE than grace period before logout
+      if (issuedAtMs && issuedAtMs < logoutAtMs - LOGOUT_GRACE_PERIOD_MS) {
+        const error = new Error('Token invalidated by user logout');
+        error.name = 'TokenRevokedError';
+        throw error;
+      }
+      return;
     }
-    return;
-  }
 
-  // ✅ Try Admin model for admin accounts
-  let admin = await Admin.findById(userId).select('lastLogoutAt').lean();
-  if (admin && admin.lastLogoutAt) {
-    const issuedAtMs = decoded?.iat ? decoded.iat * 1000 : 0;
-    if (issuedAtMs && issuedAtMs < admin.lastLogoutAt.getTime()) {
-      const error = new Error('Token invalidated by user logout');
-      error.name = 'TokenRevokedError';
-      throw error;
+    // Try Roles model for employees
+    let employee = await Roles.findById(userId).select('lastLogoutAt').lean();
+    if (employee && employee.lastLogoutAt && typeof employee.lastLogoutAt === 'object') {
+      const issuedAtMs = decoded?.iat ? decoded.iat * 1000 : 0;
+      const logoutAtMs = employee.lastLogoutAt.getTime();
+      if (issuedAtMs && issuedAtMs < logoutAtMs - LOGOUT_GRACE_PERIOD_MS) {
+        const error = new Error('Token invalidated by user logout');
+        error.name = 'TokenRevokedError';
+        throw error;
+      }
+      return;
     }
+
+    // ✅ Try Admin model for admin accounts
+    let admin = await Admin.findById(userId).select('lastLogoutAt').lean();
+    if (admin && admin.lastLogoutAt && typeof admin.lastLogoutAt === 'object') {
+      const issuedAtMs = decoded?.iat ? decoded.iat * 1000 : 0;
+      const logoutAtMs = admin.lastLogoutAt.getTime();
+      if (issuedAtMs && issuedAtMs < logoutAtMs - LOGOUT_GRACE_PERIOD_MS) {
+        const error = new Error('Token invalidated by user logout');
+        error.name = 'TokenRevokedError';
+        throw error;
+      }
+    }
+  } catch (err) {
+    if (err.name === 'TokenRevokedError') {
+      throw err;
+    }
+    // Log other errors but don't fail token validation
+    console.warn('[assertUserTokenValid] Error checking lastLogoutAt:', err.message);
   }
 };
