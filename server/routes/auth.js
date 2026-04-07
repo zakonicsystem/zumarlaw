@@ -480,6 +480,25 @@ router.post('/logout-all', verifyJWT, async (req, res) => {
   }
 });
 
+router.post('/logout-all-devices-now', verifyJWT, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const logoutAt = await forceLogoutAllDevices();
+    await Session.updateMany({ isActive: true }, { isActive: false });
+
+    res.status(200).json({
+      message: 'All logged-in devices have been logged out',
+      logoutAt,
+    });
+  } catch (error) {
+    console.error('Global logout error:', error);
+    res.status(500).json({ message: 'Error logging out all devices', error: error.message });
+  }
+});
+
 router.get('/sessions', verifyJWT, async (req, res) => {
   try {
     const userId = req.user.id;
