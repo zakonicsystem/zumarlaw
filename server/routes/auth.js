@@ -3,11 +3,40 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import User from '../models/User.js';
-import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js'; // ✅ Import JWT middleware
+import Session from '../models/Session.js';
+import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js';
+import { issueToken, verifyAppToken, forceLogoutAllDevices } from '../utils/tokenService.js';
 
 const router = express.Router();
 
-// ✅ Centralized Token Generator
+function getDeviceInfo(req) {
+  return {
+    userAgent: req.headers['user-agent'] || 'Unknown',
+    ipAddress: req.ip || req.connection.remoteAddress || 'Unknown',
+    deviceName: req.body?.deviceName || 'Unknown Device',
+  };
+}
+
+async function createSession(userId, token, req) {
+  try {
+    const decoded = jwt.decode(token);
+    const expiresAt = new Date(decoded.exp * 1000);
+
+    const session = new Session({
+      userId,
+      token,
+      deviceInfo: getDeviceInfo(req),
+      isActive: true,
+      expiresAt,
+    });
+
+    await session.save();
+    return session;
+  } catch (err) {
+    console.error('Error creating session:', err);
+  }
+}
+
 function generateToken(user) {
   const payload = {
     id: user._id,
@@ -15,24 +44,23 @@ function generateToken(user) {
     firstName: user.firstName,
     lastName: user.lastName,
     phoneNumber: user.phoneNumber,
-    CNIC: user.CNIC
+    CNIC: user.CNIC,
   };
 
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
+  return issueToken(payload);
 }
 
-// ✅ Google OAuth login
 router.get('/google', passport.authenticate('google', {
   scope: ['profile', 'email'],
   session: false,
 }));
 
-router.get('/google/callback',
+router.get(
+  '/google/callback',
   passport.authenticate('google', { failureRedirect: '/login', session: false }),
-  (req, res) => {
-    const { user, token } = req.user;
-    
-    // Filter user data to only include necessary fields
+  async (req, res) => {
+    const { user } = req.user;
+
     const userData = {
       id: user._id,
       firstName: user.firstName,
@@ -40,18 +68,16 @@ router.get('/google/callback',
       email: user.email,
       phoneNumber: user.phoneNumber,
       CNIC: user.CNIC,
-      services: user.services || []
+      services: user.services || [],
     };
 
-    // Create a new token with all necessary user data
-    const newToken = jwt.sign(userData, process.env.JWT_SECRET, { expiresIn: '1d' });
-
+    const newToken = issueToken(userData);
+    await createSession(user._id, newToken, req);
     const redirectUrl = `${process.env.CLIENT_URL}/home?token=${newToken}&user=${encodeURIComponent(JSON.stringify(userData))}`;
     res.redirect(redirectUrl);
   }
 );
 
-// ✅ Email/Password Login
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -65,7 +91,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Some accounts (e.g., created via OAuth) may not have a local password set.
     if (!user.password) {
       console.warn('[login] User has no local password set:', user._id);
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -84,6 +109,7 @@ router.post('/login', async (req, res) => {
     }
 
     const token = generateToken(user);
+    await createSession(user._id, token, req);
 
     res.status(200).json({
       message: 'Login successful',
@@ -94,8 +120,8 @@ router.post('/login', async (req, res) => {
         lastName: user.lastName,
         email: user.email,
         phoneNumber: user.phoneNumber,
-        CNIC: user.CNIC
-      }
+        CNIC: user.CNIC,
+      },
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -103,13 +129,10 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ✅ Admin Registration (protected - for initial setup only)
 router.post('/admin-register', async (req, res) => {
   try {
     const { email, password, firstName, lastName } = req.body;
-    
-    // For security, this should be protected - ideally with an admin-only middleware
-    // For now, we'll allow it but log it heavily
+
     console.warn('[admin-register] Attempting admin registration for:', email);
 
     if (!email || !password || !firstName || !lastName) {
@@ -128,10 +151,11 @@ router.post('/admin-register', async (req, res) => {
       lastName,
       email,
       password: hashedPassword,
-      isAdmin: true  // Mark as admin
+      isAdmin: true,
     });
 
     const token = generateToken(user);
+    await createSession(user._id, token, req);
 
     res.status(201).json({
       message: 'Admin created successfully',
@@ -141,8 +165,8 @@ router.post('/admin-register', async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        isAdmin: user.isAdmin
-      }
+        isAdmin: user.isAdmin,
+      },
     });
   } catch (error) {
     console.error('Admin registration error:', error);
@@ -150,7 +174,6 @@ router.post('/admin-register', async (req, res) => {
   }
 });
 
-// ✅ Signup Route
 router.post('/signup', async (req, res) => {
   try {
     const { firstName, lastName, CNIC, email, phoneNumber, password } = req.body;
@@ -163,8 +186,8 @@ router.post('/signup', async (req, res) => {
           lastName: !lastName && 'Last name is required',
           CNIC: !CNIC && 'CNIC is required',
           email: !email && 'Email is required',
-          password: !password && 'Password is required'
-        }
+          password: !password && 'Password is required',
+        },
       });
     }
 
@@ -181,10 +204,11 @@ router.post('/signup', async (req, res) => {
       CNIC,
       email,
       phoneNumber,
-      password: hashedPassword
+      password: hashedPassword,
     });
 
     const token = generateToken(user);
+    await createSession(user._id, token, req);
 
     res.status(201).json({
       message: 'User created successfully',
@@ -195,8 +219,8 @@ router.post('/signup', async (req, res) => {
         lastName: user.lastName,
         CNIC: user.CNIC,
         email: user.email,
-        phoneNumber: user.phoneNumber
-      }
+        phoneNumber: user.phoneNumber,
+      },
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -204,11 +228,10 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// ✅ Mark user as admin (for setup/management - should be protected in production)
 router.post('/mark-admin/:userId', async (req, res) => {
   try {
     console.warn('[mark-admin] Attempting to mark user as admin:', req.params.userId);
-    
+
     const user = await User.findByIdAndUpdate(
       req.params.userId,
       { isAdmin: true },
@@ -224,8 +247,8 @@ router.post('/mark-admin/:userId', async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
-        isAdmin: user.isAdmin
-      }
+        isAdmin: user.isAdmin,
+      },
     });
   } catch (error) {
     console.error('Mark admin error:', error);
@@ -233,16 +256,18 @@ router.post('/mark-admin/:userId', async (req, res) => {
   }
 });
 
-// ✅ Get user by email (for debugging)
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ message: 'Email is required' });
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: 'No user found with that email' });
+    if (!user) {
+      return res.status(404).json({ message: 'No user found with that email' });
+    }
 
-    // Optionally, send email or return a reset token
     res.status(200).json({ message: 'Email verified. You can reset your password.' });
   } catch (err) {
     console.error('Forgot password error:', err);
@@ -250,7 +275,6 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-// ✅ Reset Password
 router.post('/reset-password', async (req, res) => {
   const { email, newPassword } = req.body;
 
@@ -260,20 +284,26 @@ router.post('/reset-password', async (req, res) => {
     }
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
     await user.save();
 
-    res.status(200).json({ message: 'Password reset successful' });
+    await Session.updateMany(
+      { userId: user._id, isActive: true },
+      { isActive: false }
+    );
+
+    res.status(200).json({ message: 'Password reset successful. Please login again with your new password.' });
   } catch (err) {
     console.error('Reset password error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
-// ✅ Get Logged-in User Info (Protected Route)
-// Express route
+
 router.get('/verify-user', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -283,13 +313,18 @@ router.get('/verify-user', async (req, res) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Decoded:', decoded); // ✅ Add this temporarily
+    const decoded = await verifyAppToken(token);
+    console.log('Decoded:', decoded);
 
-    const user = await User.findById(decoded.id); // ✅ MUST be decoded.id
+    const user = await User.findById(decoded.id);
     if (!user) {
       console.log('User not found, logging out');
       return res.status(401).json({ message: 'User not found' });
+    }
+
+    const session = await Session.findOne({ token, isActive: true });
+    if (!session) {
+      return res.status(401).json({ message: 'Session expired or logged out. Please login again.' });
     }
 
     res.status(200).json({ user });
@@ -299,27 +334,26 @@ router.get('/verify-user', async (req, res) => {
   }
 });
 
-// ✅ Get user by email (for debugging)
 router.get('/user/:email', async (req, res) => {
   try {
     const user = await User.findOne({ email: req.params.email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+
     res.json({
       id: user._id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       isAdmin: user.isAdmin,
-      isActive: user.isActive
+      isActive: user.isActive,
     });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching user', error: error.message });
   }
 });
 
-// Lightweight whoami endpoint that returns decoded user/employee role when token present
 router.get('/whoami', tryVerify, (req, res) => {
   if (req.user) {
     return res.status(200).json({ user: req.user });
@@ -327,5 +361,120 @@ router.get('/whoami', tryVerify, (req, res) => {
   return res.status(401).json({ message: 'Not authenticated' });
 });
 
-export default router;
+router.post('/logout', verifyJWT, async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader.split(' ')[1];
 
+    const session = await Session.findOneAndUpdate(
+      { token, isActive: true },
+      { isActive: false },
+      { new: true }
+    );
+
+    if (!session) {
+      return res.status(401).json({ message: 'Session not found or already logged out' });
+    }
+
+    res.status(200).json({
+      message: 'Logged out from current device successfully',
+      deviceInfo: session.deviceInfo,
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Error logging out', error: error.message });
+  }
+});
+
+router.post('/logout-all', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await Session.updateMany(
+      { userId, isActive: true },
+      { isActive: false }
+    );
+
+    res.status(200).json({
+      message: 'Logged out from all devices successfully',
+      sessionsRemoved: result.modifiedCount,
+    });
+  } catch (error) {
+    console.error('Logout all error:', error);
+    res.status(500).json({ message: 'Error logging out from all devices', error: error.message });
+  }
+});
+
+router.post('/logout-all-devices-now', verifyJWT, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const logoutAt = await forceLogoutAllDevices();
+    await Session.updateMany({ isActive: true }, { isActive: false });
+
+    res.status(200).json({
+      message: 'All logged-in devices have been logged out',
+      logoutAt,
+    });
+  } catch (error) {
+    console.error('Global logout error:', error);
+    res.status(500).json({ message: 'Error logging out all devices', error: error.message });
+  }
+});
+
+router.get('/sessions', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const sessions = await Session.find({
+      userId,
+      isActive: true,
+    }).sort({ createdAt: -1 });
+
+    const sessionsData = sessions.map((session) => ({
+      sessionId: session._id,
+      deviceInfo: session.deviceInfo,
+      createdAt: session.createdAt,
+      lastActivityAt: session.lastActivityAt,
+      expiresAt: session.expiresAt,
+    }));
+
+    res.status(200).json({
+      message: 'Active sessions retrieved',
+      sessions: sessionsData,
+      totalSessions: sessionsData.length,
+    });
+  } catch (error) {
+    console.error('Get sessions error:', error);
+    res.status(500).json({ message: 'Error retrieving sessions', error: error.message });
+  }
+});
+
+router.post('/logout-device/:sessionId', verifyJWT, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { sessionId } = req.params;
+
+    const session = await Session.findOneAndUpdate(
+      { _id: sessionId, userId, isActive: true },
+      { isActive: false },
+      { new: true }
+    );
+
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found or already logged out' });
+    }
+
+    res.status(200).json({
+      message: 'Logged out from device successfully',
+      deviceInfo: session.deviceInfo,
+    });
+  } catch (error) {
+    console.error('Logout device error:', error);
+    res.status(500).json({ message: 'Error logging out from device', error: error.message });
+  }
+});
+
+export default router;

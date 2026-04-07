@@ -9,6 +9,7 @@ import {
     FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck, FaComments
 } from 'react-icons/fa';
 import { jwtDecode } from 'jwt-decode';
+import api from '../../utils/api';
 
 
 const Sidebar = () => {
@@ -91,6 +92,19 @@ const Sidebar = () => {
             }
         } catch (err) {
             toast.error('Logout failed');
+        }
+    };
+
+    const handleLogoutAllDevices = async () => {
+        try {
+            await api.post('/auth/logout-all-devices-now');
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('employeeToken');
+            localStorage.removeItem('token');
+            toast.success('All logged-in devices were logged out');
+            navigate('/admin/login');
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Failed to log out all devices');
         }
     };
 
@@ -240,6 +254,14 @@ const Sidebar = () => {
                     </nav>
                 </div>
                 <div className="flex-shrink-0 p-4 border-t">
+                    {isAdmin && (
+                        <button
+                            onClick={handleLogoutAllDevices}
+                            className="w-full flex items-center gap-2 px-4 py-2 mb-2 border border-[#57123f] text-[#57123f] rounded hover:bg-[#57123f] hover:text-white"
+                        >
+                            <FaUserShield /> Logout All Devices
+                        </button>
+                    )}
                     {/* <Link to="/admin/attendance" className="w-full flex items-center gap-2 px-4 py-2 mb-2 bg-green-100 text-green-800 rounded hover:bg-green-200 justify-center">
                         <FaClipboardCheck /> Attendance
                     </Link> */}
