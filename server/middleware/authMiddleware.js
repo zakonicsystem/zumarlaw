@@ -154,14 +154,27 @@ export const tryVerify = async (req, res, next) => {
     }
 
     const decoded = await verifyAppToken(token);
+    
+    // ✅ Check if this specific session is still active
+    const session = await Session.findOne({ token, isActive: true });
+    if (!session) {
+      console.warn('[tryVerify] Session not found or inactive for token');
+      // Don't set req.user - treat as unauthenticated
+      return next();
+    }
+
     const user = await User.findById(decoded.id);
     if (user) {
+      session.lastActivityAt = new Date();
+      await session.save();
       req.user = { id: user._id, email: user.email, role: user.isAdmin ? 'admin' : 'user' };
       return next();
     }
 
     const employee = await Roles.findById(decoded.id);
     if (employee) {
+      session.lastActivityAt = new Date();
+      await session.save();
       req.user = {
         id: employee._id,
         email: employee.login?.email,
@@ -172,6 +185,8 @@ export const tryVerify = async (req, res, next) => {
 
     const admin = await Admin.findById(decoded.id);
     if (admin) {
+      session.lastActivityAt = new Date();
+      await session.save();
       req.user = { id: admin._id, email: admin.email, role: 'admin' };
     }
 

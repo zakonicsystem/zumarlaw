@@ -361,6 +361,16 @@ router.get('/whoami', tryVerify, (req, res) => {
   return res.status(401).json({ message: 'Not authenticated' });
 });
 
+// ✅ Strict version of whoami that validates session and token revocation
+router.get('/verify-session', verifyJWT, async (req, res) => {
+  try {
+    res.status(200).json({ user: req.user });
+  } catch (error) {
+    console.error('Verify session error:', error);
+    res.status(401).json({ message: 'Session invalid', error: error.message });
+  }
+});
+
 router.post('/logout', verifyJWT, async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
