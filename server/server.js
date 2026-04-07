@@ -110,6 +110,16 @@ app.use('/chat', chatRoutes);
 app.use('/attendance', attendanceRoutes); // Register attendance routes
 app.get('/test', (req, res) => res.json({ test: 'server ok' }));
 
+// ✅ Serve compiled frontend from dist directory
+const distDir = path.join(__dirname, '../client/dist');
+if (fs.existsSync(distDir)) {
+  app.use('/', express.static(distDir));
+  // SPA fallback: serve index.html for client-side routes that don't match API routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distDir, 'index.html'));
+  });
+}
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
