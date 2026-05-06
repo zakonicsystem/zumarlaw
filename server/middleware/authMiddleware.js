@@ -1,12 +1,12 @@
-import User from '../models/User.js';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js'; // ✅ Make sure the path is correct
 import Roles from '../models/Roles.js';
-import Admin from '../models/Admin.js';
-import Session from '../models/Session.js';
-import { verifyAppToken } from '../utils/tokenService.js';
 
+// ✅ General User Auth Middleware
 export const verifyJWT = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
+  // 🔒 Check for Bearer token
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ message: 'No token provided' });
   }
@@ -18,80 +18,65 @@ export const verifyJWT = async (req, res, next) => {
   }
 
   try {
-    const decoded = await verifyAppToken(token);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('[verifyJWT] Decoded token:', decoded);
 
-    const user = await User.findById(decoded.id);
+    // Try to find user in User model
+    let user = await User.findById(decoded.id);
     console.log('[verifyJWT] User model lookup:', user ? 'Found' : 'Not found');
     if (user) {
-      const session = await Session.findOne({ token, isActive: true });
-      if (!session) {
-        console.warn('[verifyJWT] Session not found or inactive for token');
-        return res.status(401).json({ message: 'Session expired or logged out. Please login again.' });
-      }
-
-      session.lastActivityAt = new Date();
-      await session.save();
-
+      // Determine role: use isAdmin flag or token role or default to 'user'
       let role = 'user';
       if (user.isAdmin) {
         role = 'admin';
       } else if (decoded.role) {
         role = decoded.role;
       }
-
+      
       req.user = {
         id: user._id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role,
+        role: role  // Will be 'admin' only if isAdmin flag is true
       };
       console.log('[verifyJWT] Authenticated user:', req.user);
       return next();
     }
 
-    const employee = await Roles.findById(decoded.id);
+    // If not found, try Roles model (employee)
+    let employee = await Roles.findById(decoded.id);
     console.log('[verifyJWT] Roles model lookup:', employee ? 'Found' : 'Not found');
     if (employee) {
       req.user = {
         id: employee._id,
         email: employee.login?.email,
         role: employee.role || 'employee',
-        assignedPages: employee.assignedPages || [],
+        assignedPages: employee.assignedPages || []
       };
       console.log('[verifyJWT] Authenticated as employee:', req.user);
       return next();
     }
 
-    const admin = await Admin.findById(decoded.id);
-    if (admin) {
-      req.user = {
-        id: admin._id,
-        email: admin.email,
-        role: 'admin',
-      };
-      return next();
-    }
-
-    console.warn('[verifyJWT] No user/employee/admin found in DB for id:', decoded.id);
+    // Not found in either model - BUT token signature is valid, so accept it
+    // This allows admins to use valid tokens even if their user record isn't in DB
+    console.warn('[verifyJWT] No user/employee found in DB for id:', decoded.id, '— accepting valid token');
     req.user = {
       id: decoded.id,
       email: decoded.email,
       role: decoded.role || 'admin',
-      fromToken: true,
+      fromToken: true  // Flag indicating this auth came from token, not DB lookup
     };
     return next();
   } catch (error) {
     console.error('[verifyJWT] JWT error:', error);
-    const message = error.name === 'TokenRevokedError'
-      ? 'Session invalidated. Please login again.'
-      : 'Invalid or expired token';
-    return res.status(401).json({ message });
+    return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
 
-export const authenticateAdmin = async (req, res, next) => {
+
+// ✅ Admin-Specific Auth Middleware
+export const authenticateAdmin = (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token =
     req.cookies?.token || (authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null);
@@ -106,21 +91,16 @@ export const authenticateAdmin = async (req, res, next) => {
       throw new Error('JWT_SECRET is not defined in environment');
     }
 
-    const decoded = await verifyAppToken(token);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (!decoded?.id) {
       return res.status(401).json({ message: 'Invalid token payload' });
     }
 
-    const admin = await Admin.findById(decoded.id).select('_id email');
-    if (!admin) {
-      return res.status(401).json({ message: 'Admin account not found' });
-    }
-
     req.admin = {
-      id: admin._id,
-      email: admin.email,
-      role: 'admin',
+      id: decoded.id,
+      email: decoded.email,
+      role: 'admin'
     };
 
     return next();
@@ -130,78 +110,46 @@ export const authenticateAdmin = async (req, res, next) => {
       return res.status(401).json({ message: 'Token expired' });
     }
 
-    if (error.name === 'TokenRevokedError') {
-      return res.status(401).json({ message: 'Token is invalidated. Please log in again.' });
-    }
-
     console.error('Admin token verification failed:', error.message);
     return res.status(401).json({ message: 'Token is invalid or expired' });
   }
 };
 
+// Non-blocking verifier: try to set req.user/req.admin if token present and valid,
+// but do NOT reject the request if token is missing or expired. This allows
+// admin "override" flows where the client may retry without Authorization header.
 export const tryVerify = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // No token provided — continue without attaching user
     return next();
   }
-
   const token = authHeader.split(' ')[1];
-
   try {
     if (!process.env.JWT_SECRET) {
       console.warn('JWT_SECRET not defined');
       return next();
     }
-
-    const decoded = await verifyAppToken(token);
-
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Try to find user or employee; attach to req if found
     const user = await User.findById(decoded.id);
     if (user) {
-      const session = await Session.findOne({ token, isActive: true });
-      if (!session) {
-        console.warn('[tryVerify] Session not found or inactive for token');
-        return next();
-      }
-
-      session.lastActivityAt = new Date();
-      await session.save();
-
-      req.user = {
-        id: user._id,
-        email: user.email,
-        role: user.isAdmin ? 'admin' : 'user',
-      };
+      req.user = { id: user._id, email: user.email, role: 'admin' };
       return next();
     }
-
     const employee = await Roles.findById(decoded.id);
     if (employee) {
-      req.user = {
-        id: employee._id,
-        email: employee.login?.email,
-        role: employee.role || 'employee',
-        assignedPages: employee.assignedPages || [],
-      };
-      return next();
+      req.user = { id: employee._id, email: employee.login?.email, role: employee.role || 'employee' };
     }
-
-    const admin = await Admin.findById(decoded.id);
-    if (admin) {
-      req.user = {
-        id: admin._id,
-        email: admin.email,
-        role: 'admin',
-      };
-      return next();
-    }
-
     return next();
   } catch (err) {
+    // Token expired or invalid — do not block, allow request to continue as unauthenticated
     console.warn('[tryVerify] Token invalid/expired; allowing request to continue without auth');
     return next();
   }
 };
 
+// ✅ Admin Role Check Middleware - requires user to have admin or employee role
 export const requireAdminRole = (req, res, next) => {
   const user = req.user;
 
@@ -215,6 +163,6 @@ export const requireAdminRole = (req, res, next) => {
     return res.status(403).json({ error: 'Forbidden. Admin access required.' });
   }
 
-  console.log(`[requireAdminRole] User ${user.email} (${user.role}) authorized for admin action`);
+  console.log(`[requireAdminRole] ✅ User ${user.email} (${user.role}) authorized for admin action`);
   return next();
 };

@@ -51,6 +51,12 @@ const ManualServiceSubmissionSchema = new mongoose.Schema({
   status: { type: String, default: 'pending' },
   // Progress status represents granular case progress (e.g., under_review, challan_pending, incorporated, etc.)
   progressStatus: { type: String, default: '' },
+  // Merge tracking
+  mergedIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ManualServiceSubmission' }],
+  mergedCount: { type: Number, default: 0 },
+  primaryName: { type: String }, // Used when service is merged
+  mergedAt: { type: Date },
+  secondaryBackup: [{ type: mongoose.Schema.Types.Mixed }], // Store backup of secondary services for restore on unmerge
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

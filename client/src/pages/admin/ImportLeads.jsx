@@ -92,7 +92,8 @@ const ImportLeads = () => {
     const handleImport = async () => {
         if (!leads.length) return toast.error("No leads to import");
         try {
-            await axios.post("https://app.zumarlawfirm.com/leads/import", { leads });
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            await axios.post(`${apiUrl}/api/leads/import`, { leads });
             toast.success("Leads imported successfully!");
             setLeads([]);
             setFilename("");

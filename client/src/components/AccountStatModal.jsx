@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import api from '../utils/api.js';
 
 import jsPDF from 'jspdf';
 import { zumarLogoBase64 } from '../assets/zumarLogoBase64';
-import { FaReceipt, FaMoneyBillWave } from 'react-icons/fa';
+import { FaReceipt, FaMoneyBillWave, FaTag } from 'react-icons/fa';
 
 const TABS = [
   { key: 'converted', label: 'Converted Service' },
@@ -19,6 +20,7 @@ const columns = [
   { key: 'totalPayment', label: 'Total' },
   { key: 'remainingAmount', label: 'Remaining' },
   { key: 'currentReceivingPayment', label: 'Current Received' },
+
   { key: 'actions', label: 'Actions' },
 ];
 
@@ -38,6 +40,35 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
   const [editPaymentIdx, setEditPaymentIdx] = useState(null);
   const [editPaymentData, setEditPaymentData] = useState(null);
   const [editPaymentLoading, setEditPaymentLoading] = useState(false);
+  // Fees state
+  const [challans, setChallans] = useState({});
+  const [loadingChallans, setLoadingChallans] = useState(false);
+  // Office selection for PDF
+  const [officeSelectionOpen, setOfficeSelectionOpen] = useState(false);
+  const [pendingPaymentSlipData, setPendingPaymentSlipData] = useState(null);
+
+  // Office details configuration
+  const officeDetails = {
+    islamabad: {
+      phone: '+92 51-8445595',
+      email: 'team@zumarlawfirm.com',
+      address: 'Office No 8B 5th Floor Rizwan Arcade',
+      address2: 'Adam Jee Road Sadar',
+      city: 'Islamabad, Pakistan',
+      zipcode: '44000',
+      businessNumber: '051-8445595',
+    },
+    lahore: {
+      phone: '+92 42-3724555',
+      email: 'team@zumarlawfirm.com',
+      address: 'Al Meraj Arcade Chowk',
+      address2: 'Chaburji',
+      city: 'Lahore, Pakistan',
+      zipcode: '54000',
+      businessNumber: '042-3724555',
+    }
+  };
+
   // Open edit payment modal
   const handleEditPayment = (paymentIdx) => {
     const payment = paymentsData.payments?.[paymentIdx] || null;
@@ -67,14 +98,14 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
       return;
     }
     if (activeTab === 'converted') {
-      url = `/convertedService/${row._id}/payments/${editPaymentIdx}`;
+      url = `/api/convertedService/${row._id}/payments/${editPaymentIdx}`;
     } else if (activeTab === 'manual') {
-      url = `/manualService/${row._id}/payments/${editPaymentIdx}`;
+      url = `/api/manualService/${row._id}/payments/${editPaymentIdx}`;
     } else if (activeTab === 'processing') {
-      url = `/processing/${row._id}/payments/${editPaymentIdx}`;
+      url = `/api/processing/${row._id}/payments/${editPaymentIdx}`;
     }
     try {
-      const res = await axios.patch(url, editPaymentData);
+      const res = await api.patch(url, editPaymentData);
       if (res.data && res.data.success) {
         setPaymentsData(res.data);
         toast.success('Payment updated!');
@@ -98,15 +129,15 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
       return;
     }
     if (activeTab === 'converted') {
-      url = `/convertedService/${row._id}/payments/${paymentIdx}`;
+      url = `/api/convertedService/${row._id}/payments/${paymentIdx}`;
     } else if (activeTab === 'manual') {
-      url = `/manualService/${row._id}/payments/${paymentIdx}`;
+      url = `/api/manualService/${row._id}/payments/${paymentIdx}`;
     } else if (activeTab === 'processing') {
-      url = `/processing/${row._id}/payments/${paymentIdx}`;
+      url = `/api/processing/${row._id}/payments/${paymentIdx}`;
     }
     setLoadingPayments(true);
     try {
-      const res = await axios.delete(url);
+      const res = await api.delete(url);
       if (res.data && res.data.success) {
         setPaymentsData(res.data);
         toast.success('Payment deleted!');
@@ -126,11 +157,11 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
       const row = getFiltered()[paymentsIdx];
       let url = '';
       if (activeTab === 'converted') {
-        url = `/convertedService/${row._id}/payments`;
+        url = `/api/convertedService/${row._id}/payments`;
       } else if (activeTab === 'manual') {
-        url = `/manualService/${row._id}/payments`;
+        url = `/api/manualService/${row._id}/payments`;
       } else if (activeTab === 'processing') {
-        url = `/processing/${row._id}/payments`;
+        url = `/api/processing/${row._id}/payments`;
       }
       if (url) {
         fetch(url)
@@ -143,6 +174,26 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
       }
     }
   }, [paymentsModalOpen, paymentsIdx, activeTab]);
+
+  // Load all challans when modal opens
+  React.useEffect(() => {
+    if (open) {
+      setLoadingChallans(true);
+      fetch('/api/challans')
+        .then(res => res.json())
+        .then(data => {
+          const challansByKey = {};
+          (data.challans || []).forEach((c) => {
+            const key = `${c.serviceSource}:${c.serviceId}`;
+            challansByKey[key] = c;
+          });
+          setChallans(challansByKey);
+          setLoadingChallans(false);
+        })
+        .catch(() => setLoadingChallans(false));
+    }
+  }, [open]);
+
   // Helper to get all payments for a row (updated for pricing/otherPayments)
   const getPayments = (row) => {
     const payments = [];
@@ -194,11 +245,21 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
     setViewIdx(null);
     if (onClose) onClose();
   };
-  // Payment Slip handler
+  // Payment Slip handler - Now opens office selection modal
   const handlePaymentSlip = (rowIdx, paymentIdx) => {
+    setPendingPaymentSlipData({ rowIdx, paymentIdx });
+    setOfficeSelectionOpen(true);
+  };
+
+  // Generate PDF with selected office
+  const generatePaymentSlipPDF = (selectedOffice) => {
     try {
+      if (!pendingPaymentSlipData) return;
+      const { rowIdx, paymentIdx } = pendingPaymentSlipData;
       const row = getFiltered()[rowIdx];
       const payments = row.payments || paymentsData?.payments || [];
+      const office = officeDetails[selectedOffice];
+
       // Only single payment slip (not full history)
       let payment;
       if (typeof paymentIdx === 'number') {
@@ -225,11 +286,11 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
       pdf.setFont(undefined, 'normal');
       pdf.text('(SMC-PRIVATE) LIMITED', 55, 22);
       pdf.setFontSize(9);
-      pdf.text('Business Number : 04237242555', 55, 28);
-      pdf.text('Office No 02 Second Floor Al-Meraj Arcade Chowk', 55, 33);
-      pdf.text('Lahore,Pakistan', 55, 38);
-      pdf.text('54000', 55, 43);
-      pdf.text('0303-5988574', 55, 48);
+      pdf.text(`Business Number : ${office.businessNumber}`, 55, 28);
+      pdf.text(office.address, 55, 33);
+      pdf.text(office.address2, 55, 38);
+      pdf.text(office.city, 55, 43);
+      pdf.text(office.phone, 55, 48);
       pdf.text('zumarlawfirm.com', 55, 53);
       // Invoice meta
       pdf.setFontSize(10);
@@ -255,8 +316,8 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
       pdf.text(`${row.name || payment.personName || '-'}`, 15, 72);
       pdf.setFontSize(9);
       pdf.setFont(undefined, 'normal');
-      pdf.text('Lahore', 15, 77);
-      pdf.text('Lahore', 15, 82);
+      pdf.text(office.city, 15, 77);
+      pdf.text(office.city, 15, 82);
       pdf.text(`${row.phone || '-'}`, 15, 87);
       // Table header
       pdf.setFontSize(10);
@@ -307,10 +368,12 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
       pdf.text('Date Signed', 15, 180);
       pdf.text(`${payment.date ? new Date(payment.date).toLocaleDateString() : '-'}`, 60, 180);
       pdf.setFontSize(8);
-      pdf.text('In case of any error or correction in the statement,contact the Official Number of :042-37242555', 15, 190);
+      pdf.text(`In case of any error or correction in the statement, contact us at: ${office.phone}`, 15, 190);
       pdf.text('Visit us : zumarlawfirm.com', 15, 195);
-      pdf.save(`payment_slip_${row._id}.pdf`);
+      pdf.save(`payment_slip_${row._id}_${selectedOffice}.pdf`);
       toast.success('Payment slip downloaded successfully!');
+      setOfficeSelectionOpen(false);
+      setPendingPaymentSlipData(null);
     } catch (err) {
       console.error('Error generating PDF:', err);
       toast.error('Failed to generate payment slip');
@@ -339,7 +402,51 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
 
 
 
+
+  // Edit Modal handler
+  const handleEditModalClose = () => {
+    setEditIdx(null);
+    setEditRow({});
+  };
+
+  const handleEditModalSubmit = async (e) => {
+    e.preventDefault();
+    const row = getFiltered()[editIdx];
+    if (!row) return toast.error('Row not found');
+    let url = '';
+    if (activeTab === 'converted') url = `/api/convertedService/${row._id}`;
+    else if (activeTab === 'manual') url = `/api/manualService/${row._id}`;
+    else if (activeTab === 'processing') url = `/api/processing/${row._id}`;
+    try {
+      const res = await api.patch(url, { 'pricing.totalPayment': Number(editRow.totalPayment) });
+      if (res.data && res.data.success) {
+        toast.success('Total Payment updated!');
+        setEditIdx(null);
+        setEditRow({});
+      } else {
+        toast.error(res.data?.message || 'Failed to update total payment');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Network error: Total payment not updated');
+    }
+  };
+
   if (!open) return null;
+
+  // Helper to get source name based on activeTab
+  const getSourceForTab = () => {
+    if (activeTab === 'converted') return 'ConvertedLead';
+    if (activeTab === 'manual') return 'ManualServiceSubmission';
+    if (activeTab === 'processing') return 'ServiceDetail';
+    return 'ServiceDetail';
+  };
+
+  // Helper to get fee for a specific row
+  const getFeeForRow = (row) => {
+    const source = getSourceForTab();
+    const key = `${source}:${row._id}`;
+    return challans[key];
+  };
 
   // Helper to compute sorted & filtered rows on demand to avoid "use before define" issues
   const getFiltered = () => {
@@ -386,13 +493,14 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
     if (mode === 'totalRevenue') return ['serviceType', 'name', 'phone', 'totalPayment', 'actions'].includes(col.key);
     if (mode === 'totalReceived') return ['serviceType', 'name', 'phone', 'totalPayment', 'currentReceivingPayment', 'actions'].includes(col.key);
     if (mode === 'remaining') return ['serviceType', 'name', 'phone', 'totalPayment', 'remainingAmount', 'actions'].includes(col.key);
+    if (mode === 'profit') return ['serviceType', 'name', 'phone', 'totalPayment', 'currentReceivingPayment', 'remainingAmount', 'profit', 'actions'].includes(col.key);
     return true;
   });
 
 
   return (
     <div className="fixed inset-0 w-full h-full z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl relative overflow-hidden" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl relative overflow-hidden" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         {/* Header with brand color */}
         <div className="bg-[#57123f] p-4 text-white">
           <h2 className="text-xl font-bold">Account Stats</h2>
@@ -423,6 +531,11 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
             <div className="text-center py-6">
               <h3 className="text-xl font-bold text-[#57123f] mb-2">Total Revenue</h3>
               <p className="text-3xl font-semibold">{summary.totalRevenue ?? 0} PKR</p>
+              {summary.totalFees && summary.totalFees > 0 && (
+                <div className="mt-4 pt-4 border-t">
+                  <div className="text-green-600 font-semibold text-xl mt-2">Net Profit: {(summary.totalRevenue ?? 0) - (summary.totalFees ?? 0)} PKR</div>
+                </div>
+              )}
             </div>
           )}
           {mode === 'totalReceived' && (
@@ -433,6 +546,11 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
                 <span className="font-medium">Current Received: </span>
                 <span className="font-semibold">{summary.currentReceived ?? summary.totalReceived ?? 0} PKR</span>
               </div>
+              {summary.totalFees && summary.totalFees > 0 && (
+                <div className="mt-4 pt-4 border-t">
+                  <div className="text-green-600 font-semibold text-xl mt-2">Net Received: {(summary.currentReceived ?? summary.totalReceived ?? 0) - (summary.totalFees ?? 0)} PKR</div>
+                </div>
+              )}
             </div>
           )}
           {mode === 'remaining' && (
@@ -445,6 +563,7 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
               </div>
             </div>
           )}
+
 
           {/* Full table view when no mode is active */}
 
@@ -479,31 +598,44 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
               </div>
             </div>
 
-            {/* Table */}
+            {/* Table with Edit button */}
             <div className="overflow-x-auto max-h-[60vh]">
               {filtered.length > 0 ? (
                 <div style={{ maxHeight: '80vh', overflowY: 'auto', overflowX: 'auto' }}>
                   <table className="min-w-full text-sm text-left text-gray-700">
                     <thead className="bg-gray-50 text-gray-500 uppercase text-xs">
-                      <tr>{visibleColumns.map(col => <th key={col.key} className="px-4 py-2">{col.label}</th>)}</tr>
+                      <tr>
+                        {visibleColumns.map(col => <th key={col.key} className="px-4 py-2">{col.label}</th>)}
+                        <th className="px-4 py-2">Edit</th>
+                      </tr>
                     </thead>
                     <tbody>
-                      {filtered.map((row, idx) => (
-                        <tr key={row._id || idx} className="border-t hover:bg-gray-50">
-                          {visibleColumns.find(c => c.key === 'serviceType') && <td className="px-4 py-3">{row.serviceType || '-'}</td>}
-                          {visibleColumns.find(c => c.key === 'name') && <td className="px-4 py-3">{row.name || '-'}</td>}
-                          {visibleColumns.find(c => c.key === 'phone') && <td className="px-4 py-3">{row.phone || '-'}</td>}
-                          {visibleColumns.find(c => c.key === 'totalPayment') && <td className="px-4 py-3">{row.totalPayment ?? '-'}</td>}
-                          {visibleColumns.find(c => c.key === 'remainingAmount') && <td className="px-4 py-3">{row.remainingAmount ?? '-'}</td>}
-                          {visibleColumns.find(c => c.key === 'currentReceivingPayment') && <td className="px-4 py-3">{row.currentReceivingPayment ?? '-'}</td>}
-                          {visibleColumns.find(c => c.key === 'actions') && (
-                            <td className="px-4 py-3 flex gap-2 items-center">
-                              <button className="bg-[#57123f] text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1" onClick={() => handlePaymentSlip(idx)} title="Payment Slip"><FaReceipt className="inline" /><span className="sr-only">Slip</span></button>
-                              <button className="bg-[#57123f] text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1" onClick={() => handlePaymentsModalOpen(idx)} title="Manage Payments"><FaMoneyBillWave className="inline" /><span className="sr-only">Payments</span></button>
+                      {filtered.map((row, idx) => {
+                        const fee = getFeeForRow(row);
+                        const totalFees = (fee?.challanFee?.amount || 0) + (fee?.consultancyFee?.amount || 0);
+                        const profit = (row.currentReceivingPayment || 0) - totalFees;
+
+                        return (
+                          <tr key={row._id || idx} className="border-t hover:bg-gray-50">
+                            {visibleColumns.find(c => c.key === 'serviceType') && <td className="px-4 py-3">{row.serviceType || '-'}</td>}
+                            {visibleColumns.find(c => c.key === 'name') && <td className="px-4 py-3">{row.name || '-'}</td>}
+                            {visibleColumns.find(c => c.key === 'phone') && <td className="px-4 py-3">{row.phone || '-'}</td>}
+                            {visibleColumns.find(c => c.key === 'totalPayment') && <td className="px-4 py-3">{row.totalPayment ?? '-'}</td>}
+                            {visibleColumns.find(c => c.key === 'remainingAmount') && <td className="px-4 py-3">{row.remainingAmount ?? '-'}</td>}
+                            {visibleColumns.find(c => c.key === 'currentReceivingPayment') && <td className="px-4 py-3">{row.currentReceivingPayment ?? '-'}</td>}
+
+                            {visibleColumns.find(c => c.key === 'actions') && (
+                              <td className="px-4 py-3 flex gap-2 items-center">
+                                <button className="bg-[#57123f] text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1" onClick={() => handlePaymentSlip(idx)} title="Payment Slip"><FaReceipt className="inline" /><span className="sr-only">Slip</span></button>
+                                <button className="bg-[#57123f] text-white px-2 py-1 rounded text-xs font-semibold flex items-center gap-1" onClick={() => handlePaymentsModalOpen(idx)} title="Manage Payments"><FaMoneyBillWave className="inline" /><span className="sr-only">Payments</span></button>
+                              </td>
+                            )}
+                            <td className="px-4 py-3">
+                              <button className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold" onClick={() => handleEditClick(idx)} title="Edit Total Payment">Edit</button>
                             </td>
-                          )}
-                        </tr>
-                      ))}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -514,6 +646,25 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
           </>
 
         </div>
+
+        {/* Edit Modal - Only Total Payment */}
+        {editIdx !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-xl relative overflow-hidden" style={{ maxWidth: '400px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
+              <div className="bg-[#57123f] p-4 text-white">
+                <h3 className="text-xl font-bold">Edit Total Payment</h3>
+                <button className="absolute top-3 right-3 text-white hover:text-gray-200 text-2xl transition-colors" onClick={handleEditModalClose}>&times;</button>
+              </div>
+              <form className="p-6" onSubmit={handleEditModalSubmit}>
+                <div className="mb-2">
+                  <label className="block text-xs font-semibold mb-1">Total Payment</label>
+                  <input type="number" name="totalPayment" className="border rounded px-2 py-1 w-full mb-2" required value={editRow.totalPayment || ''} onChange={handleEditChange} />
+                </div>
+                <button type="submit" className="bg-[#57123f] text-white px-4 py-2 rounded font-semibold">Save Changes</button>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Payments Modal (separate overlay inside this modal) */}
         {paymentsModalOpen && paymentsIdx !== null && (
@@ -631,13 +782,13 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
                       let url = '';
                       const row = filtered[paymentsIdx];
                       if (!row) return toast.error('Row not found');
-                      if (activeTab === 'converted') url = `/convertedService/${row._id}/payments`;
-                      else if (activeTab === 'manual') url = `/manualService/${row._id}/payments`;
-                      else if (activeTab === 'processing') url = `/processing/${row._id}/payments`;
+                      if (activeTab === 'converted') url = `/api/convertedService/${row._id}/payments`;
+                      else if (activeTab === 'manual') url = `/api/manualService/${row._id}/payments`;
+                      else if (activeTab === 'processing') url = `/api/processing/${row._id}/payments`;
                       if (url) {
                         setLoadingPayments(true);
                         try {
-                          const res = await axios.post(url, { amount, date, method, accountNumber, personName, remarks });
+                          const res = await api.post(url, { amount, date, method, accountNumber, personName, remarks });
                           if (res.data && res.data.success) {
                             setPaymentsData(res.data);
                             toast.success('Payment added successfully!');
@@ -691,6 +842,59 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
                     </form>
                   </>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Office Selection Modal */}
+        {officeSelectionOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-xl relative overflow-hidden" style={{ maxWidth: '500px', width: '95%' }}>
+              <div className="bg-[#57123f] p-4 text-white">
+                <h3 className="text-xl font-bold">Select Office</h3>
+                <button
+                  className="absolute top-3 right-3 text-white hover:text-gray-200 text-2xl transition-colors"
+                  onClick={() => {
+                    setOfficeSelectionOpen(false);
+                    setPendingPaymentSlipData(null);
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-gray-700 mb-6 font-semibold">Choose an office for the payment slip:</p>
+
+                <div className="space-y-3">
+                  {/* Islamabad Office */}
+                  <button
+                    onClick={() => generatePaymentSlipPDF('islamabad')}
+                    className="w-full p-4 border-2 border-[#57123f] rounded-lg hover:bg-[#57123f] hover:text-white transition-colors text-left"
+                  >
+                    <div className="font-bold text-lg mb-2">Islamabad Office</div>
+                    <div className="text-sm">
+                      <p>{officeDetails.islamabad.phone}</p>
+                      <p>{officeDetails.islamabad.email}</p>
+                      <p>{officeDetails.islamabad.address}</p>
+                      <p>{officeDetails.islamabad.address2}</p>
+                    </div>
+                  </button>
+
+                  {/* Lahore Office */}
+                  <button
+                    onClick={() => generatePaymentSlipPDF('lahore')}
+                    className="w-full p-4 border-2 border-[#57123f] rounded-lg hover:bg-[#57123f] hover:text-white transition-colors text-left"
+                  >
+                    <div className="font-bold text-lg mb-2">Lahore Office</div>
+                    <div className="text-sm">
+                      <p>{officeDetails.lahore.phone}</p>
+                      <p>{officeDetails.lahore.email}</p>
+                      <p>{officeDetails.lahore.address}</p>
+                      <p>{officeDetails.lahore.address2}</p>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

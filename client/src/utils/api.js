@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 // Central axios instance that attaches JWT from localStorage
 const backend = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL)
   ? import.meta.env.VITE_API_URL
-  : 'https://app.zumarlawfirm.com';
+  : 'http://localhost:5000';
 
 const api = axios.create({
   baseURL: backend.replace(/\/$/, ''),

@@ -40,7 +40,8 @@ export default function Payroll() {
     const fetchEmployees = async () => {
       setLoading(true);
       try {
-        const res = await axios.get("https://app.zumarlawfirm.com/admin/roles", { withCredentials: true });
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await axios.get(`${apiUrl}/api/admin/roles`, { withCredentials: true });
         setEmployeeList(res.data);
       } catch (err) {
         setEmployeeList([]);
@@ -55,8 +56,10 @@ export default function Payroll() {
     const fetchPayrolls = async () => {
       setLoading(true);
       try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
         // If filterMonth is provided (YYYY-MM), pass as query param
-        const url = filterMonth ? `https://app.zumarlawfirm.com/payrolls?month=${encodeURIComponent(filterMonth)}` : 'https://app.zumarlawfirm.com/payrolls';
+        const base = `${apiUrl}/api/payrolls`;
+        const url = filterMonth ? `${base}?month=${encodeURIComponent(filterMonth)}` : base;
         const res = await axios.get(url);
         setPayrolls(res.data || []);
       } catch (err) {
@@ -91,7 +94,8 @@ export default function Payroll() {
     if (!window.confirm("Are you sure you want to delete this payroll?")) return;
     try {
       setLoading(true);
-      await axios.delete(`https://app.zumarlawfirm.com/payrolls/${id}`);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.delete(`${apiUrl}/api/payrolls/${id}`);
       setPayrolls((prev) => prev.filter((p) => p._id !== id));
       toast.success("Payroll deleted successfully!");
     } catch (err) {
@@ -140,7 +144,8 @@ export default function Payroll() {
         paymentDate: new Date().toISOString(),
       };
       // Update server (PUT replaces the payroll object)
-      await axios.put(`https://app.zumarlawfirm.com/payrolls/${paymentRec._id}`, updated);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.put(`${apiUrl}/api/payrolls/${paymentRec._id}`, updated);
       setPayrolls((prev) => prev.map((p) => (p._id === paymentRec._id ? updated : p)));
       toast.success('Payment recorded and status set to Paid');
       closePaymentModal();
@@ -190,7 +195,8 @@ export default function Payroll() {
         const year = Number(yStr);
         const month = Number(mStr);
         if ((!enhancedRec.cutDays && enhancedRec.cutDays !== 0) || (!enhancedRec.baseSalary && enhancedRec.baseSalary !== 0)) {
-          const resp = await axios.post('https://app.zumarlawfirm.com/autoSalary/calculate', { year, month }).catch(() => null);
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+          const resp = await axios.post(`${apiUrl}/api/autoSalary/calculate`, { year, month }).catch(() => null);
           if (resp && Array.isArray(resp.data)) {
             const found = resp.data.find(r => String(r.employee).toLowerCase() === String(rec.employee).toLowerCase());
             if (found) {
@@ -598,7 +604,8 @@ export default function Payroll() {
     e.preventDefault();
     try {
       setLoading(true);
-      await axios.put(`https://app.zumarlawfirm.com/payrolls/${editData._id}`, editData);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.put(`${apiUrl}/api/payrolls/${editData._id}`, editData);
       setPayrolls((prev) => prev.map((p) => (p._id === editData._id ? editData : p)));
       toast.success("Payroll updated successfully!");
       setEditModal(false);

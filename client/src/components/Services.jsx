@@ -25,6 +25,10 @@ const categories = [
   "NPO / NGO",
   "Intellectual Property",
   "Import Export",
+  "Regulatory & Licensing",
+  "Chamber of Commerce",
+  "Professional Registration",
+  "Labour Registration",
 ];
 
 const services = [
@@ -291,9 +295,76 @@ const services = [
     title: "Medical Store License",
     category: "Company Reg",
     icon: company
-  }
-];
+  },
 
+  // Regulatory & Licensing Services
+  {
+    title: "DNFBP License - Sole Proprietorship",
+    category: "Regulatory & Licensing",
+    icon: company
+  },
+  {
+    title: "DNFBP License - Company",
+    category: "Regulatory & Licensing",
+    icon: company
+  },
+  {
+    title: "DNFBP License - AOP/Partnership",
+    category: "Regulatory & Licensing",
+    icon: company
+  },
+
+  // Chamber of Commerce Services
+  {
+    title: "Chamber of Commerce New Membership - Sole Proprietor",
+    category: "Chamber of Commerce",
+    icon: company
+  },
+  {
+    title: "Chamber of Commerce New Membership - Company",
+    category: "Chamber of Commerce",
+    icon: company
+  },
+  {
+    title: "Chamber of Commerce New Membership - AOP/Partnership",
+    category: "Chamber of Commerce",
+    icon: company
+  },
+  {
+    title: "Chamber of Commerce Renewal",
+    category: "Chamber of Commerce",
+    icon: company
+  },
+
+  // Professional Registration Services
+  {
+    title: "PEC Firm Registration - Sole Proprietor",
+    category: "Professional Registration",
+    icon: company
+  },
+  {
+    title: "PEC Firm Registration - Company",
+    category: "Professional Registration",
+    icon: company
+  },
+  {
+    title: "PEC Firm Registration - AOP/Partnership",
+    category: "Professional Registration",
+    icon: company
+  },
+  {
+    title: "PEC Engineer Registration",
+    category: "Professional Registration",
+    icon: company
+  },
+
+  // Labour Department Services
+  {
+    title: "Labour Department Registration",
+    category: "Labour Registration",
+    icon: company
+  },
+];
 
 const Services = () => {
   const [selectedTab, setSelectedTab] = useState("All");

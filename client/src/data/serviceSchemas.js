@@ -1,6 +1,6 @@
 export const serviceData = Object.freeze({
   // Prices
-prices: {
+  prices: {
     'NTN Registration - Business': 1500,
     'NTN Registration - Salaried': 1000,
     'NTN Registration - Partnership': 5000,
@@ -39,17 +39,29 @@ prices: {
     'Sole Proprietor': 3000,
     'Partnership firm': 10000,
     'Private Limited Company (PVT)': 17000,
-     'Newspaper Registration': 60000,
-  'RTO Password Recovery': 3500,
-  'Company Transfer': 12000,
-  'SECP Company Filing': 10000,
-  'PSDA License': 60000,
-  'Food Authority License': 8000,
-  'Company Close': 15000,
-  'ZGO License': 50000,
-  'DTS License': 50000,
-  'Medical Store License': 50000,
-  'Import Export License': 5000,
+    'Newspaper Registration': 60000,
+    'RTO Password Recovery': 3500,
+    'Company Transfer': 12000,
+    'SECP Company Filing': 10000,
+    'PSDA License': 60000,
+    'Food Authority License': 8000,
+    'Company Close': 15000,
+    'ZGO License': 50000,
+    'DTS License': 50000,
+    'Medical Store License': 50000,
+    'Import Export License': 5000,
+    'DNFBP License - Sole Proprietorship': 7000,
+    'DNFBP License - Company': 15000,
+    'DNFBP License - AOP/Partnership': 15000,
+    'Chamber of Commerce New Membership - Sole Proprietor': 10000,
+    'Chamber of Commerce New Membership - Company': 25000,
+    'Chamber of Commerce New Membership - AOP/Partnership': 20000,
+    'Chamber of Commerce Renewal': 10000,
+    'PEC Firm Registration - Sole Proprietor': 10000,
+    'PEC Firm Registration - Company': 25000,
+    'PEC Firm Registration - AOP/Partnership': 20000,
+    'PEC Engineer Registration': 5000,
+    'Labour Department Registration': 10000,
   },
   // Fields
   fields: {
@@ -381,130 +393,305 @@ prices: {
       { name: 'phone', label: 'Phone No', type: 'text' },
       { name: 'incorporation_certificate', label: 'Incorporation Certificate', type: 'file' }
     ],
-'Newspaper Registration': [
-  { name: 'newspaper_name', label: 'Newspaper Name', type: 'text' },
-  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
-  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
-  { name: 'master_degree', label: 'Master Degree Copy', type: 'file' },
-  { name: 'experience_certificate', label: 'Experience Certificate', type: 'file' },
-  { name: 'bank_statement', label: 'Bank Statement', type: 'file' }
-],
+    'Newspaper Registration': [
+      { name: 'newspaper_name', label: 'Newspaper Name', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+      { name: 'master_degree', label: 'Master Degree Copy', type: 'file' },
+      { name: 'experience_certificate', label: 'Experience Certificate', type: 'file' },
+      { name: 'bank_statement', label: 'Bank Statement', type: 'file' }
+    ],
 
-'RTO Password Recovery': [
-  { name: 'cnic_front', label: 'Original CNIC Front Pic', type: 'file' },
-  { name: 'cnic_back', label: 'Original CNIC Back Pic', type: 'file' },
-  { name: 'gmail', label: 'Active Gmail ID', type: 'email' },
-  { name: 'phone', label: 'Registered Phone No', type: 'tel' },
-  { name: 'rto_name', label: 'RTO Name', type: 'text' }
-],
+    'RTO Password Recovery': [
+      { name: 'cnic_front', label: 'Original CNIC Front Pic', type: 'file' },
+      { name: 'cnic_back', label: 'Original CNIC Back Pic', type: 'file' },
+      { name: 'gmail', label: 'Active Gmail ID', type: 'email' },
+      { name: 'phone', label: 'Registered Phone No', type: 'tel' },
+      { name: 'rto_name', label: 'RTO Name', type: 'text' }
+    ],
 
-'Company Transfer': [
-  { name: 'owner_login_secp', label: 'Owner Login SECP', type: 'text' },
-  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
-  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
-  { name: 'purchaser_cnic_front', label: 'Purchaser CNIC Copy Front', type: 'file' },
-  { name: 'purchaser_cnic_back', label: 'Purchaser CNIC Copy Back', type: 'file' },
-  { name: 'purchaser_gmail', label: 'Purchaser Gmail', type: 'email' },
-  { name: 'purchaser_phone', label: 'Purchaser Phone No', type: 'tel' },
-  { name: 'share_transfer', label: 'Share Transfer Details', type: 'text' }
-],
+    'Company Transfer': [
+      { name: 'owner_login_secp', label: 'Owner Login SECP', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+      { name: 'purchaser_cnic_front', label: 'Purchaser CNIC Copy Front', type: 'file' },
+      { name: 'purchaser_cnic_back', label: 'Purchaser CNIC Copy Back', type: 'file' },
+      { name: 'purchaser_gmail', label: 'Purchaser Gmail', type: 'email' },
+      { name: 'purchaser_phone', label: 'Purchaser Phone No', type: 'tel' },
+      { name: 'share_transfer', label: 'Share Transfer Details', type: 'text' }
+    ],
 
-'SECP Company Filing': [
-  { name: 'secp_login', label: 'SECP Login', type: 'text' },
-  { name: 'directors_pin', label: 'All Directors Pin Code', type: 'text' },
-  { name: 'total_revenue', label: 'Total Revenue', type: 'number' },
-  { name: 'total_employees', label: 'Total Employees', type: 'number' }
-],
+    'SECP Company Filing': [
+      { name: 'secp_login', label: 'SECP Login', type: 'text' },
+      { name: 'directors_pin', label: 'All Directors Pin Code', type: 'text' },
+      { name: 'total_revenue', label: 'Total Revenue', type: 'number' },
+      { name: 'total_employees', label: 'Total Employees', type: 'number' }
+    ],
 
-'PSDA License': [
-  { name: 'institute_name', label: 'Institute Name', type: 'text' },
-  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
-  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
-  { name: 'bank_statement', label: 'Owner Bank Statement', type: 'file' },
-  { name: 'courses_details', label: 'Courses Details', type: 'text' },
-  { name: 'classes_enrollment', label: 'Classes Enrollment', type: 'text' },
-  { name: 'ntn_copy', label: 'Owner NTN Copy', type: 'file' },
-  { name: 'admission_form', label: 'Admission Form', type: 'file' },
-  { name: 'other_details', label: 'Other Details (Labs, Washroom, Storeroom, etc.)', type: 'text' },
-  { name: 'gmail', label: 'Owner Gmail ID', type: 'email' },
-  { name: 'phone', label: 'Owner Phone No', type: 'tel' }
-],
+    'PSDA License': [
+      { name: 'institute_name', label: 'Institute Name', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+      { name: 'bank_statement', label: 'Owner Bank Statement', type: 'file' },
+      { name: 'courses_details', label: 'Courses Details', type: 'text' },
+      { name: 'classes_enrollment', label: 'Classes Enrollment', type: 'text' },
+      { name: 'ntn_copy', label: 'Owner NTN Copy', type: 'file' },
+      { name: 'admission_form', label: 'Admission Form', type: 'file' },
+      { name: 'other_details', label: 'Other Details (Labs, Washroom, Storeroom, etc.)', type: 'text' },
+      { name: 'gmail', label: 'Owner Gmail ID', type: 'email' },
+      { name: 'phone', label: 'Owner Phone No', type: 'tel' }
+    ],
 
-'Food Authority License': [
-  { name: 'shop_name', label: 'Shop Name', type: 'text' },
-  { name: 'shop_address', label: 'Shop Address', type: 'text' },
-  { name: 'items_details', label: 'Items Details', type: 'text' },
-  { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
-  { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
-  { name: 'gmail', label: 'Owner Gmail ID', type: 'email' },
-  { name: 'phone', label: 'Owner Phone No', type: 'tel' },
-  { name: 'owner_photo', label: 'Owner Photo', type: 'file' },
-  { name: 'unit_details', label: 'Unit Details (if applicable)', type: 'text' }
-],
+    'Food Authority License': [
+      { name: 'shop_name', label: 'Shop Name', type: 'text' },
+      { name: 'shop_address', label: 'Shop Address', type: 'text' },
+      { name: 'items_details', label: 'Items Details', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'gmail', label: 'Owner Gmail ID', type: 'email' },
+      { name: 'phone', label: 'Owner Phone No', type: 'tel' },
+      { name: 'owner_photo', label: 'Owner Photo', type: 'file' },
+      { name: 'unit_details', label: 'Unit Details (if applicable)', type: 'text' }
+    ],
 
-'Company Close': [
-  { name: 'secp_login', label: 'SECP Login ID', type: 'text' },
-  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
-  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
-  { name: 'auditor_report', label: 'Auditor Report', type: 'file' },
-  { name: 'affidavit', label: 'Affidavit', type: 'file' }
-],
+    'Company Close': [
+      { name: 'secp_login', label: 'SECP Login ID', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+      { name: 'auditor_report', label: 'Auditor Report', type: 'file' },
+      { name: 'affidavit', label: 'Affidavit', type: 'file' }
+    ],
 
-'ZGO License': [
-  { name: 'directors_cnic_front', label: 'Directors CNIC Copy Front', type: 'file' },
-  { name: 'directors_cnic_back', label: 'Directors CNIC Copy Back', type: 'file' },
-  { name: 'incorporate_certificate', label: 'Company Incorporate Certificate', type: 'file' },
-  { name: 'aoa_moa', label: 'Company AOA/MOA', type: 'file' },
-  { name: 'form_21', label: 'Company FORM 21', type: 'file' },
-  { name: 'dts_license', label: 'DTS License (if applicable)', type: 'file' },
-  { name: 'iata_license', label: 'IATA License (if applicable)', type: 'file' },
-  { name: 'no_dispute_certificate', label: 'Directors No Dispute Certificate', type: 'file' },
-  { name: 'ntn', label: 'Company and Directors NTN', type: 'file' },
-  { name: 'gmail', label: 'Company Gmail ID', type: 'email' },
-  { name: 'phone', label: 'Company Phone No', type: 'tel' }
-],
+    'ZGO License': [
+      { name: 'directors_cnic_front', label: 'Directors CNIC Copy Front', type: 'file' },
+      { name: 'directors_cnic_back', label: 'Directors CNIC Copy Back', type: 'file' },
+      { name: 'incorporate_certificate', label: 'Company Incorporate Certificate', type: 'file' },
+      { name: 'aoa_moa', label: 'Company AOA/MOA', type: 'file' },
+      { name: 'form_21', label: 'Company FORM 21', type: 'file' },
+      { name: 'dts_license', label: 'DTS License (if applicable)', type: 'file' },
+      { name: 'iata_license', label: 'IATA License (if applicable)', type: 'file' },
+      { name: 'no_dispute_certificate', label: 'Directors No Dispute Certificate', type: 'file' },
+      { name: 'ntn', label: 'Company and Directors NTN', type: 'file' },
+      { name: 'gmail', label: 'Company Gmail ID', type: 'email' },
+      { name: 'phone', label: 'Company Phone No', type: 'tel' }
+    ],
 
-'DTS License': [
-  { name: 'institute_name', label: 'Institute Name', type: 'text' },
-  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
-  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
-  { name: 'gmail', label: 'Institute Gmail ID', type: 'email' },
-  { name: 'phone', label: 'Institute Phone No', type: 'tel' },
-  { name: 'institute_address', label: 'Institute Address', type: 'text' },
-  { name: 'bank_statement', label: 'Bank Statement', type: 'file' },
-  { name: 'bank_security', label: 'Bank Security Deposit Slip', type: 'file' },
-  { name: 'office_plan', label: 'Office Plan', type: 'file' },
-  { name: 'sole_ntn', label: 'NTN (for Sole Proprietorship)', type: 'file' },
-  { name: 'partnership_docs', label: 'Partnership Docs (Form C, Firm Deed, All Partners CNIC)', type: 'file' },
-  { name: 'company_docs', label: 'Company Docs (Incorporate Certificate, AoA, MoA)', type: 'file' },
-  { name: 'license_category', label: 'License Category', type: 'text' }
-],
+    'DTS License': [
+      { name: 'institute_name', label: 'Institute Name', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+      { name: 'gmail', label: 'Institute Gmail ID', type: 'email' },
+      { name: 'phone', label: 'Institute Phone No', type: 'tel' },
+      { name: 'institute_address', label: 'Institute Address', type: 'text' },
+      { name: 'bank_statement', label: 'Bank Statement', type: 'file' },
+      { name: 'bank_security', label: 'Bank Security Deposit Slip', type: 'file' },
+      { name: 'office_plan', label: 'Office Plan', type: 'file' },
+      { name: 'sole_ntn', label: 'NTN (for Sole Proprietorship)', type: 'file' },
+      { name: 'partnership_docs', label: 'Partnership Docs (Form C, Firm Deed, All Partners CNIC)', type: 'file' },
+      { name: 'company_docs', label: 'Company Docs (Incorporate Certificate, AoA, MoA)', type: 'file' },
+      { name: 'license_category', label: 'License Category', type: 'text' }
+    ],
 
-'Medical Store License': [
-  { name: 'store_name', label: 'Medical Store Name', type: 'text' },
-  { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
-  { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
-  { name: 'gmail', label: 'Owner Gmail ID', type: 'email' },
-  { name: 'phone', label: 'Owner Phone No', type: 'tel' },
-  { name: 'qualification_certificate', label: 'Owner Qualification Certificate', type: 'file' },
-  { name: 'owner_biometric', label: 'Owner Biometric Slip', type: 'file' },
-  { name: 'qualified_person_cnic_front', label: 'Qualified Person CNIC Front', type: 'file' },
-  { name: 'qualified_person_cnic_back', label: 'Qualified Person CNIC Back', type: 'file' },
-  { name: 'degree_copy', label: 'Degree Copy', type: 'file' },
-  { name: 'biometric_slip', label: 'Biometric Slip', type: 'file' },
-  { name: 'contract_agreement', label: 'Contract Agreement', type: 'file' },
-  { name: 'store_board_pic', label: 'Medical Store Board Pic', type: 'file' },
-  { name: 'ac_photo', label: 'AC Photo', type: 'file' },
-  { name: 'refrigerator_photo', label: 'Refrigerators Photo', type: 'file' }
-],
+    'Medical Store License': [
+      { name: 'store_name', label: 'Medical Store Name', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Copy Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Copy Back', type: 'file' },
+      { name: 'gmail', label: 'Owner Gmail ID', type: 'email' },
+      { name: 'phone', label: 'Owner Phone No', type: 'tel' },
+      { name: 'qualification_certificate', label: 'Owner Qualification Certificate', type: 'file' },
+      { name: 'owner_biometric', label: 'Owner Biometric Slip', type: 'file' },
+      { name: 'qualified_person_cnic_front', label: 'Qualified Person CNIC Front', type: 'file' },
+      { name: 'qualified_person_cnic_back', label: 'Qualified Person CNIC Back', type: 'file' },
+      { name: 'degree_copy', label: 'Degree Copy', type: 'file' },
+      { name: 'biometric_slip', label: 'Biometric Slip', type: 'file' },
+      { name: 'contract_agreement', label: 'Contract Agreement', type: 'file' },
+      { name: 'store_board_pic', label: 'Medical Store Board Pic', type: 'file' },
+      { name: 'ac_photo', label: 'AC Photo', type: 'file' },
+      { name: 'refrigerator_photo', label: 'Refrigerators Photo', type: 'file' }
+    ],
 
-'Import Export License': [
-  { name: 'ntn', label: 'Business NTN', type: 'text' },
-  { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
-  { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
-  { name: 'gmail', label: 'Business Gmail ID', type: 'email' },
-  { name: 'phone', label: 'Business Phone No', type: 'tel' }
-]
+    'Import Export License': [
+      { name: 'ntn', label: 'Business NTN', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'gmail', label: 'Business Gmail ID', type: 'email' },
+      { name: 'phone', label: 'Business Phone No', type: 'tel' }
+    ],
+
+    'DNFBP License - Sole Proprietorship': [
+      { name: 'institute_name', label: 'Institute Name', type: 'text' },
+      { name: 'institute_nature', label: 'Institute Nature', type: 'text' },
+      { name: 'institute_address', label: 'Institute Address', type: 'text' },
+      { name: 'email_id', label: 'Email ID', type: 'email' },
+      { name: 'phone_no', label: 'Phone No', type: 'tel' },
+      { name: 'fbr_login_id', label: 'FBR Login ID', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'police_character_cert', label: 'Police Character Certificate', type: 'file' }
+    ],
+
+    'DNFBP License - Company': [
+      { name: 'institute_name', label: 'Institute Name', type: 'text' },
+      { name: 'institute_nature', label: 'Institute Nature', type: 'text' },
+      { name: 'institute_address', label: 'Institute Address', type: 'text' },
+      { name: 'email_id', label: 'Email ID', type: 'email' },
+      { name: 'phone_no', label: 'Phone No', type: 'tel' },
+      { name: 'fbr_login_id', label: 'FBR Login ID', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'police_character_cert', label: 'Police Character Certificate', type: 'file' }
+    ],
+
+    'DNFBP License - AOP/Partnership': [
+      { name: 'institute_name', label: 'Institute Name', type: 'text' },
+      { name: 'institute_nature', label: 'Institute Nature', type: 'text' },
+      { name: 'institute_address', label: 'Institute Address', type: 'text' },
+      { name: 'email_id', label: 'Email ID', type: 'email' },
+      { name: 'phone_no', label: 'Phone No', type: 'tel' },
+      { name: 'fbr_login_id', label: 'FBR Login ID', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'police_character_cert', label: 'Police Character Certificate', type: 'file' }
+    ],
+
+    'Chamber of Commerce New Membership - Sole Proprietor': [
+      { name: 'institute_name', label: 'Institute Name', type: 'text' },
+      { name: 'institute_address', label: 'Institute Address', type: 'text' },
+      { name: 'gmail', label: 'Gmail', type: 'email' },
+      { name: 'phone_no', label: 'Phone No', type: 'tel' },
+      { name: 'membership_district', label: 'Membership District', type: 'text' },
+      { name: 'business_nature', label: 'Business Nature', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'owner_photo', label: 'Owner Photo', type: 'file' },
+      { name: 'other_member_photo', label: 'Other Member Photo (Optional)', type: 'file' },
+      { name: 'business_reg_cert', label: 'Business Registration Certificate', type: 'file' },
+      { name: 'business_ntn', label: 'Business NTN', type: 'file' },
+      { name: 'bank_maint_cert', label: 'Bank Maintenance Certificate', type: 'file' },
+      { name: 'tax_return', label: 'Tax Return', type: 'file' },
+      { name: 'utility_bill', label: 'Business Utility Bill', type: 'file' },
+      { name: 'business_letterhead', label: 'Business Letterhead', type: 'file' }
+    ],
+
+    'Chamber of Commerce New Membership - Company': [
+      { name: 'institute_name', label: 'Institute Name', type: 'text' },
+      { name: 'institute_address', label: 'Institute Address', type: 'text' },
+      { name: 'gmail', label: 'Gmail', type: 'email' },
+      { name: 'phone_no', label: 'Phone No', type: 'tel' },
+      { name: 'membership_district', label: 'Membership District', type: 'text' },
+      { name: 'business_nature', label: 'Business Nature', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'owner_photo', label: 'Owner Photo', type: 'file' },
+      { name: 'other_member_photo', label: 'Other Member Photo (Optional)', type: 'file' },
+      { name: 'business_reg_cert', label: 'Business Registration Certificate', type: 'file' },
+      { name: 'business_ntn', label: 'Business NTN', type: 'file' },
+      { name: 'bank_maint_cert', label: 'Bank Maintenance Certificate', type: 'file' },
+      { name: 'tax_return', label: 'Tax Return', type: 'file' },
+      { name: 'utility_bill', label: 'Business Utility Bill', type: 'file' },
+      { name: 'business_letterhead', label: 'Business Letterhead', type: 'file' }
+    ],
+
+    'Chamber of Commerce New Membership - AOP/Partnership': [
+      { name: 'institute_name', label: 'Institute Name', type: 'text' },
+      { name: 'institute_address', label: 'Institute Address', type: 'text' },
+      { name: 'gmail', label: 'Gmail', type: 'email' },
+      { name: 'phone_no', label: 'Phone No', type: 'tel' },
+      { name: 'membership_district', label: 'Membership District', type: 'text' },
+      { name: 'business_nature', label: 'Business Nature', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'owner_photo', label: 'Owner Photo', type: 'file' },
+      { name: 'other_member_photo', label: 'Other Member Photo (Optional)', type: 'file' },
+      { name: 'business_reg_cert', label: 'Business Registration Certificate', type: 'file' },
+      { name: 'business_ntn', label: 'Business NTN', type: 'file' },
+      { name: 'bank_maint_cert', label: 'Bank Maintenance Certificate', type: 'file' },
+      { name: 'tax_return', label: 'Tax Return', type: 'file' },
+      { name: 'utility_bill', label: 'Business Utility Bill', type: 'file' },
+      { name: 'business_letterhead', label: 'Business Letterhead', type: 'file' }
+    ],
+
+    'Chamber of Commerce Renewal': [
+      { name: 'institute_name', label: 'Institute Name', type: 'text' },
+      { name: 'institute_address', label: 'Institute Address', type: 'text' },
+      { name: 'gmail', label: 'Gmail', type: 'email' },
+      { name: 'phone_no', label: 'Phone No', type: 'tel' },
+      { name: 'old_chamber_card', label: 'Old Chamber Card Copy', type: 'file' },
+      { name: 'latest_tax_return', label: 'Latest Tax Return', type: 'file' }
+    ],
+
+    'PEC Firm Registration - Sole Proprietor': [
+      { name: 'owner_name', label: 'Owner Name', type: 'text' },
+      { name: 'owner_email', label: 'Owner Email', type: 'email' },
+      { name: 'owner_phone', label: 'Owner Phone No', type: 'tel' },
+      { name: 'firm_name', label: 'Firm Name', type: 'text' },
+      { name: 'firm_address', label: 'Firm Address', type: 'text' },
+      { name: 'nature_of_business', label: 'Nature Of Business', type: 'text' },
+      { name: 'firm_category', label: 'Firm Category', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'firm_ntn', label: 'Firm NTN', type: 'file' },
+      { name: 'business_reg_cert', label: 'Business Registration Certificate', type: 'file' },
+      { name: 'engineer_pec_card', label: 'Engineer PEC Card', type: 'file' },
+      { name: 'bank_maint_cert', label: 'Firm Bank Maintenance Certificate', type: 'file' },
+      { name: 'bank_statement', label: 'Bank Statement', type: 'file' }
+    ],
+
+    'PEC Firm Registration - Company': [
+      { name: 'owner_name', label: 'Owner Name', type: 'text' },
+      { name: 'owner_email', label: 'Owner Email', type: 'email' },
+      { name: 'owner_phone', label: 'Owner Phone No', type: 'tel' },
+      { name: 'firm_name', label: 'Firm Name', type: 'text' },
+      { name: 'firm_address', label: 'Firm Address', type: 'text' },
+      { name: 'nature_of_business', label: 'Nature Of Business', type: 'text' },
+      { name: 'firm_category', label: 'Firm Category', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'firm_ntn', label: 'Firm NTN', type: 'file' },
+      { name: 'business_reg_cert', label: 'Business Registration Certificate', type: 'file' },
+      { name: 'engineer_pec_card', label: 'Engineer PEC Card', type: 'file' },
+      { name: 'bank_maint_cert', label: 'Firm Bank Maintenance Certificate', type: 'file' },
+      { name: 'bank_statement', label: 'Bank Statement', type: 'file' }
+    ],
+
+    'PEC Firm Registration - AOP/Partnership': [
+      { name: 'owner_name', label: 'Owner Name', type: 'text' },
+      { name: 'owner_email', label: 'Owner Email', type: 'email' },
+      { name: 'owner_phone', label: 'Owner Phone No', type: 'tel' },
+      { name: 'firm_name', label: 'Firm Name', type: 'text' },
+      { name: 'firm_address', label: 'Firm Address', type: 'text' },
+      { name: 'nature_of_business', label: 'Nature Of Business', type: 'text' },
+      { name: 'firm_category', label: 'Firm Category', type: 'text' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'firm_ntn', label: 'Firm NTN', type: 'file' },
+      { name: 'business_reg_cert', label: 'Business Registration Certificate', type: 'file' },
+      { name: 'engineer_pec_card', label: 'Engineer PEC Card', type: 'file' },
+      { name: 'bank_maint_cert', label: 'Firm Bank Maintenance Certificate', type: 'file' },
+      { name: 'bank_statement', label: 'Bank Statement', type: 'file' }
+    ],
+
+    'PEC Engineer Registration': [
+      { name: 'engineer_name', label: 'Engineer Name', type: 'text' },
+      { name: 'email', label: 'Email', type: 'email' },
+      { name: 'phone_no', label: 'Phone No', type: 'tel' },
+      { name: 'engineer_degree', label: 'Engineer Degree', type: 'file' },
+      { name: 'cnic_front', label: 'CNIC Front', type: 'file' },
+      { name: 'cnic_back', label: 'CNIC Back', type: 'file' },
+      { name: 'photo_blue_bg', label: 'Photo Blue Background', type: 'file' }
+    ],
+
+    'Labour Department Registration': [
+      { name: 'institute_name', label: 'Institute Name', type: 'text' },
+      { name: 'institute_address', label: 'Institute Address', type: 'text' },
+      { name: 'email', label: 'Email', type: 'email' },
+      { name: 'phone_no', label: 'Phone No', type: 'tel' },
+      { name: 'nature_of_business', label: 'Nature Of Business', type: 'file' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'business_reg_cert', label: 'Business Registration Certificate', type: 'file' },
+      { name: 'num_employees', label: 'Number Of Employees', type: 'text' }
+    ]
 
 
   }

@@ -1,13 +1,18 @@
 import ServiceMessage from '../models/Servicemessage.js';
+import cpaas from '../services/cpaasService.js';
+import Service from '../models/Service.js';
+import PersonalDetail from '../models/PersonalDetail.js';
 import mongoose from 'mongoose';
 
-// Send a message (alert or update) to a user
+// Send a message (alert or update) to a user AND send SMS
 export const sendMessage = async (req, res) => {
   try {
-    const { userId, serviceId, type, message } = req.body;
+    const { userId, serviceId, type, message, phone } = req.body;
     if (!userId || !type || !message) {
       return res.status(400).json({ error: 'userId, type, and message are required' });
     }
+
+    // Save in-app message
     const newMsg = await ServiceMessage.create({
       userId,
       serviceId,
@@ -15,9 +20,29 @@ export const sendMessage = async (req, res) => {
       message,
       createdAt: new Date(),
     });
-    res.json(newMsg);
+
+    // Send SMS if phone number is provided
+    let smsSent = false;
+    let smsError = null;
+    if (phone) {
+      try {
+        await cpaas.sendCustomSMS(phone, message);
+        smsSent = true;
+        console.log(`SMS sent successfully to ${phone}`);
+      } catch (smsErr) {
+        smsError = smsErr.message;
+        console.error(`SMS failed for ${phone}:`, smsErr);
+      }
+    }
+
+    res.json({
+      ...newMsg.toObject(),
+      smsSent,
+      smsError: smsError || null
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to send message' });
+    console.error('Send message error:', err);
+    res.status(500).json({ error: 'Failed to send message', details: err.message });
   }
 };
 

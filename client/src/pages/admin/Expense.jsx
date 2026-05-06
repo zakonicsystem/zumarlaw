@@ -18,8 +18,9 @@ const Expense = () => {
     try {
       const token = localStorage.getItem('adminToken') || localStorage.getItem('token') || localStorage.getItem('employeeToken');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.put(`https://app.zumarlawfirm.com/expense/${id}`, { type: editType, amount: parseFloat(editAmount) }, cfg);
-      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.put(`${apiUrl}/api/expense/${id}`, { type: editType, amount: parseFloat(editAmount) }, cfg);
+      const expenseRes = await axios.get(`${apiUrl}/api/expense`, cfg);
       const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
       setExpenses(expenseData);
       setEditIdx(null);
@@ -35,8 +36,9 @@ const Expense = () => {
     try {
       const token = localStorage.getItem('adminToken') || localStorage.getItem('token') || localStorage.getItem('employeeToken');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.delete(`https://app.zumarlawfirm.com/expense/${id}`, cfg);
-      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.delete(`${apiUrl}/api/expense/${id}`, cfg);
+      const expenseRes = await axios.get(`${apiUrl}/api/expense`, cfg);
       const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
       setExpenses(expenseData);
       setMessage('Expense deleted successfully!');
@@ -74,10 +76,11 @@ const Expense = () => {
         const token = localStorage.getItem('adminToken') || localStorage.getItem('token') || localStorage.getItem('employeeToken');
         const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
-        const profitRes = await axios.get('https://app.zumarlawfirm.com/accounts/summary');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const profitRes = await axios.get(`${apiUrl}/api/accounts/summary`);
         setProfit(profitRes.data.totalProfit || 0);
 
-        const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+        const expenseRes = await axios.get(`${apiUrl}/api/expense`, cfg);
         const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
         setExpenses(expenseData);
       } catch (err) {
@@ -148,8 +151,9 @@ const Expense = () => {
       };
       const token = localStorage.getItem('adminToken') || localStorage.getItem('token') || localStorage.getItem('employeeToken');
       const cfg = token && token !== 'null' ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      await axios.post('https://app.zumarlawfirm.com/expense', payload, cfg);
-      const expenseRes = await axios.get('https://app.zumarlawfirm.com/expense', cfg);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.post(`${apiUrl}/api/expense`, payload, cfg);
+      const expenseRes = await axios.get(`${apiUrl}/api/expense`, cfg);
       const expenseData = Array.isArray(expenseRes.data) ? expenseRes.data : (expenseRes.data?.data || []);
       setExpenses(expenseData);
       setForm({
@@ -181,187 +185,187 @@ const Expense = () => {
     <div>
       <div className="max-w-5xl rounded-2xl">
         <h2 className="text-3xl font-bold mb-8 text-[#57123f] text-center">Expense Management</h2>
-          <div className="flex gap-8 mb-8">
-            <div className="bg-green-100 text-green-800 rounded-xl p-4 shadow font-bold text-lg">
-              Profit After Expenses: Rs {netProfit}
-            </div>
-            <div className="bg-red-100 text-red-800 rounded-xl p-4 shadow font-bold text-lg">
-              Total Expenses (Paid): Rs {totalExpensesPaid}
-            </div>
-            <div className="ml-auto">
-              <Link to="/admin/expense-submissions" className="bg-[#57123f] text-white px-4 py-2 rounded">View Submissions</Link>
-            </div>
+        <div className="flex gap-8 mb-8">
+          <div className="bg-green-100 text-green-800 rounded-xl p-4 shadow font-bold text-lg">
+            Profit After Expenses: Rs {netProfit}
           </div>
-          <form onSubmit={handleSubmit} className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-xl shadow-2xl ">
-            {/* Person Details */}
-            <div className="md:col-span-2">
-              <h3 className="text-2xl font-semibold text-[#57123f] mb-3">Person Details</h3>
-            </div>
-            <div>
-              <label className="block font-medium mb-1">Name</label>
-              <input type="text" name="senderName" value={form.senderName} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block font-medium mb-1">Email</label>
-              <input type="email" name="senderEmail" value={form.senderEmail} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block font-medium mb-1">Designation</label>
-              <input type="text" name="senderDesignation" value={form.senderDesignation} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block font-medium mb-1">Phone</label>
-              <input type="text" name="senderPhone" value={form.senderPhone} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block font-medium mb-1">Branch</label>
-              <select name="senderBranch" value={form.senderBranch} onChange={handleChange} className="w-full border rounded px-3 py-2">
-                <option value="">Select Branch</option>
-                <option value="Lahore">Lahore</option>
-                <option value="Islamabad">Islamabad</option>
-              </select>
-            </div>
-
-            {/* Expense Details */}
-            <div className="md:col-span-2">
-              <h3 className="text-2xl font-semibold text-[#57123f] mb-3">Expense Details</h3>
-            </div>
-            <div>
-              <label className="block font-medium mb-1">Expense Main Category (Number)</label>
-              <select name="expenseTypeNumber" value={form.expenseTypeNumber} onChange={(e) => {
-                const v = e.target.value;
-                const map = { 1: 'Rent', 2: 'Utility Bills', 3: 'Traveling', 4: 'Stationery', 5: 'Foods', 6: 'Furniture', 7: 'Electronic Items', 8: 'Marketing', 9: 'Mobile Bills', 10: 'Office Maintenance', 11: 'Crockery', 12: 'Others' };
-                setForm({ ...form, expenseTypeNumber: Number(v), expenseCategory: map[Number(v)], expenseSubCategory: '' });
-              }} className="w-full border rounded px-3 py-2">
-                <option value={1}>Rent</option>
-                <option value={2}>Utility Bills</option>
-                <option value={3}>Traveling</option>
-                <option value={4}>Stationery</option>
-                <option value={5}>Foods</option>
-                <option value={6}>Furniture</option>
-                <option value={7}>Electronic Items</option>
-                <option value={8}>Marketing</option>
-                <option value={9}>Mobile Bills</option>
-                <option value={10}>Office Maintenance</option>
-                <option value={11}>Crockery</option>
-                <option value={12}>Others</option>
-              </select>
-            </div>
-            {/* show subcategory select or remarks depending on main category */}
-            {(() => {
-              const n = Number(form.expenseTypeNumber);
-              // Utility Bills
-              if (n === 2) {
-                return (
-                  <div>
-                    <label className="block font-medium mb-1">Subcategory</label>
-                    <select name="expenseSubCategory" value={form.expenseSubCategory} onChange={handleChange} className="w-full border rounded px-3 py-2">
-                      <option value="">Select</option>
-                      <option>Electricity</option>
-                      <option>Internet</option>
-                      <option>Gas</option>
-                    </select>
-                  </div>
-                );
-              }
-              // Marketing
-              if (n === 8) {
-                return (
-                  <div>
-                    <label className="block font-medium mb-1">Marketing Subcategory</label>
-                    <select name="expenseSubCategory" value={form.expenseSubCategory} onChange={handleChange} className="w-full border rounded px-3 py-2">
-                      <option value="">Select</option>
-                      <option>Digital Marketing</option>
-                      <option>IT Team</option>
-                      <option>Social Media Team</option>
-                      <option>Poster</option>
-                      <option>Visiting Card</option>
-                      <option>Banners</option>
-                    </select>
-                  </div>
-                );
-              }
-              // Office Maintenance
-              if (n === 10) {
-                return (
-                  <div>
-                    <label className="block font-medium mb-1">Maintenance Subcategory</label>
-                    <select name="expenseSubCategory" value={form.expenseSubCategory} onChange={handleChange} className="w-full border rounded px-3 py-2">
-                      <option value="">Select</option>
-                      <option>Paling</option>
-                      <option>Vairing</option>
-                      <option>Color</option>
-                      <option>Other</option>
-                    </select>
-                    {form.expenseSubCategory === 'Other' && (
-                      <div className="mt-3">
-                        <label className="block font-medium mb-1">Remarks / Details (Other)</label>
-                        <textarea name="otherDetails" value={form.otherDetails} onChange={handleChange} className="w-full border rounded px-3 py-2" rows={3} />
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              // Categories that should show a remarks textarea: 3,4,6,7,9,11
-              const remarkCategories = [3, 4, 6, 7, 9, 11, 12];
-              if (remarkCategories.includes(n)) {
-                return (
-                  <div className="md:col-span-2">
-                    <label className="block font-medium mb-1">Remarks / Details</label>
-                    <textarea name="remarks" value={form.remarks} onChange={handleChange} className="w-full border rounded px-3 py-2" rows={4} />
-                  </div>
-                );
-              }
-
-              // For categories like Rent (1) and Foods (5) show no extra input by default
-              return null;
-            })()}
-
-            <div>
-              <label className="block font-medium mb-1">Date</label>
-              <input type="date" name="expenseDate" value={form.expenseDate} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block font-medium mb-1">Amount</label>
-              <input type="number" name="amount" value={form.amount} onChange={handleChange} className="w-full border rounded px-3 py-2" min="0" />
-            </div>
-
-
-            {/* Account Details */}
-            <div className="md:col-span-2">
-              <h1 className="text-2xl font-semibold text-[#57123f] mb-3">Account Details</h1>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block font-medium mb-1">Payment Method</label>
-              <select name="paymentMethod" value={form.paymentMethod} onChange={handleChange} className="w-full border rounded px-3 py-2">
-                <option value="Cash">Cash</option>
-                <option value="Bank">Bank</option>
-              </select>
-            </div>
-
-            {form.paymentMethod === 'Bank' && (
-              <>
-                <div>
-                  <label className="block font-medium mb-1">Bank Name</label>
-                  <input type="text" name="senderBankName" value={form.senderBankName} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block font-medium mb-1">Account Title</label>
-                  <input type="text" name="senderAccountTitle" value={form.senderAccountTitle} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block font-medium mb-1">Sender Account Number</label>
-                  <input type="text" name="senderAccountNumber" value={form.senderAccountNumber} onChange={handleChange} className="w-full border rounded px-3 py-2" />
-                </div>
-              </>
-            )}
-
-            <div className="flex items-end justify-end mt-2 md:mt-0 md:col-span-2">
-              <button type="submit" className="bg-[#57123f] text-white px-6 py-2 rounded font-semibold shadow hover:bg-[#6d2c5b]">Add Expense</button>
-            </div>
-          </form>
+          <div className="bg-red-100 text-red-800 rounded-xl p-4 shadow font-bold text-lg">
+            Total Expenses (Paid): Rs {totalExpensesPaid}
+          </div>
+          <div className="ml-auto">
+            <Link to="/admin/expense-submissions" className="bg-[#57123f] text-white px-4 py-2 rounded">View Submissions</Link>
+          </div>
         </div>
+        <form onSubmit={handleSubmit} className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-6 p-6 rounded-xl shadow-2xl ">
+          {/* Person Details */}
+          <div className="md:col-span-2">
+            <h3 className="text-2xl font-semibold text-[#57123f] mb-3">Person Details</h3>
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Name</label>
+            <input type="text" name="senderName" value={form.senderName} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Email</label>
+            <input type="email" name="senderEmail" value={form.senderEmail} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Designation</label>
+            <input type="text" name="senderDesignation" value={form.senderDesignation} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Phone</label>
+            <input type="text" name="senderPhone" value={form.senderPhone} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Branch</label>
+            <select name="senderBranch" value={form.senderBranch} onChange={handleChange} className="w-full border rounded px-3 py-2">
+              <option value="">Select Branch</option>
+              <option value="Lahore">Lahore</option>
+              <option value="Islamabad">Islamabad</option>
+            </select>
+          </div>
+
+          {/* Expense Details */}
+          <div className="md:col-span-2">
+            <h3 className="text-2xl font-semibold text-[#57123f] mb-3">Expense Details</h3>
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Expense Main Category (Number)</label>
+            <select name="expenseTypeNumber" value={form.expenseTypeNumber} onChange={(e) => {
+              const v = e.target.value;
+              const map = { 1: 'Rent', 2: 'Utility Bills', 3: 'Traveling', 4: 'Stationery', 5: 'Foods', 6: 'Furniture', 7: 'Electronic Items', 8: 'Marketing', 9: 'Mobile Bills', 10: 'Office Maintenance', 11: 'Crockery', 12: 'Others' };
+              setForm({ ...form, expenseTypeNumber: Number(v), expenseCategory: map[Number(v)], expenseSubCategory: '' });
+            }} className="w-full border rounded px-3 py-2">
+              <option value={1}>Rent</option>
+              <option value={2}>Utility Bills</option>
+              <option value={3}>Traveling</option>
+              <option value={4}>Stationery</option>
+              <option value={5}>Foods</option>
+              <option value={6}>Furniture</option>
+              <option value={7}>Electronic Items</option>
+              <option value={8}>Marketing</option>
+              <option value={9}>Mobile Bills</option>
+              <option value={10}>Office Maintenance</option>
+              <option value={11}>Crockery</option>
+              <option value={12}>Others</option>
+            </select>
+          </div>
+          {/* show subcategory select or remarks depending on main category */}
+          {(() => {
+            const n = Number(form.expenseTypeNumber);
+            // Utility Bills
+            if (n === 2) {
+              return (
+                <div>
+                  <label className="block font-medium mb-1">Subcategory</label>
+                  <select name="expenseSubCategory" value={form.expenseSubCategory} onChange={handleChange} className="w-full border rounded px-3 py-2">
+                    <option value="">Select</option>
+                    <option>Electricity</option>
+                    <option>Internet</option>
+                    <option>Gas</option>
+                  </select>
+                </div>
+              );
+            }
+            // Marketing
+            if (n === 8) {
+              return (
+                <div>
+                  <label className="block font-medium mb-1">Marketing Subcategory</label>
+                  <select name="expenseSubCategory" value={form.expenseSubCategory} onChange={handleChange} className="w-full border rounded px-3 py-2">
+                    <option value="">Select</option>
+                    <option>Digital Marketing</option>
+                    <option>IT Team</option>
+                    <option>Social Media Team</option>
+                    <option>Poster</option>
+                    <option>Visiting Card</option>
+                    <option>Banners</option>
+                  </select>
+                </div>
+              );
+            }
+            // Office Maintenance
+            if (n === 10) {
+              return (
+                <div>
+                  <label className="block font-medium mb-1">Maintenance Subcategory</label>
+                  <select name="expenseSubCategory" value={form.expenseSubCategory} onChange={handleChange} className="w-full border rounded px-3 py-2">
+                    <option value="">Select</option>
+                    <option>Paling</option>
+                    <option>Vairing</option>
+                    <option>Color</option>
+                    <option>Other</option>
+                  </select>
+                  {form.expenseSubCategory === 'Other' && (
+                    <div className="mt-3">
+                      <label className="block font-medium mb-1">Remarks / Details (Other)</label>
+                      <textarea name="otherDetails" value={form.otherDetails} onChange={handleChange} className="w-full border rounded px-3 py-2" rows={3} />
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Categories that should show a remarks textarea: 3,4,6,7,9,11
+            const remarkCategories = [3, 4, 6, 7, 9, 11, 12];
+            if (remarkCategories.includes(n)) {
+              return (
+                <div className="md:col-span-2">
+                  <label className="block font-medium mb-1">Remarks / Details</label>
+                  <textarea name="remarks" value={form.remarks} onChange={handleChange} className="w-full border rounded px-3 py-2" rows={4} />
+                </div>
+              );
+            }
+
+            // For categories like Rent (1) and Foods (5) show no extra input by default
+            return null;
+          })()}
+
+          <div>
+            <label className="block font-medium mb-1">Date</label>
+            <input type="date" name="expenseDate" value={form.expenseDate} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+          </div>
+          <div>
+            <label className="block font-medium mb-1">Amount</label>
+            <input type="number" name="amount" value={form.amount} onChange={handleChange} className="w-full border rounded px-3 py-2" min="0" />
+          </div>
+
+
+          {/* Account Details */}
+          <div className="md:col-span-2">
+            <h1 className="text-2xl font-semibold text-[#57123f] mb-3">Account Details</h1>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block font-medium mb-1">Payment Method</label>
+            <select name="paymentMethod" value={form.paymentMethod} onChange={handleChange} className="w-full border rounded px-3 py-2">
+              <option value="Cash">Cash</option>
+              <option value="Bank">Bank</option>
+            </select>
+          </div>
+
+          {form.paymentMethod === 'Bank' && (
+            <>
+              <div>
+                <label className="block font-medium mb-1">Bank Name</label>
+                <input type="text" name="senderBankName" value={form.senderBankName} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Account Title</label>
+                <input type="text" name="senderAccountTitle" value={form.senderAccountTitle} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block font-medium mb-1">Sender Account Number</label>
+                <input type="text" name="senderAccountNumber" value={form.senderAccountNumber} onChange={handleChange} className="w-full border rounded px-3 py-2" />
+              </div>
+            </>
+          )}
+
+          <div className="flex items-end justify-end mt-2 md:mt-0 md:col-span-2">
+            <button type="submit" className="bg-[#57123f] text-white px-6 py-2 rounded font-semibold shadow hover:bg-[#6d2c5b]">Add Expense</button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

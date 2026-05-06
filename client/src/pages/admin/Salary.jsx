@@ -22,15 +22,17 @@ const Salary = () => {
       const [yearStr, monthStr] = selectedMonth.split('-');
       const year = Number(yearStr);
       const month = Number(monthStr);
-      const res = await axios.post('https://app.zumarlawfirm.com/autoSalary/calculate', { month, year });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.post(`${apiUrl}/api/autoSalary/calculate`, { month, year });
       console.log('autoSalary/calculate response:', res.data);
       let data = res.data || [];
       // If backend returned empty, try to compute client-side using roles + attendance
       if ((!data || data.length === 0)) {
         try {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
           const [rolesRes, attRes] = await Promise.all([
-            axios.get('https://app.zumarlawfirm.com/admin/roles'),
-            axios.get('https://app.zumarlawfirm.com/attendance/history', { params: { year, month } })
+            axios.get(`${apiUrl}/api/admin/roles`),
+            axios.get(`${apiUrl}/api/attendance/history`, { params: { year, month } })
           ]);
           const employees = rolesRes.data || [];
           const attendance = attRes.data || [];
@@ -121,7 +123,8 @@ const Salary = () => {
     setSaving(true);
     try {
       const { year, month } = lastQuery;
-      const res = await axios.post('https://app.zumarlawfirm.com/autoSalary', { month, year });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.post(`${apiUrl}/api/autoSalary`, { month, year });
       if (res.data && res.data.success) {
         alert(`Payroll created for ${res.data.payrolls.length} employees`);
       } else {
@@ -136,7 +139,7 @@ const Salary = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="">
       <h2 className="text-2xl font-bold mb-4">Salary Structure</h2>
       <div className="mb-6 flex gap-4 items-center">
         <input

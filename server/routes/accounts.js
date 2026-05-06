@@ -6,6 +6,7 @@ import ServiceDetail from '../models/Service.js';
 import ManualServiceSubmission from '../models/ManualServiceSubmission.js';
 import ConvertedLead from '../models/ConvertedLead.js';
 import Expense from '../models/Expense.js';
+import Challan from '../models/Challan.js';
 import { servicePrices } from '../data/servicePrices.js';
 const router = express.Router();
 
@@ -239,6 +240,21 @@ router.get('/summary', async (req, res) => {
       console.error('Error loading paid expenses:', e);
     }
     const totalProfit = totalReceived - salaryPaid - paidExpensesTotal;
+
+    // Load total fees (Challan + Consultancy)
+    let totalFees = 0;
+    try {
+      const challans = await Challan.find({ status: 'active' });
+      challans.forEach((c) => {
+        totalFees += (c.challanFee?.amount || 0) + (c.consultancyFee?.amount || 0);
+      });
+    } catch (e) {
+      console.error('Error loading fees:', e);
+    }
+
+    // Net profit after fees
+    const netProfit = totalProfit - totalFees;
+
     res.json({
       totalRevenue,
       totalReceived,
@@ -247,6 +263,8 @@ router.get('/summary', async (req, res) => {
       salaryPaid,
       paidExpensesTotal,
       totalProfit,
+      totalFees,
+      netProfit,
       revenueByServices,
       latestPayrolls: payrolls
     });

@@ -18,6 +18,14 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// Support multiple file uploads: rejectionImage, processingImage, refundedImage
+const uploadMultiple = upload.fields([
+  { name: 'paymentEvidence', maxCount: 1 },
+  { name: 'rejectionImage', maxCount: 1 },
+  { name: 'processingImage', maxCount: 1 },
+  { name: 'refundedImage', maxCount: 1 }
+]);
+
 // Public submission (non-blocking tryVerify so token optional)
 router.post('/', tryVerify, upload.single('paymentEvidence'), createRefund);
 
@@ -28,8 +36,8 @@ router.put('/:id/details', tryVerify, upload.single('paymentEvidence'), updateRe
 router.get('/', tryVerify, getRefunds);
 router.get('/:id', tryVerify, getRefund);
 
-// Update status (admin only - requires valid JWT token)
-router.put('/:id/status', verifyJWT, requireAdminRole, updateRefundStatus);
+// Update status (admin only - requires valid JWT token) - supports multiple file uploads
+router.put('/:id/status', verifyJWT, requireAdminRole, uploadMultiple, updateRefundStatus);
 
 // Delete is allowed for any user (per product request) — no authentication middleware
 router.delete('/:id', deleteRefund);

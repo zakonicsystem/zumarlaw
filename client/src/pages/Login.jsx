@@ -4,6 +4,7 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
 import axios from 'axios';
 import { Toaster, toast } from 'react-hot-toast';
+import { jwtDecode } from 'jwt-decode'; // ✅ CORRECT
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -19,8 +20,9 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await axios.post(
-        'https://app.zumarlawfirm.com/auth/login',
+        `${apiUrl}/api/auth/login`,
         formData,
         {
           headers: { 'Content-Type': 'application/json' },
@@ -31,10 +33,10 @@ const Login = () => {
       const { token } = response.data;
 
       if (token) {
-        // ✅ Only store token, not full user object
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('employeeToken');
         localStorage.setItem('token', token);
+
+        const decodedUser = jwtDecode(token);
+        localStorage.setItem('user', JSON.stringify(decodedUser));
 
         toast.success('Welcome to Zumar Law Firm!');
         navigate('/');
@@ -54,19 +56,28 @@ const Login = () => {
 
   const handleGoogleLogin = () => {
     toast.loading('Redirecting to Google...');
-    window.location.href = 'https://app.zumarlawfirm.com/auth/google';
+    window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/google`;
   };
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
+    const userParam = urlParams.get('user');
 
-    if (token) {
+    if (token && userParam) {
       try {
-        // ✅ Only store token from Google OAuth, not full user data
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('employeeToken');
+        // Decode and parse the user data
+        const userData = JSON.parse(decodeURIComponent(userParam));
+        console.log('Received user data:', userData); // Debug log
+        
+        // Store token in localStorage
         localStorage.setItem('token', token);
+        
+        // Store the complete user data
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        toast.success('Logged in with Google successfully!');
+        window.history.replaceState({}, '', '/');
         navigate('/');
       } catch (error) {
         console.error('Error processing login data:', error);

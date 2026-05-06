@@ -13,7 +13,8 @@ const Attendance = () => {
 
   useEffect(() => {
     let mounted = true;
-    axios.get('https://app.zumarlawfirm.com/admin/roles')
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    axios.get(`${apiUrl}/api/admin/roles`)
       .then(res => {
         if (!mounted) return;
         setEmployees(res.data);
@@ -33,7 +34,8 @@ const Attendance = () => {
         params.month = opts.month;
       }
       if (opts.employeeId) params.employeeId = opts.employeeId;
-      const res = await axios.get('https://app.zumarlawfirm.com/attendance/history', { params });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${apiUrl}/api/attendance/history`, { params });
       // If employeeId provided, we just set/merge for that employee
       if (opts.employeeId) {
         // merge into attendanceHistory: remove existing for that employee then add
@@ -83,7 +85,8 @@ const Attendance = () => {
   const handleEditAttendance = async (id, date, status) => {
     setMarking(true);
     try {
-      await axios.patch('https://app.zumarlawfirm.com/attendance/edit', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.patch(`${apiUrl}/api/attendance/edit`, {
         employeeId: id,
         date,
         present: status === 'present',

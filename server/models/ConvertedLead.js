@@ -39,7 +39,7 @@ const ConvertedLeadSchema = new mongoose.Schema({
   service: String,
   // Granular progress status (e.g., under_review, challan_pending, incorporated...)
   progressStatus: { type: String, default: '' },
-  status: { type: String, enum: ['pending', 'processing', 'converted', 'completed','rejected' , 'Follow-up', 'Mature', 'Contacted'], default: 'converted' },
+  status: { type: String, enum: ['pending', 'processing', 'converted', 'completed', 'rejected', 'Follow-up', 'Mature', 'Contacted'], default: 'converted' },
   // Dynamic fields
   fields: { type: Object, default: {} },
   // File uploads (store file names/paths)
@@ -49,6 +49,12 @@ const ConvertedLeadSchema = new mongoose.Schema({
   certificate: { type: String },
   pricing: { type: PricingSchema, default: {} },
   payments: [PaymentSchema],
+  // Merge tracking
+  mergedIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ConvertedLead' }],
+  mergedCount: { type: Number, default: 0 },
+  primaryName: { type: String }, // Used when service is merged
+  mergedAt: { type: Date },
+  secondaryBackup: [{ type: mongoose.Schema.Types.Mixed }], // Store backup of secondary services for restore on unmerge
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 

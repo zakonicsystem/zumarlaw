@@ -10,12 +10,12 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/manualService': 'https://app.zumarlawfirm.com',
-      '/convertedService': 'https://app.zumarlawfirm.com',
-      '/processing': 'https://app.zumarlawfirm.com', // <-- add this line
-      '/uploads': 'https://app.zumarlawfirm.com',
-      '/accounts': 'https://app.zumarlawfirm.com',
-      '/autoSalary': 'https://app.zumarlawfirm.com',
+      '/manualService': 'http://localhost:5000',
+      '/convertedService': 'http://localhost:5000',
+      '/processing': 'http://localhost:5000',
+      '/uploads': 'http://localhost:5000',
+      '/accounts': 'http://localhost:5000',
+      '/autoSalary': 'http://localhost:5000',
     },
   },
 })

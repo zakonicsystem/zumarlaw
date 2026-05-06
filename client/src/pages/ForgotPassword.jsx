@@ -1,15 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 const ForgetPassword = () => {
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [emailVerified, setEmailVerified] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [message, setMessage] = useState('');
 
+  useEffect(() => {
+    if (location.state?.email) {
+      setEmail(location.state.email);
+    }
+  }, [location.state]);
+
   const handleCheckEmail = async () => {
     try {
-      const res = await axios.post('https://app.zumarlawfirm.com/auth/forgot-password', { email });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.post(`${apiUrl}/api/auth/forgot-password`, { email });
       setEmailVerified(true);
       setMessage('✅ Email verified. Enter your new password.');
     } catch (error) {
@@ -19,7 +28,8 @@ const ForgetPassword = () => {
 
   const handleResetPassword = async () => {
     try {
-      await axios.post('https://app.zumarlawfirm.com/auth/reset-password', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.post(`${apiUrl}/api/auth/reset-password`, {
         email,
         newPassword,
       });
@@ -41,11 +51,11 @@ const ForgetPassword = () => {
             placeholder="Enter your email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-[#57123f]"
           />
           <button
             onClick={handleCheckEmail}
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition duration-300"
+            className="w-full bg-[#57123f] text-white py-2 rounded-md hover:opacity-90 transition duration-300"
           >
             Verify Email
           </button>
@@ -57,11 +67,11 @@ const ForgetPassword = () => {
             placeholder="Enter new password"
             value={newPassword}
             onChange={e => setNewPassword(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-[#57123f]"
           />
           <button
             onClick={handleResetPassword}
-            className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition duration-300"
+            className="w-full bg-[#57123f] text-white py-2 rounded-md hover:opacity-90 transition duration-300"
           >
             Reset Password
           </button>

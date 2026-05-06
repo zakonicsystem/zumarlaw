@@ -17,7 +17,8 @@ const ActiveClients = () => {
       setLoading(true);
       try {
         // Fetch latest 3 leads from backend
-        const res = await axios.get('https://app.zumarlawfirm.com/admin/leads/latest?limit=3');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await axios.get(`${apiUrl}/api/admin/leads/latest?limit=3`);
         setLatestLeads(res.data);
       } catch (err) {
         setLatestLeads([]);
@@ -73,8 +74,8 @@ const ActiveClients = () => {
                   <td className="py-4 px-4">{client.assigned || 'N/A'}</td>
                   <td className="py-4 px-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${client.status === 'Active' ? 'bg-green-500 text-white' :
-                      client.status === 'On Hold' ? 'bg-red-500 text-white' :
-                        'bg-yellow-400 text-black'
+                        client.status === 'On Hold' ? 'bg-red-500 text-white' :
+                          'bg-yellow-400 text-black'
                       }`}>
                       {client.status}
                     </span>

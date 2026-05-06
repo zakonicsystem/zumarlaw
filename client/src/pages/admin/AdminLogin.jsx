@@ -10,6 +10,13 @@ const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  
+  // Password reset modal state
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [resetStep, setResetStep] = useState(1); // 1: email, 2: token+newpass
 
 
   const handleSubmit = async (e) => {
@@ -17,8 +24,9 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await axios.post(
-        "https://app.zumarlawfirm.com/admin/login",
+        `${apiUrl}/api/admin/login`,
         { email, password },
         { withCredentials: true }
       );
@@ -26,8 +34,6 @@ const AdminLogin = () => {
       const { token } = res.data;
 
       if (token) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('employeeToken');
         localStorage.setItem('adminToken', token); // Save admin token
         toast.success("Admin login successful");
         navigate("/admin"); // Redirect to admin
@@ -89,6 +95,9 @@ const AdminLogin = () => {
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
+              <div className="text-xs text-blue-600 mt-2 cursor-pointer hover:underline" onClick={() => setShowResetModal(true)}>
+                Forgot password?
+              </div>
             </div>
           </div>
           <button
@@ -111,6 +120,98 @@ const AdminLogin = () => {
           </button>
         </form>
       </div>
+
+      {/* Password Reset Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-white p-6 rounded shadow-lg min-w-[320px] relative">
+            <button 
+              onClick={() => { 
+                setShowResetModal(false); 
+                setResetStep(1); 
+                setResetEmail(""); 
+                setResetToken(""); 
+                setNewPassword(""); 
+              }} 
+              className="absolute top-2 right-2 text-gray-500 hover:text-black"
+            >
+              &times;
+            </button>
+            <h3 className="text-lg font-bold mb-4">Reset Admin Password</h3>
+            
+            {resetStep === 1 && (
+              <>
+                <label className="block mb-2 text-sm font-medium">Enter your admin email address</label>
+                <input
+                  type="email"
+                  className="border px-3 py-2 rounded w-full mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={resetEmail}
+                  onChange={e => setResetEmail(e.target.value)}
+                  placeholder="admin@example.com"
+                />
+                <button
+                  className="bg-[#57123f] text-white px-4 py-2 rounded w-full hover:bg-[#ecd4bc] hover:text-black transition"
+                  onClick={async () => {
+                    if (!resetEmail) return toast.error('Enter your email');
+                    try {
+                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                      const res = await axios.post(`${apiUrl}/api/admin/forgot-password`, { email: resetEmail });
+                      setResetToken(res.data.resetToken);
+                      setResetStep(2);
+                      toast.success('Reset token generated. Check your email or paste below.');
+                    } catch (err) {
+                      toast.error(err.response?.data?.message || 'Failed to request reset');
+                    }
+                  }}
+                >
+                  Request Reset
+                </button>
+              </>
+            )}
+            
+            {resetStep === 2 && (
+              <>
+                <label className="block mb-2 text-sm font-medium">Reset Token (from email)</label>
+                <input
+                  type="text"
+                  className="border px-3 py-2 rounded w-full mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={resetToken}
+                  onChange={e => setResetToken(e.target.value)}
+                  placeholder="Paste reset token"
+                />
+                <label className="block mb-2 text-sm font-medium">New Password</label>
+                <input
+                  type="password"
+                  className="border px-3 py-2 rounded w-full mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                />
+                <button
+                  className="bg-[#57123f] text-white px-4 py-2 rounded w-full hover:bg-[#ecd4bc] hover:text-black transition"
+                  onClick={async () => {
+                    if (!resetToken || !newPassword) return toast.error('Fill all fields');
+                    try {
+                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                      await axios.post(`${apiUrl}/api/admin/reset-password`, { resetToken, newPassword });
+                      toast.success('Password reset! You can now log in with your new password.');
+                      setShowResetModal(false);
+                      setResetStep(1);
+                      setResetEmail("");
+                      setResetToken("");
+                      setNewPassword("");
+                    } catch (err) {
+                      toast.error(err.response?.data?.message || 'Failed to reset password');
+                    }
+                  }}
+                >
+                  Reset Password
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

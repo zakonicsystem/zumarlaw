@@ -33,13 +33,19 @@ const refundSchema = new mongoose.Schema({
   },
 
   // Metadata
-  status: { type: String, enum: ['pending', 'approved', 'rejected', 'refunded', 'completed'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'under review', 'processing', 'approved', 'rejected', 'refunded', 'completed'], default: 'pending' },
   processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Roles' },
   processedByRole: { type: String },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Roles' },
   createdByRole: { type: String },
-  notes: { type: String }
-  ,isEligibleForRefundDetails: { type: Boolean, default: false }
+  notes: { type: String }, // general notes
+  rejectionNotes: { type: String }, // specific notes when rejected
+  rejectionImage: { type: String }, // path to rejection evidence image
+  processingNotes: { type: String }, // specific notes when processing
+  processingImage: { type: String }, // path to processing evidence image
+  refundedNotes: { type: String }, // specific notes when refunded
+  refundedImage: { type: String }, // path to refunded/receipt proof image
+  isEligibleForRefundDetails: { type: Boolean, default: false }
 }, { timestamps: true });
 
 export default mongoose.model('Refund', refundSchema);

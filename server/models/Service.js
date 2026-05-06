@@ -33,7 +33,7 @@ const ServiceDetailSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'in-progress', 'completed', 'rejected'], 
+    enum: ['pending', 'processing', 'completed', 'rejected'], 
     default: 'pending'
   },
   paymentStatus: {
@@ -51,6 +51,12 @@ const ServiceDetailSchema = new mongoose.Schema({
   invoiceSent: { type: Boolean, default: false },
   payments: [PaymentSchema],
   pricing: { type: PricingSchema, default: {} },
+  // Merge tracking
+  mergedIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ServiceDetail' }],
+  mergedCount: { type: Number, default: 0 },
+  primaryName: { type: String }, // Used when service is merged
+  mergedAt: { type: Date },
+  secondaryBackup: [{ type: mongoose.Schema.Types.Mixed }], // Store backup of secondary services for restore on unmerge
   createdAt: { type: Date, default: Date.now },
 });
 

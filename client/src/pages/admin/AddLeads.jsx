@@ -14,7 +14,8 @@ const AddLeads = () => {
         // Fetch employees from backend Roles model
        const fetchEmployees = async () => {
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/admin/roles');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await axios.get(`${apiUrl}/api/admin/roles`);
         const employeesArr = Array.isArray(res.data)
           ? res.data.filter(emp => typeof emp.name === 'string' && emp.name.trim() !== '')
           : [];
@@ -44,7 +45,8 @@ const AddLeads = () => {
             lead.referralPhone = data.referralPhone || '';
         }
         try {
-            await axios.post('https://app.zumarlawfirm.com/leads', lead);
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            await axios.post(`${apiUrl}/api/leads`, lead);
             toast.success('Lead added successfully!');
             reset();
         } catch (err) {

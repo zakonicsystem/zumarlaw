@@ -17,6 +17,7 @@ const LeadsTable = ({
 }) => {
   const [editModal, setEditModal] = useState({ open: false, lead: null });
   const [viewModal, setViewModal] = useState({ open: false, lead: null });
+  const isEmployee = !!localStorage.getItem('employeeToken');
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
@@ -28,7 +29,8 @@ const LeadsTable = ({
   const handleEditSave = async () => {
     if (!editModal.lead?._id) return;
     try {
-      await axios.put(`https://app.zumarlawfirm.com/leads/${editModal.lead._id}`, editModal.lead);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.put(`${apiUrl}/api/leads/${editModal.lead._id}`, editModal.lead);
       toast.success('Lead updated successfully');
       setEditModal({ open: false, lead: null });
       // Optionally: refresh leads list or update UI here
@@ -103,16 +105,18 @@ const LeadsTable = ({
                       <FaEye />
                     </button>
                     <button
-                      className="rounded-full hover:bg-gray-100 text-[#57123f]"
-                      title="Edit"
-                      onClick={() => setEditModal({ open: true, lead })}
+                      className={`rounded-full hover:bg-gray-100 text-[#57123f] ${isEmployee ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={isEmployee ? "Employees cannot edit leads" : "Edit"}
+                      disabled={isEmployee}
+                      onClick={() => !isEmployee && setEditModal({ open: true, lead })}
                     >
                       <FaEdit />
                     </button>
                     <button
-                      className="rounded-full hover:bg-gray-100 text-[#57123f]"
-                      title="Delete"
-                      onClick={() => onAction('Delete', lead)}
+                      className={`rounded-full hover:bg-gray-100 text-[#57123f] ${isEmployee ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={isEmployee ? "Employees cannot delete leads" : "Delete"}
+                      disabled={isEmployee}
+                      onClick={() => !isEmployee && onAction('Delete', lead)}
                     >
                       <FaTrash />
                     </button>

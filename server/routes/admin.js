@@ -112,4 +112,43 @@ router.get('/customers/:id', authenticateAdmin, async (req, res) => {
   }
 });
 
+// Admin Forgot Password (request reset)
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: 'Email is required' });
+  try {
+    const admin = await Admin.findOne({ email });
+    if (!admin) return res.status(404).json({ message: 'Admin not found' });
+    
+    // Generate a temporary reset token (in production, email this)
+    const resetToken = jwt.sign({ id: admin._id, email: admin.email }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    
+    return res.json({ message: 'Reset token generated', resetToken });
+  } catch (err) {
+    console.error('Admin forgot password error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin Reset Password
+router.post('/reset-password', async (req, res) => {
+  const { resetToken, newPassword } = req.body;
+  if (!resetToken || !newPassword) return res.status(400).json({ message: 'Token and new password required' });
+  
+  try {
+    const decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+    const admin = await Admin.findById(decoded.id);
+    if (!admin) return res.status(404).json({ message: 'Admin not found' });
+    
+    const hashed = await bcrypt.hash(newPassword, 10);
+    admin.password = hashed;
+    await admin.save();
+    
+    return res.json({ message: 'Password reset successful' });
+  } catch (err) {
+    console.error('Admin reset password error:', err);
+    return res.status(400).json({ message: 'Invalid or expired token' });
+  }
+});
+
 export default router;

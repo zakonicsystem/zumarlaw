@@ -140,6 +140,7 @@ function PaymentStatusButton({ paymentStatus, onClick }) {
 
 const ServiceProcessingPage = () => {
   // Removed token and role-based access control
+  const isEmployee = !!localStorage.getItem('employeeToken');
 
   const invoiceRef = useRef();
 
@@ -196,7 +197,8 @@ const ServiceProcessingPage = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/admin/roles', { headers: getAuthHeaders() });
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await axios.get(`${apiUrl}/api/admin/roles`, { headers: getAuthHeaders() });
         console.log('Employees API response:', res.data); // Debug log
         const employeesArr = Array.isArray(res.data)
           ? res.data.filter(emp => typeof emp.name === 'string' && emp.name.trim() !== '')
@@ -218,7 +220,8 @@ const ServiceProcessingPage = () => {
   // Update progress status for a service (admin)
   const handleProgressChange = async (row, newProgress) => {
     try {
-      await adminRequest({ method: 'patch', url: `https://app.zumarlawfirm.com/admin/services/${row._id}/progress`, data: { progressStatus: newProgress } });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await adminRequest({ method: 'patch', url: `${apiUrl}/api/admin/services/${row._id}/progress`, data: { progressStatus: newProgress } });
       // refresh data
       fetchServices();
       toast.success('Progress status updated');
@@ -231,7 +234,8 @@ const ServiceProcessingPage = () => {
   const fetchServices = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('https://app.zumarlawfirm.com/admin/services', { headers: getAuthHeaders() });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${apiUrl}/api/admin/services`, { headers: getAuthHeaders() });
       setServices(res.data);
     } catch (err) {
       toast.error('Failed to fetch services');
@@ -248,9 +252,10 @@ const ServiceProcessingPage = () => {
   // Assign employee to service
   const handleAssignEmployee = async (row, employeeName) => {
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       await adminRequest({
         method: 'patch',
-        url: `https://app.zumarlawfirm.com/admin/services/${row._id}/assign`,
+        url: `${apiUrl}/api/admin/services/${row._id}/assign`,
         data: { assignedTo: employeeName }
       });
       fetchServices();
@@ -265,8 +270,9 @@ const ServiceProcessingPage = () => {
     const currentIdx = statusOrder.indexOf(row.status);
     const nextStatus = statusOrder[(currentIdx + 1) % statusOrder.length];
     try {
-      const primaryUrl = `https://app.zumarlawfirm.com/admin/services/${row._id}/status`;
-      const altUrl = `https://app.zumarlawfirm.com/admin/services/status/${row._id}`;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const primaryUrl = `${apiUrl}/api/admin/services/${row._id}/status`;
+      const altUrl = `${apiUrl}/api/admin/services/status/${row._id}`;
       try {
         await adminRequest({ method: 'patch', url: primaryUrl, data: { status: nextStatus } });
       } catch (err) {
@@ -277,8 +283,33 @@ const ServiceProcessingPage = () => {
           throw err;
         }
       }
+
+      // Send SMS notification about status change
+      const phoneNumber = row.personalId?.phone;
+      if (phoneNumber && row.userId) {
+        try {
+          const statusLabel = nextStatus.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+          const smsMessage = `Your service status has been updated to ${statusLabel}. Service: ${row.serviceTitle}. Reference: ${row._id?.slice(-6).toUpperCase() || 'N/A'}. Thank you for choosing Zumar Law Firm.`;
+          await adminRequest({
+            method: 'post',
+            url: `${apiUrl}/api/serviceMessage`,
+            data: {
+              userId: row.userId,
+              serviceId: row._id,
+              type: 'update',
+              message: smsMessage,
+              phone: phoneNumber
+            }
+          });
+          console.log('Status update SMS sent to', phoneNumber);
+        } catch (smsErr) {
+          console.warn('Failed to send status update SMS:', smsErr);
+          // Don't fail the status update if SMS fails
+        }
+      }
+
       fetchServices();
-      toast.success('Status updated');
+      toast.success('Status updated and notification sent');
     } catch (error) {
       toast.error('Failed to update status');
     }
@@ -289,14 +320,97 @@ const ServiceProcessingPage = () => {
     const currentIdx = paymentOrder.indexOf(row.paymentStatus || 'pending');
     const nextStatus = paymentOrder[(currentIdx + 1) % paymentOrder.length];
     try {
-      await adminRequest({ method: 'patch', url: `https://app.zumarlawfirm.com/admin/services/${row._id}/payment-status`, data: { paymentStatus: nextStatus } });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await adminRequest({ method: 'patch', url: `${apiUrl}/api/admin/services/${row._id}/payment-status`, data: { paymentStatus: nextStatus } });
+
+      // Send SMS notification about payment status change
+      const phoneNumber = row.personalId?.phone;
+      if (phoneNumber && row.userId) {
+        try {
+          let paymentStatusLabel = 'Pending';
+          if (nextStatus === 'full') paymentStatusLabel = 'Complete';
+          else if (nextStatus === 'advance') paymentStatusLabel = 'Advance Received';
+          
+          const smsMessage = `Payment status for your service has been updated to ${paymentStatusLabel}. Service: ${row.serviceTitle}. Reference: ${row._id?.slice(-6).toUpperCase() || 'N/A'}. Thank you for choosing Zumar Law Firm.`;
+          await adminRequest({
+            method: 'post',
+            url: `${apiUrl}/api/serviceMessage`,
+            data: {
+              userId: row.userId,
+              serviceId: row._id,
+              type: 'update',
+              message: smsMessage,
+              phone: phoneNumber
+            }
+          });
+          console.log('Payment status update SMS sent to', phoneNumber);
+        } catch (smsErr) {
+          console.warn('Failed to send payment status SMS:', smsErr);
+        }
+      }
+
       fetchServices();
-      toast.success('Payment status updated');
+      toast.success('Payment status updated and notification sent');
     } catch (error) {
       toast.error('Failed to update payment status');
     }
   };
 
+  // Handle certificate upload
+  const handleCertificateUpload = async (e) => {
+    e.preventDefault();
+    if (!selectedFile || !selectedRow) {
+      toast.error('Please select a file first');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('certificate', selectedFile);
+
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.patch(
+        `${apiUrl}/api/admin/services/${selectedRow._id}/certificate`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            ...getAuthHeaders()
+          }
+        }
+      );
+
+      // Send SMS notification about certificate upload
+      const phoneNumber = selectedRow.personalId?.phone;
+      if (phoneNumber && selectedRow.userId) {
+        try {
+          const smsMessage = `Your certificate is ready! Service: ${selectedRow.serviceTitle}. Reference: ${selectedRow._id?.slice(-6).toUpperCase() || 'N/A'}. You can access it from your account. Thank you for choosing Zumar Law Firm.`;
+          await adminRequest({
+            method: 'post',
+            url: `${apiUrl}/api/serviceMessage`,
+            data: {
+              userId: selectedRow.userId,
+              serviceId: selectedRow._id,
+              type: 'update',
+              message: smsMessage,
+              phone: phoneNumber
+            }
+          });
+          console.log('Certificate upload SMS sent to', phoneNumber);
+        } catch (smsErr) {
+          console.warn('Failed to send certificate SMS:', smsErr);
+        }
+      }
+
+      toast.success('Certificate uploaded successfully!');
+      setShowUploadModal(false);
+      setSelectedFile(null);
+      fetchServices();
+    } catch (error) {
+      console.error('Certificate upload error:', error);
+      toast.error(error.response?.data?.error || 'Failed to upload certificate');
+    }
+  };
 
   // Handle single row checkbox (by id)
   const handleCheckboxChange = (row) => {
@@ -332,27 +446,6 @@ const ServiceProcessingPage = () => {
     }
   };
 
-
-  const handleCertificateUpload = async (e) => {
-    e.preventDefault();
-    if (!selectedFile || !selectedRow) {
-      toast.error('Please select a file and a service row.');
-      return;
-    }
-    const formData = new FormData();
-    formData.append('certificate', selectedFile);
-
-    try {
-      await adminRequest({ method: 'post', url: `https://app.zumarlawfirm.com/admin/services/${selectedRow._id}/certificate?pending=true`, data: formData, config: { headers: { 'Content-Type': 'multipart/form-data' } } });
-      toast.success('Certificate uploaded (pending, not sent to user)');
-      setShowUploadModal(false);
-      setSelectedFile(null);
-      fetchServices();
-    } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload certificate');
-    }
-  };
   const waitForImagesToLoad = (element) => {
     const images = element.querySelectorAll('img');
     const promises = Array.from(images).map(
@@ -435,10 +528,13 @@ const ServiceProcessingPage = () => {
 
   // Delete selected rows (multi-delete)
   const handleDeleteSelected = async () => {
+    if (isEmployee) return toast.error('Employees cannot delete services');
     if (selectedRows.length === 0) return toast.error('Please select at least one row.');
     if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} row(s)?`)) return;
     try {
-      await adminRequest({ method: 'post', url: 'https://app.zumarlawfirm.com/invoices/delete-multiple', data: { ids: selectedRows } });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      // endpoint is mounted under /api on the server, previous path was missing it
+      await adminRequest({ method: 'post', url: `${apiUrl}/api/invoices/delete-multiple`, data: { ids: selectedRows } });
       toast.success('Selected services deleted!');
       setServices(prev => prev.filter(row => !selectedRows.includes(row._id)));
       setSelectedRows([]);
@@ -467,7 +563,7 @@ const ServiceProcessingPage = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold text-[#57123f]">Service Processing</h1>
-       
+
           </div>
           <div className="relative w-80">
             <FaSearch className="absolute left-3 top-2 text-gray-400" />
@@ -503,17 +599,20 @@ const ServiceProcessingPage = () => {
           >
             <option value="">All Statuses</option>
             <option value="pending">Pending</option>
-            <option value="in-progress">In Progress</option>
+            <option value="processing">Processing</option>
             <option value="completed">Completed</option>
             <option value="rejected">Rejected</option>
           </select>
 
           <button
             onClick={() => {
+              if (isEmployee) return toast.error('Employees cannot upload certificates');
               if (!selectedRow) return toast.error("No row selected");
               setShowUploadModal(true);
             }}
-            className="flex items-center gap-2 bg-[#57123f] text-white px-4 py-2 rounded-full text-sm"
+            disabled={isEmployee}
+            title={isEmployee ? "Employees cannot upload certificates" : ""}
+            className="flex items-center gap-2 bg-[#57123f] text-white px-4 py-2 rounded-full text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FaIdCard /> Upload Certificate
           </button>
@@ -531,8 +630,9 @@ const ServiceProcessingPage = () => {
 
           <button
             onClick={handleDeleteSelected}
+            title={isEmployee ? "Employees cannot delete services" : "Delete Selected"}
             className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-full text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={selectedRows.length === 0}
+            disabled={selectedRows.length === 0 || isEmployee}
           >
             🗑️ Delete Selected
           </button>
@@ -561,7 +661,7 @@ const ServiceProcessingPage = () => {
               ) : currentData.map((row) => (
                 <tr
                   key={row._id}
-                  className={`transition-all ${selectedRows.some(r => r._id === row._id) ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}
+                  className={`transition-all ${selectedRows.includes(row._id) ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}
                 >
                   <td className="px-3 py-3">
                     <input
@@ -589,14 +689,14 @@ const ServiceProcessingPage = () => {
                         <span className="text-gray-900 font-semibold text-[11px] block max-w-[120px]" title={row.personalId?.email || ''}>
                           {row.personalId?.email || 'N/A'}
                         </span>
-                        <span className="text-gray-500 text-[11px] block" title={row.personalId?.phone || ''}>
-                          {row.personalId?.phone || 'N/A'}
+                        <span className="text-gray-500 text-[11px] block" title={isEmployee ? '' : (row.personalId?.phone || '')}>
+                          {isEmployee ? '••••••••••' : (row.personalId?.phone || 'N/A')}
                         </span>
                       </div>
                     </div>
                   </td>
                   <td className="px-3 py-3" title={row.serviceTitle || ''}>{row.serviceTitle || 'N/A'}
-                    
+
                   </td>
                   <td className="px-3 py-3" title={row.assignedTo || ''}>
                     <AssignedToDropdown
@@ -625,9 +725,11 @@ const ServiceProcessingPage = () => {
                   <td className="px-3 py-3">
                     <div className="flex gap-2">
                       <button
-                        title="View Certificate"
-                        className="text-[#57123f] hover:text-[#a8326e]"
+                        disabled={isEmployee}
+                        title={isEmployee ? "Employees cannot view certificates" : "View Certificate"}
+                        className={`${isEmployee ? 'text-gray-400 cursor-not-allowed' : 'text-[#57123f] hover:text-[#a8326e]'}`}
                         onClick={() => {
+                          if (isEmployee) return toast.error('Employees cannot view certificates');
                           if (row.certificate) {
                             window.open(`/uploads/${row.certificate}`, '_blank');
                           } else {
@@ -638,9 +740,11 @@ const ServiceProcessingPage = () => {
                         <FaEye />
                       </button>
                       <button
-                        title="Download Certificate"
-                        className="text-[#57123f] hover:text-[#a8326e]"
+                        disabled={isEmployee}
+                        title={isEmployee ? "Employees cannot download certificates" : "Download Certificate"}
+                        className={`${isEmployee ? 'text-gray-400 cursor-not-allowed' : 'text-[#57123f] hover:text-[#a8326e]'}`}
                         onClick={() => {
+                          if (isEmployee) return toast.error('Employees cannot download certificates');
                           if (row.certificate) {
                             const link = document.createElement('a');
                             link.href = `/uploads/${row.certificate}`;
@@ -722,20 +826,41 @@ const ServiceProcessingPage = () => {
                 className="bg-[#57123f] text-white px-4 py-2 rounded-full"
                 onClick={async () => {
                   try {
-                    console.log('Sending message to userId:', messageRow.userId, 'serviceId:', messageRow._id); // Debug
-                    await adminRequest({
-                      method: 'post', url: 'https://app.zumarlawfirm.com/serviceMessage', data: {
+                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                    const phoneNumber = messageRow.personalId?.phone;
+                    
+                    if (!messageRow.userId) {
+                      return toast.error('User ID not found');
+                    }
+
+                    console.log('Sending message to userId:', messageRow.userId, 'serviceId:', messageRow._id, 'phone:', phoneNumber);
+                    
+                    const response = await adminRequest({
+                      method: 'post',
+                      url: `${apiUrl}/api/serviceMessage`,
+                      data: {
                         userId: messageRow.userId,
-                        serviceId: messageRow._id, // Use _id as serviceId
+                        serviceId: messageRow._id,
                         type: messageType,
                         message: messageText,
+                        phone: phoneNumber || null
                       }
                     });
-                    toast.success('Message sent!');
+                    
+                    if (response.data.smsSent) {
+                      toast.success('Message & SMS sent successfully!');
+                    } else if (phoneNumber) {
+                      toast.success('Message sent (SMS failed - check logs)');
+                    } else {
+                      toast.success('Message sent (no phone number for SMS)');
+                    }
+                    
                     setShowMessageModal(false);
                     setMessageText('');
                   } catch (err) {
-                    toast.error('Failed to send message');
+                    const errorMsg = err.response?.data?.error || err.message || 'Failed to send message';
+                    console.error('Message send error:', err);
+                    toast.error(errorMsg);
                   }
                 }}
                 disabled={!messageText.trim()}
@@ -876,6 +1001,7 @@ const ServiceProcessingPage = () => {
                   <button
                     className="w-full border border-[#57123f] text-[#57123f] rounded-lg py-2 font-semibold hover:bg-[#f7f0f5] transition"
                     onClick={async () => {
+                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                       let imageFiles = [];
                       if (selectedRow.formFields) {
                         Object.entries(selectedRow.formFields).forEach(([key, value]) => {
@@ -895,7 +1021,7 @@ const ServiceProcessingPage = () => {
                       const JSZip = (await import('jszip')).default;
                       const zip = new JSZip();
                       await Promise.all(imageFiles.map(async (file) => {
-                        const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
+                        const url = `${apiUrl}/uploads/${encodeURIComponent(file)}`;
                         try {
                           const response = await fetch(url);
                           if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -922,6 +1048,7 @@ const ServiceProcessingPage = () => {
                   <button
                     className="w-full border border-[#57123f] text-[#57123f] rounded-lg py-2 font-semibold hover:bg-[#f7f0f5] transition"
                     onClick={async () => {
+                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                       const docExt = /\.(pdf|docx?|xlsx?|xls|pptx?|ppt)$/i;
                       let docFiles = [];
                       if (selectedRow.formFields) {
@@ -943,7 +1070,7 @@ const ServiceProcessingPage = () => {
                       const JSZip = (await import('jszip')).default;
                       const zip = new JSZip();
                       await Promise.all(docFiles.map(async (file) => {
-                        const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
+                        const url = `${apiUrl}/uploads/${encodeURIComponent(file)}`;
                         try {
                           const response = await fetch(url);
                           if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -974,7 +1101,8 @@ const ServiceProcessingPage = () => {
                       const userEmail = selectedRow.personalId?.email;
                       if (!userEmail) return toast.error('No user email found for this service');
                       try {
-                        await adminRequest({ method: 'post', url: `https://app.zumarlawfirm.com/admin/services/${selectedRow._id}/send-invoice`, data: { email: userEmail } });
+                        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                        await adminRequest({ method: 'post', url: `${apiUrl}/admin/services/${selectedRow._id}/send-invoice`, data: { email: userEmail } });
                         toast.success('Invoice, certificate, images, and documents sent to user dashboard and email!');
                         fetchServices();
                       } catch (err) {
@@ -1013,7 +1141,7 @@ const ServiceProcessingPage = () => {
                   <div className="font-semibold text-[#57123f]">Billed To:</div>
                   <div className="text-base">{selectedRow.personalId?.name}</div>
                   <div className="text-xs text-gray-600">{selectedRow.personalId?.email}</div>
-                  <div className="text-xs text-gray-600">{selectedRow.personalId?.phone}</div>
+                  <div className="text-xs text-gray-600">{isEmployee ? '••••••••••' : selectedRow.personalId?.phone}</div>
                 </div>
                 <div className="text-right">
                   <div><span className="font-semibold text-[#57123f]">Date:</span> {new Date().toLocaleDateString()}</div>

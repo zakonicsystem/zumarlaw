@@ -1,62 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import api from '../utils/api';
+import React from "react";
+import { Navigate } from "react-router-dom";
 
-const AdminPrivateRoute = ({ children }) => {
-  const [status, setStatus] = useState('checking');
-
-  useEffect(() => {
-    let active = true;
-
-    const verifyAccess = async () => {
-      const adminToken = localStorage.getItem('adminToken');
-      const employeeToken = localStorage.getItem('employeeToken');
-
-      if (!adminToken && !employeeToken) {
-        if (active) {
-          setStatus('unauthorized');
-        }
-        return;
-      }
-
-      try {
-        const res = await api.get('/auth/whoami');
-        const role = res?.data?.user?.role;
-        const allowed = Boolean(
-          (adminToken && role === 'admin') ||
-          (employeeToken && role && role !== 'admin')
-        );
-
-        if (active) {
-          setStatus(allowed ? 'authorized' : 'unauthorized');
-        }
-      } catch (error) {
-        try {
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('employeeToken');
-          localStorage.removeItem('token');
-        } catch (e) {
-          // ignore
-        }
-
-        if (active) {
-          setStatus('unauthorized');
-        }
-      }
-    };
-
-    verifyAccess();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  if (status === 'checking') {
-    return null;
-  }
-
-  return status === 'authorized' ? children : <Navigate to="/admin/login" replace />;
+const PrivateAdminRoute = ({ children }) => {
+  const adminToken = localStorage.getItem("adminToken");
+  const employeeToken = localStorage.getItem("employeeToken");
+  // Allow access if either admin or employee is authenticated
+  const isAuthenticated = !!adminToken || !!employeeToken;
+  return isAuthenticated ? children : <Navigate to="/admin/login" />;
 };
 
-export default AdminPrivateRoute;
+export default PrivateAdminRoute;

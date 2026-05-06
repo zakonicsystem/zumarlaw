@@ -11,8 +11,7 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpires: { type: Date },
   isActive: { type: Boolean, default: true },
   isAdmin: { type: Boolean, default: false }, // Mark if user is admin
-  services: { type: [String], default: [] },
-  lastLogoutAt: { type: Date, default: null } // Track when user last logged out from all devices
+  services: { type: [String], default: [] }
 }, {
   timestamps: true
 });

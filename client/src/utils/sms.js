@@ -7,6 +7,6 @@ export async function sendSms({ to, message, sender, network } = {}) {
   if (sender) payload.sender = sender;
   if (network) payload.network = network;
 
-  const res = await api.post('/sms/send', payload);
+  const res = await api.post('/api/sms/send', payload);
   return res.data;
 }

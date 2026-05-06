@@ -19,13 +19,97 @@ export default function MyRefundRequests() {
   const fetchMyRefunds = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/refund');
-      // Filter refunds for current user (optional - backend can handle this)
-      setRefunds(response.data);
-      toast.success('Refund requests loaded');
+
+      // Get current user from localStorage - try multiple possible keys
+      let userId = null;
+      let userEmail = null;
+      const userStr = localStorage.getItem('user') ||
+        localStorage.getItem('userData') ||
+        localStorage.getItem('currentUser');
+
+      if (userStr) {
+        try {
+          const userData = JSON.parse(userStr);
+          userId = userData?._id || userData?.id;
+          userEmail = userData?.email;
+        } catch (e) {
+          console.warn('Could not parse user data:', e);
+        }
+      }
+
+      // If no user found in localStorage, try to get from API
+      if (!userId) {
+        try {
+          const meResponse = await api.get('/api/userpanel/me');
+          userId = meResponse.data?._id || meResponse.data?.id;
+          userEmail = meResponse.data?.email;
+
+          // Cache the user ID in localStorage for future use
+          if (userId) {
+            localStorage.setItem('user', JSON.stringify({ _id: userId, email: userEmail }));
+          }
+        } catch (err) {
+          console.warn('Could not fetch user info from API:', err);
+        }
+      }
+
+      if (!userId && !userEmail) {
+        toast.error('User not authenticated. Please log in first.');
+        setRefunds([]);
+        return;
+      }
+
+      // Fetch all refunds and filter for current user
+      const response = await api.get('/api/refund');
+      const allRefunds = Array.isArray(response.data) ? response.data : [];
+
+      console.log('All refunds:', allRefunds);
+      console.log('Current userId:', userId);
+      console.log('Current userEmail:', userEmail);
+
+      // Filter refunds to show only those submitted by the current user
+      const userRefunds = allRefunds.filter(refund => {
+        const refundUserId = String(refund.userId || refund.submittedBy || refund.createdBy || '');
+        const refundEmail = String(refund.userEmail || refund.email || refund.caseClosure?.email || '');
+        const currentUserId = String(userId || '');
+        const currentUserEmail = String(userEmail || '');
+
+        console.log('Checking refund:', {
+          refundId: refund._id,
+          refundUserId,
+          currentUserId,
+          refundEmail,
+          currentUserEmail,
+          match: refundUserId === currentUserId || refundUserId.includes(currentUserId) || refundEmail === currentUserEmail
+        });
+
+        // Match if:
+        // 1. userId matches (exact or partial)
+        // 2. email matches
+        // 3. userId is empty (show all if no userId)
+        return (
+          refundUserId === currentUserId ||
+          currentUserId === '' ||
+          refundUserId.includes(currentUserId) ||
+          refundEmail === currentUserEmail ||
+          refundEmail.toLowerCase() === currentUserEmail.toLowerCase()
+        );
+      });
+
+      console.log('Filtered refunds:', userRefunds);
+
+      setRefunds(userRefunds);
+
+      // Only show toast if there are no refunds - don't show error, show info
+      if (userRefunds.length === 0) {
+        toast.success('You have no refund requests at the moment');
+      } else {
+        toast.success(`Loaded ${userRefunds.length} refund request(s)`);
+      }
     } catch (err) {
       console.error('Error fetching refunds:', err);
-      toast.error('Failed to load refund requests');
+      toast.error('Failed to load refund requests. Please try again.');
+      setRefunds([]);
     } finally {
       setLoading(false);
     }
@@ -40,7 +124,7 @@ export default function MyRefundRequests() {
   const handleDownloadEvidence = (filePath) => {
     if (!filePath) return;
     const link = document.createElement('a');
-    link.href = `${import.meta.env.VITE_API_URL || 'https://app.zumarlawfirm.com'}/${filePath}`;
+    link.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${filePath}`;
     link.download = filePath.split('/').pop();
     link.click();
   };
@@ -71,101 +155,150 @@ export default function MyRefundRequests() {
                 .rejected { color: red; }
                 .refunded { color: blue; }
                 .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-                @media print { body { margin: 0; padding: 0; } }
-            </style>
-        </head>
-        <body>
-            <div class="slip">
-                <div class="header">
-                    <h1>REFUND SLIP</h1>
-                    <p>Zumar Law Firm</p>
-                    <p>Date: ${new Date(selectedRefund.createdAt).toLocaleDateString()}</p>
-                </div>
+                    img { max-width: 100%; height: auto; margin-top: 10px; border: 1px solid #ddd; }
+                    @media print { body { margin: 0; padding: 0; } }
+                </style>
+            </head>
+            <body>
+                <div class="slip">
+                    <div class="header">
+                        <h1>REFUND SLIP</h1>
+                        <p>Zumar Law Firm</p>
+                        <p>Date: ${new Date(selectedRefund.createdAt).toLocaleDateString()}</p>
+                    </div>
 
-                <div class="section">
-                    <h3>Case Closure Details</h3>
-                    <div class="row">
-                        <span class="label">Name:</span>
-                        <span class="value">${selectedRefund.caseClosure?.name || 'N/A'}</span>
+                    <div class="section">
+                        <h3>Case Closure Details</h3>
+                        <div class="row">
+                            <span class="label">Name:</span>
+                            <span class="value">${selectedRefund.caseClosure?.name || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">CNIC:</span>
+                            <span class="value">${selectedRefund.caseClosure?.cnic || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Phone:</span>
+                            <span class="value">${selectedRefund.caseClosure?.phone || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Email:</span>
+                            <span class="value">${selectedRefund.caseClosure?.email || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Case Type:</span>
+                            <span class="value">${selectedRefund.caseClosure?.caseType || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Case Close Reason:</span>
+                            <span class="value">${selectedRefund.caseClosure?.caseCloseReason || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Undertaking Approved:</span>
+                            <span class="value">${selectedRefund.caseClosure?.undertakingApproved ? '✓ YES' : '✗ NO'}</span>
+                        </div>
                     </div>
-                    <div class="row">
-                        <span class="label">CNIC:</span>
-                        <span class="value">${selectedRefund.caseClosure?.cnic || 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span class="label">Phone:</span>
-                        <span class="value">${selectedRefund.caseClosure?.phone || 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span class="label">Email:</span>
-                        <span class="value">${selectedRefund.caseClosure?.email || 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span class="label">Case Type:</span>
-                        <span class="value">${selectedRefund.caseClosure?.caseType || 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span class="label">Case Close Reason:</span>
-                        <span class="value">${selectedRefund.caseClosure?.caseCloseReason || 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span class="label">Undertaking Approved:</span>
-                        <span class="value">${selectedRefund.caseClosure?.undertakingApproved ? '✓ YES' : '✗ NO'}</span>
-                    </div>
-                </div>
 
-                <div class="section">
-                    <h3>Refund Details</h3>
-                    <div class="row">
-                        <span class="label">Total Case Payment:</span>
-                        <span class="value">Rs. ${selectedRefund.refundDetails?.totalCasePayment?.toLocaleString() || 'N/A'}</span>
+                    <div class="section">
+                        <h3>Refund Details</h3>
+                        <div class="row">
+                            <span class="label">Total Case Payment:</span>
+                            <span class="value">Rs. ${selectedRefund.refundDetails?.totalCasePayment?.toLocaleString() || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Paid Payment Type:</span>
+                            <span class="value">${selectedRefund.refundDetails?.paidPaymentType || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Paid Amount:</span>
+                            <span class="value">Rs. ${selectedRefund.refundDetails?.paidPayment?.toLocaleString() || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Bank Name:</span>
+                            <span class="value">${selectedRefund.refundDetails?.bankName || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Account Title:</span>
+                            <span class="value">${selectedRefund.refundDetails?.accountTitle || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Account No:</span>
+                            <span class="value">${selectedRefund.refundDetails?.accountNo || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">IBAN:</span>
+                            <span class="value">${selectedRefund.refundDetails?.ibanNo || 'N/A'}</span>
+                        </div>
+                        <div class="row">
+                            <span class="label">Undertaking Approved:</span>
+                            <span class="value">${selectedRefund.refundDetails?.undertakingApproved ? '✓ YES' : '✗ NO'}</span>
+                        </div>
                     </div>
-                    <div class="row">
-                        <span class="label">Paid Payment Type:</span>
-                        <span class="value">${selectedRefund.refundDetails?.paidPaymentType || 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span class="label">Paid Amount:</span>
-                        <span class="value">Rs. ${selectedRefund.refundDetails?.paidPayment?.toLocaleString() || 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span class="label">Bank Name:</span>
-                        <span class="value">${selectedRefund.refundDetails?.bankName || 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span class="label">Account Title:</span>
-                        <span class="value">${selectedRefund.refundDetails?.accountTitle || 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span class="label">Account No:</span>
-                        <span class="value">${selectedRefund.refundDetails?.accountNo || 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span class="label">IBAN:</span>
-                        <span class="value">${selectedRefund.refundDetails?.ibanNo || 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span class="label">Undertaking Approved:</span>
-                        <span class="value">${selectedRefund.refundDetails?.undertakingApproved ? '✓ YES' : '✗ NO'}</span>
-                    </div>
-                </div>
 
-                <div class="section">
-                    <h3>Status Information</h3>
-                    <div class="row">
-                        <span class="label">Current Status:</span>
-                        <span class="value ${selectedRefund.status === 'approved' ? 'approved' : selectedRefund.status === 'pending' ? 'pending' : selectedRefund.status === 'refunded' ? 'refunded' : 'rejected'}">${selectedRefund.status.toUpperCase()}</span>
+                    <div class="section">
+                        <h3>Status Information</h3>
+                        <div class="row">
+                            <span class="label">Current Status:</span>
+                            <span class="value ${selectedRefund.status === 'approved' ? 'approved' : selectedRefund.status === 'pending' ? 'pending' : selectedRefund.status === 'refunded' ? 'refunded' : 'rejected'}">${selectedRefund.status.toUpperCase()}</span>
+                        </div>
+                    </div>
+
+                    ${selectedRefund.rejectionNotes ? `
+                    <div class="section">
+                        <h3>Rejection Details</h3>
+                        <div style="margin: 10px 0;">
+                            <p style="margin: 5px 0;"><strong>Rejection Reason:</strong></p>
+                            <p style="margin: 5px 0; background: #fff3cd; padding: 10px; border-left: 3px solid #ffc107;">${selectedRefund.rejectionNotes}</p>
+                        </div>
+                        ${selectedRefund.rejectionImage ? `
+                        <div style="margin: 10px 0;">
+                            <p style="margin: 5px 0;"><strong>Evidence Image:</strong></p>
+                            <img src="${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${selectedRefund.rejectionImage}" style="max-width: 100%; height: auto; border: 1px solid #ddd; padding: 5px; margin-top: 10px;" />
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+
+                    ${selectedRefund.processingNotes ? `
+                    <div class="section">
+                        <h3>Processing Details</h3>
+                        <div style="margin: 10px 0;">
+                            <p style="margin: 5px 0;"><strong>Processing Notes:</strong></p>
+                            <p style="margin: 5px 0; background: #e7f3ff; padding: 10px; border-left: 3px solid #2196F3;">${selectedRefund.processingNotes}</p>
+                        </div>
+                        ${selectedRefund.processingImage ? `
+                        <div style="margin: 10px 0;">
+                            <p style="margin: 5px 0;"><strong>Evidence Image:</strong></p>
+                            <img src="${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${selectedRefund.processingImage}" style="max-width: 100%; height: auto; border: 1px solid #ddd; padding: 5px; margin-top: 10px;" />
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+
+                    ${selectedRefund.refundedNotes ? `
+                    <div class="section">
+                        <h3>Refund Completion Details</h3>
+                        <div style="margin: 10px 0;">
+                            <p style="margin: 5px 0;"><strong>Refund Notes:</strong></p>
+                            <p style="margin: 5px 0; background: #e8f5e9; padding: 10px; border-left: 3px solid #4CAF50;">${selectedRefund.refundedNotes}</p>
+                        </div>
+                        ${selectedRefund.refundedImage ? `
+                        <div style="margin: 10px 0;">
+                            <p style="margin: 5px 0;"><strong>Receipt/Proof Image:</strong></p>
+                            <img src="${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${selectedRefund.refundedImage}" style="max-width: 100%; height: auto; border: 1px solid #ddd; padding: 5px; margin-top: 10px;" />
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+
+                    <div class="footer">
+                        <p>This is an official refund slip from Zumar Law Firm</p>
+                        <p>Generated on ${new Date().toLocaleString()}</p>
                     </div>
                 </div>
-
-                <div class="footer">
-                    <p>This is an official refund slip from Zumar Law Firm</p>
-                    <p>Generated on ${new Date().toLocaleString()}</p>
-                </div>
-            </div>
-        </body>
-        </html>
-    `);
+            </body>
+            </html>
+        `);
     printWindow.document.close();
     printWindow.print();
   };
@@ -308,13 +441,13 @@ export default function MyRefundRequests() {
                             title="View Details"
                           >
                             <FaEye size={16} />
-                        
+
                           </button>
                           {refund.status === 'approved' && refund.isEligibleForRefundDetails && !(refund.refundDetails && refund.refundDetails.totalCasePayment) && (
                             <button
                               onClick={() => navigate(`/refund?id=${refund._id}`)}
                               className="ml-2 text-[#57123f] px-1 py-1 rounded-lg text-sm font-semibold cursor-pointer hover:opacity-90 flex gap-1"
-                              
+
                               title="Enter Refund Details"
                             >
                               <FaArrowCircleRight size={16} />
@@ -417,12 +550,12 @@ export default function MyRefundRequests() {
                   </div>
                 </div>
 
-                {/* Step 2: Refund Details - Only Show if APPROVED */}
-                {selectedRefund.status === 'approved' && selectedRefund.isEligibleForRefundDetails && (
+                {/* Step 2: Refund Details - Show if data exists */}
+                {selectedRefund.refundDetails?.totalCasePayment && (
                   <div className="bg-gradient-to-br from-[#f0faf7] to-[#f0f8ff] p-4 rounded-lg border-2 border-green-400">
                     <h3 className="text-lg font-bold text-green-700 mb-4 flex items-center gap-2">
                       <span className="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">2</span>
-                      Refund Details (You are now eligible!)
+                      Refund Details
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="bg-white p-3 rounded-lg border border-green-200">
@@ -474,32 +607,84 @@ export default function MyRefundRequests() {
                   </div>
                 )}
 
-                {/* Pending Message */}
-                {selectedRefund.status === 'pending' && (
+                {/* Rejection Details - Show if data exists */}
+                {selectedRefund.rejectionNotes && (
+                  <div className="bg-gradient-to-br from-[#fee] to-[#fff3cd] p-4 rounded-lg border-2 border-red-300">
+                    <h3 className="text-lg font-bold text-red-700 mb-4 flex items-center gap-2">
+                      <span className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">!</span>
+                      Rejection Details
+                    </h3>
+                    <div className="bg-white p-3 rounded-lg border border-red-200">
+                      <p className="text-xs text-gray-600 font-semibold">Rejection Reason</p>
+                      <p className="text-sm font-medium text-gray-900 mt-2">{selectedRefund.rejectionNotes}</p>
+                    </div>
+                    {selectedRefund.rejectionImage && (
+                      <div className="mt-4 bg-white p-3 rounded-lg border border-red-200">
+                        <p className="text-xs text-gray-600 font-semibold mb-2">Evidence Image</p>
+                        <img
+                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${selectedRefund.rejectionImage}`}
+                          alt="Rejection Evidence"
+                          className="max-w-full h-auto rounded-lg border border-red-200"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Processing Details - Show if data exists */}
+                {selectedRefund.processingNotes && (
+                  <div className="bg-gradient-to-br from-[#e3f2fd] to-[#f3f4ff] p-4 rounded-lg border-2 border-blue-300">
+                    <h3 className="text-lg font-bold text-blue-700 mb-4 flex items-center gap-2">
+                      <span className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">⚙</span>
+                      Processing Details
+                    </h3>
+                    <div className="bg-white p-3 rounded-lg border border-blue-200">
+                      <p className="text-xs text-gray-600 font-semibold">Processing Notes</p>
+                      <p className="text-sm font-medium text-gray-900 mt-2">{selectedRefund.processingNotes}</p>
+                    </div>
+                    {selectedRefund.processingImage && (
+                      <div className="mt-4 bg-white p-3 rounded-lg border border-blue-200">
+                        <p className="text-xs text-gray-600 font-semibold mb-2">Evidence Image</p>
+                        <img
+                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${selectedRefund.processingImage}`}
+                          alt="Processing Evidence"
+                          className="max-w-full h-auto rounded-lg border border-blue-200"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Refunded Details - Show if data exists */}
+                {selectedRefund.refundedNotes && (
+                  <div className="bg-gradient-to-br from-[#e8f5e9] to-[#f1f8e9] p-4 rounded-lg border-2 border-green-300">
+                    <h3 className="text-lg font-bold text-green-700 mb-4 flex items-center gap-2">
+                      <span className="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm">✓</span>
+                      Refund Completion Details
+                    </h3>
+                    <div className="bg-white p-3 rounded-lg border border-green-200">
+                      <p className="text-xs text-gray-600 font-semibold">Refund Notes</p>
+                      <p className="text-sm font-medium text-gray-900 mt-2">{selectedRefund.refundedNotes}</p>
+                    </div>
+                    {selectedRefund.refundedImage && (
+                      <div className="mt-4 bg-white p-3 rounded-lg border border-green-200">
+                        <p className="text-xs text-gray-600 font-semibold mb-2">Receipt/Proof Image</p>
+                        <img
+                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/${selectedRefund.refundedImage}`}
+                          alt="Refund Proof"
+                          className="max-w-full h-auto rounded-lg border border-green-200"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Status Messages */}
+                {selectedRefund.status === 'pending' && !selectedRefund.refundDetails?.totalCasePayment && (
                   <div className="bg-yellow-50 border-2 border-yellow-300 p-4 rounded-lg">
                     <p className="text-yellow-800 font-semibold text-center">
-                      ⏳ Your request is pending review. Refund details will appear once approved.
+                      ⏳ Your request is pending review.
                     </p>
-                  </div>
-                )}
-
-                {/* Rejected Message */}
-                {selectedRefund.status === 'rejected' && (
-                  <div className="bg-red-50 border-2 border-red-300 p-4 rounded-lg">
-                    <p className="text-red-800 font-semibold text-center">❌ Your request has been rejected.</p>
-                    {selectedRefund.notes && (
-                      <p className="text-red-700 text-sm mt-2">Reason: {selectedRefund.notes}</p>
-                    )}
-                  </div>
-                )}
-
-                {/* Completed Message */}
-                {selectedRefund.status === 'refunded' && (
-                  <div className="bg-blue-50 border-2 border-blue-300 p-4 rounded-lg">
-                    <p className="text-blue-800 font-semibold text-center">✔️ Your refund has been refunded!</p>
-                    {selectedRefund.notes && (
-                      <p className="text-blue-700 text-sm mt-2">Details: {selectedRefund.notes}</p>
-                    )}
                   </div>
                 )}
               </div>

@@ -124,29 +124,63 @@ export const updateRefundStatus = async (req, res) => {
     }
 
     // Validate status is one of the allowed values
-    if (!['pending', 'approved', 'rejected', 'refunded', 'completed'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status. Allowed values: pending, approved, rejected, refunded, completed' });
+    const validStatuses = ['pending', 'under review', 'processing', 'approved', 'rejected', 'refunded', 'completed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Allowed values: ${validStatuses.join(', ')}` });
+    }
+
+    // Validate required notes and images for rejection, processing, and refunded statuses
+    if (status === 'rejected' && !notes?.trim()) {
+      return res.status(400).json({ error: 'Rejection reason is required' });
+    }
+    if (status === 'processing' && !notes?.trim()) {
+      return res.status(400).json({ error: 'Processing notes are required' });
+    }
+    if (status === 'refunded' && !notes?.trim()) {
+      return res.status(400).json({ error: 'Refund notes are required' });
     }
 
     // Set eligibility flag - user can add refund details when status is 'approved'
     const isEligibleForRefundDetails = status === 'approved';
 
-    const refund = await Refund.findByIdAndUpdate(
-      id,
-      {
-        status,
-        notes: notes || undefined,
-        processedBy: user.id,
-        processedByRole: user.role,
-        isEligibleForRefundDetails,
-        processedAt: new Date()
-      },
-      { new: true }
-    ).populate('createdBy', 'email name role').populate('processedBy', 'email name role');
+    // Build update object
+    const updateData = {
+      status,
+      processedBy: user.id,
+      processedByRole: user.role,
+      isEligibleForRefundDetails,
+      processedAt: new Date()
+    };
+
+    // Store notes in the appropriate field based on status
+    if (status === 'rejected') {
+      updateData.rejectionNotes = notes || undefined;
+    } else if (status === 'processing') {
+      updateData.processingNotes = notes || undefined;
+    } else if (status === 'refunded') {
+      updateData.refundedNotes = notes || undefined;
+    }
+
+    // Handle image uploads for specific statuses
+    if (req.files) {
+      if (status === 'rejected' && req.files.rejectionImage) {
+        updateData.rejectionImage = path.join('uploads', req.files.rejectionImage[0].filename).replace(/\\/g, '/');
+      }
+      if (status === 'processing' && req.files.processingImage) {
+        updateData.processingImage = path.join('uploads', req.files.processingImage[0].filename).replace(/\\/g, '/');
+      }
+      if (status === 'refunded' && req.files.refundedImage) {
+        updateData.refundedImage = path.join('uploads', req.files.refundedImage[0].filename).replace(/\\/g, '/');
+      }
+    }
+
+    const refund = await Refund.findByIdAndUpdate(id, updateData, { new: true })
+      .populate('createdBy', 'email name role')
+      .populate('processedBy', 'email name role');
 
     if (!refund) return res.status(404).json({ error: 'Refund not found' });
 
-    console.log(`[Refund Status Updated] ID: ${id}, Status: ${status}, UpdatedBy: ${user.email} (${user.role})`);
+    console.log(`[Refund Status Updated] ID: ${id}, Status: ${status}, UpdatedBy: ${user.email} (${user.role}), HasImage: ${req.files ? 'yes' : 'no'}`);
     res.json(refund);
   } catch (err) {
     console.error('updateRefundStatus error', err);
@@ -160,19 +194,28 @@ export const deleteRefund = async (req, res) => {
     const deleted = await Refund.findByIdAndDelete(id);
     if (!deleted) return res.status(404).json({ error: 'Refund not found' });
 
-    // If evidence file exists, try to remove it from disk
-    if (deleted.refundDetails?.paymentEvidence) {
-      try {
-        const absPath = path.isAbsolute(deleted.refundDetails.paymentEvidence)
-          ? deleted.refundDetails.paymentEvidence
-          : path.join(process.cwd(), deleted.refundDetails.paymentEvidence);
-        if (fs.existsSync(absPath)) {
-          fs.unlinkSync(absPath);
+    // If evidence files exist, try to remove them from disk
+    const filesToDelete = [
+      deleted.refundDetails?.paymentEvidence,
+      deleted.rejectionImage,
+      deleted.processingImage,
+      deleted.refundedImage
+    ];
+
+    filesToDelete.forEach(filePath => {
+      if (filePath) {
+        try {
+          const absPath = path.isAbsolute(filePath)
+            ? filePath
+            : path.join(process.cwd(), filePath);
+          if (fs.existsSync(absPath)) {
+            fs.unlinkSync(absPath);
+          }
+        } catch (fsErr) {
+          console.warn('Failed to remove file for deleted refund:', filePath, fsErr);
         }
-      } catch (fsErr) {
-        console.warn('Failed to remove evidence file for deleted refund:', fsErr);
       }
-    }
+    });
 
     res.json({ success: true, message: 'Refund deleted' });
   } catch (err) {

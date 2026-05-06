@@ -127,6 +127,47 @@ router.get('/admin/services', async (req, res) => {
     res.status(500).json({ error: 'Unable to fetch services', details: err && err.message ? err.message : err });
   }
 });
+
+// 🟢 GET: Fetch all services (for Challan Management use)
+router.get('/service', async (req, res) => {
+  try {
+    const entries = await ServiceDetail.find()
+      .sort({ createdAt: -1 })
+      .populate('personalId');
+    
+    // Transform data to include personal details and pricing at root level
+    const transformedEntries = entries.map((entry) => {
+      const obj = entry.toObject ? entry.toObject() : entry;
+      
+      // Calculate total payment from serviceTitle if not already set
+      let totalPayment = obj.pricing?.totalPayment || 0;
+      if (!totalPayment && obj.serviceTitle && servicePrices[obj.serviceTitle]) {
+        totalPayment = servicePrices[obj.serviceTitle];
+        if (Array.isArray(totalPayment)) {
+          totalPayment = totalPayment[0]; // Take first value for ranges
+        }
+      }
+      
+      return {
+        ...obj,
+        name: obj.personalId?.name || 'N/A',
+        clientName: obj.personalId?.name || 'N/A',
+        phone: obj.personalId?.phone || '',
+        clientPhone: obj.personalId?.phone || '',
+        totalPayment: totalPayment,
+      };
+    });
+    
+    res.json(transformedEntries);
+  } catch (err) {
+    console.error('Fetch Error:', err);
+    if (err && err.stack) {
+      console.error('Error stack:', err.stack);
+    }
+    res.status(500).json({ error: 'Unable to fetch services', details: err && err.message ? err.message : err });
+  }
+});
+
 // 🟢 PATCH: Upload certificate for a service
 // Allow certificate upload even with missing/expired token — tryVerify will attach req.user when possible
 router.patch('/admin/services/:id/certificate', tryVerify, upload.single('certificate'), async (req, res) => {
@@ -139,8 +180,9 @@ router.patch('/admin/services/:id/certificate', tryVerify, upload.single('certif
       id,
       { certificate: req.file.filename },
       { new: true }
-    );
+    ).populate('personalId', 'phone');
     if (!updated) return res.status(404).json({ error: 'Service not found' });
+
     res.json({ message: 'Certificate uploaded', certificate: req.file.filename });
   } catch (err) {
     console.error('Certificate upload error:', err);
@@ -152,8 +194,9 @@ router.patch('/admin/services/:id/status', tryVerify, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const updated = await ServiceDetail.findByIdAndUpdate(id, { status }, { new: true });
+    const updated = await ServiceDetail.findByIdAndUpdate(id, { status }, { new: true }).populate('personalId', 'phone');
     if (!updated) return res.status(404).json({ error: 'Service not found' });
+
     res.json({ message: 'Status updated', service: updated });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update status' });
@@ -209,14 +252,46 @@ router.get('/processing/:id/payments', async (req, res) => {
         totalPayment,
         currentReceivingPayment: totalPaid,
         remainingAmount,
-        paymentMethod: payments.length > 0 ? payments[payments.length-1].method : (formFields.paymentMethod || ''),
-        accountNumber: payments.length > 0 ? payments[payments.length-1].accountNumber : (formFields.accountNumber || ''),
-        personName: payments.length > 0 ? payments[payments.length-1].personName : (formFields.personName || (service.personalId && service.personalId.name) || ''),
-        paymentReceivedDate: payments.length > 0 ? payments[payments.length-1].date : (formFields.paymentReceivedDate || service.createdAt),
+        paymentMethod: payments.length > 0 ? payments[payments.length - 1].method : (formFields.paymentMethod || ''),
+        accountNumber: payments.length > 0 ? payments[payments.length - 1].accountNumber : (formFields.accountNumber || ''),
+        personName: payments.length > 0 ? payments[payments.length - 1].personName : (formFields.personName || (service.personalId && service.personalId.name) || ''),
+        paymentReceivedDate: payments.length > 0 ? payments[payments.length - 1].date : (formFields.paymentReceivedDate || service.createdAt),
       }
     });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch payment details', details: err.message });
+  }
+});
+
+// PATCH to update general fields including pricing.totalPayment for processing service
+router.patch('/processing/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const update = req.body;
+    const service = await ServiceDetail.findById(id);
+    if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
+
+    // Handle nested field updates (e.g., 'pricing.totalPayment')
+    Object.keys(update).forEach(key => {
+      if (key.includes('.')) {
+        // Handle dot notation (nested fields)
+        const keys = key.split('.');
+        let obj = service;
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!obj[keys[i]]) obj[keys[i]] = {};
+          obj = obj[keys[i]];
+        }
+        obj[keys[keys.length - 1]] = update[key];
+      } else {
+        // Handle regular fields
+        service[key] = update[key];
+      }
+    });
+
+    await service.save();
+    res.json({ success: true, service });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -238,20 +313,20 @@ router.post('/processing/:id/payments', async (req, res) => {
       remarks,
       label: service.payments.length === 0 ? 'First Payment' : service.payments.length === 1 ? 'Second Payment' : `Payment ${service.payments.length + 1}`
     });
-  // Update pricing summary
-  const serviceTitle = service.serviceTitle || '';
-  const totalPayment = servicePrices[serviceTitle] || 0;
-  const totalPaid = service.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  if (!service.pricing) service.pricing = {};
-  service.pricing.currentReceivingPayment = totalPaid;
-  service.pricing.totalPayment = totalPayment;
-  service.pricing.remainingAmount = Math.max(totalPayment - totalPaid, 0);
-  service.pricing.paymentMethod = method;
-  service.pricing.accountNumber = accountNumber;
-  service.pricing.personName = personName;
-  service.pricing.paymentReceivedDate = date;
-  await service.save();
-  res.json({ success: true, payments: service.payments, pricing: service.pricing });
+    // Update pricing summary
+    const serviceTitle = service.serviceTitle || '';
+    const totalPayment = servicePrices[serviceTitle] || 0;
+    const totalPaid = service.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    if (!service.pricing) service.pricing = {};
+    service.pricing.currentReceivingPayment = totalPaid;
+    service.pricing.totalPayment = totalPayment;
+    service.pricing.remainingAmount = Math.max(totalPayment - totalPaid, 0);
+    service.pricing.paymentMethod = method;
+    service.pricing.accountNumber = accountNumber;
+    service.pricing.personName = personName;
+    service.pricing.paymentReceivedDate = date;
+    await service.save();
+    res.json({ success: true, payments: service.payments, pricing: service.pricing });
   } catch (err) {
     res.status(500).json({ error: 'Failed to add payment', details: err.message });
   }
@@ -277,7 +352,7 @@ router.delete('/processing/:id/payments/:paymentIdx', async (req, res) => {
     const totalPaid = service.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     if (!service.pricing) service.pricing = {};
     // Use last payment for method/person/date if exists
-    const last = service.payments.length > 0 ? service.payments[service.payments.length-1] : {};
+    const last = service.payments.length > 0 ? service.payments[service.payments.length - 1] : {};
     service.pricing.currentReceivingPayment = totalPaid;
     service.pricing.totalPayment = totalPayment;
     service.pricing.remainingAmount = Math.max(totalPayment - totalPaid, 0);

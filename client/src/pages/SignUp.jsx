@@ -9,12 +9,12 @@ import toast, { Toaster } from 'react-hot-toast';
 const SignUp = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phoneNumber: '',
-    password: '',
-    confirmPassword: ''
+  firstName: '',
+  lastName: '',
+  email: '',
+  phoneNumber: '',
+  password: '',
+  confirmPassword: ''
   });
 
   const handleChange = (e) => {
@@ -37,7 +37,8 @@ const SignUp = () => {
     }
 
     try {
-      const response = await axios.post('https://app.zumarlawfirm.com/auth/signup', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await axios.post(`${apiUrl}/api/auth/signup`, {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
@@ -45,8 +46,9 @@ const SignUp = () => {
         password: formData.password
       });
 
-      // ✅ Only store token, not full user object
+      localStorage.setItem('user', JSON.stringify(response.data.user));
       localStorage.setItem('token', response.data.token);
+
 
       toast.success('Signup successful! Please login.');
       navigate('/login');
@@ -55,9 +57,10 @@ const SignUp = () => {
     }
   };
 
+
   const handleGoogleSignup = () => {
     toast.loading('Redirecting to Google...');
-    window.location.href = 'https://app.zumarlawfirm.com/auth/google';
+    window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/google`;
   };
 
   useEffect(() => {
@@ -153,7 +156,7 @@ const SignUp = () => {
 
 
 
-        <div className="text-center mt-4">
+  <div className="text-center mt-4">
           <Link to="/login" className="text-[#57123f] hover:text-black transition duration-200">
             Already have an account? Sign in
           </Link>

@@ -160,7 +160,7 @@ const Refund = () => {
         undertakingApproved: caseClosureAccepted
       };
 
-      await api.post('/refund', payload);
+      await api.post('/api/refund', payload);
       toast.success('Case closure submitted. You can track it in My Requests.');
       navigate('/my-refund-requests');
     } catch (err) {
@@ -203,7 +203,7 @@ const Refund = () => {
         fd.append('paymentEvidence', refundDetails.paidPaymentAvoidance);
       }
 
-      const res = await api.put(`/refund/${refundId}/details`, fd, {
+      const res = await api.put(`/api/refund/${refundId}/details`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
@@ -240,7 +240,7 @@ const Refund = () => {
     (async () => {
       setLoadingRefund(true);
       try {
-        const res = await api.get(`/refund/${id}`);
+        const res = await api.get(`/api/refund/${id}`);
         setLoadedRefund(res.data);
         // populate caseClosure so user sees what they are adding details for
         if (res.data.caseClosure) {

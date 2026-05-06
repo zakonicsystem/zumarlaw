@@ -36,7 +36,7 @@ export const deletePaymentForConvertedLead = async (id, paymentIdx) => {
   });
   // Update pricing summary
   const totalPaid = lead.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  const last = lead.payments.length > 0 ? lead.payments[lead.payments.length-1] : {};
+  const last = lead.payments.length > 0 ? lead.payments[lead.payments.length - 1] : {};
   if (lead.pricing) {
     lead.pricing.currentReceivingPayment = totalPaid;
     lead.pricing.remainingAmount = Math.max((lead.pricing.totalPayment || 0) - totalPaid, 0);
@@ -204,9 +204,20 @@ export const createConvertedLead = async (req, res) => {
       });
     }
 
+    // normalize phone before saving
+    let savedPhone = getSingleValue(phone);
+    try {
+      const cp = await import('../services/cpaasService.js');
+      if (cp.default && typeof cp.default.normalizeNumber === 'function') {
+        savedPhone = cp.default.normalizeNumber(savedPhone);
+      }
+    } catch (e) {
+      // ignore
+    }
+
     const lead = new ConvertedLead({
       name: getSingleValue(name),
-      phone: getSingleValue(phone),
+      phone: savedPhone,
       email: getSingleValue(email),
       assigned: getSingleValue(assigned),
       service: getSingleValue(service),
@@ -218,6 +229,7 @@ export const createConvertedLead = async (req, res) => {
       files,
     });
     await lead.save();
+
     // Remove the original lead from Lead model if originalLeadId is provided
     if (originalLeadId) {
       await Lead.findByIdAndDelete(getSingleValue(originalLeadId));
@@ -287,8 +299,8 @@ export const sendInvoice = async (req, res) => {
     });
     res.json({ success: true, message: 'Certificate sent to user email!' });
   } catch (err) {
-  console.error('Error sending invoice:', err);
-  res.status(500).json({ success: false, message: err.message });
+    console.error('Error sending invoice:', err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -300,6 +312,7 @@ export const uploadCertificate = async (req, res) => {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
     lead.certificate = req.file.filename;
     await lead.save();
+
     res.json({ success: true, message: 'Certificate uploaded', certificate: req.file.filename });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -326,6 +339,7 @@ export const updateStatus = async (req, res) => {
     const { status } = req.body;
     const lead = await ConvertedLead.findByIdAndUpdate(id, { status }, { new: true });
     if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+
     res.json({ success: true, lead });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -337,8 +351,27 @@ export const updateConvertedLead = async (req, res) => {
   try {
     const { id } = req.params;
     const update = req.body;
-    const lead = await ConvertedLead.findByIdAndUpdate(id, update, { new: true });
+    const lead = await ConvertedLead.findById(id);
     if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+
+    // Handle nested field updates (e.g., 'pricing.totalPayment')
+    Object.keys(update).forEach(key => {
+      if (key.includes('.')) {
+        // Handle dot notation (nested fields)
+        const keys = key.split('.');
+        let obj = lead;
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!obj[keys[i]]) obj[keys[i]] = {};
+          obj = obj[keys[i]];
+        }
+        obj[keys[keys.length - 1]] = update[key];
+      } else {
+        // Handle regular fields
+        lead[key] = update[key];
+      }
+    });
+
+    await lead.save();
     res.json({ success: true, lead });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

@@ -55,3 +55,35 @@ export const sendInvoiceAndCertificate = async (req, res) => {
     res.status(500).json({ error: 'Failed to send invoice/certificate' });
   }
 };
+
+// Update a service detail
+export const updateServiceDetail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const update = req.body;
+    const service = await ServiceDetail.findById(id);
+    if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
+    
+    // Handle nested field updates (e.g., 'pricing.totalPayment')
+    Object.keys(update).forEach(key => {
+      if (key.includes('.')) {
+        // Handle dot notation (nested fields)
+        const keys = key.split('.');
+        let obj = service;
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!obj[keys[i]]) obj[keys[i]] = {};
+          obj = obj[keys[i]];
+        }
+        obj[keys[keys.length - 1]] = update[key];
+      } else {
+        // Handle regular fields
+        service[key] = update[key];
+      }
+    });
+    
+    await service.save();
+    res.json({ success: true, service });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

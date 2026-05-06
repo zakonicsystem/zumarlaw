@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 // Modern InvoiceContent component matching ConvertedService.jsx
 import ZumarLogo from '../../assets/ZumarLogo.png';
-function InvoiceContent({ invoiceData }) {
+function InvoiceContent({ invoiceData, isEmployee }) {
   if (!invoiceData) return null;
   // Helper to check for file/path values (move to top so it's in scope everywhere)
   const isFileOrPath = v => {
@@ -120,7 +120,7 @@ function InvoiceContent({ invoiceData }) {
           <div style={{ fontWeight: 700, color: '#57123f', fontSize: 17 }}>Billed To:</div>
           <div style={{ fontSize: 16, fontWeight: 500 }}>{invoiceData.name}</div>
           <div style={{ fontSize: 15, color: '#555' }}>{invoiceData.email}</div>
-          <div style={{ fontSize: 15, color: '#555' }}>{invoiceData.phone}</div>
+          <div style={{ fontSize: 15, color: '#555' }}>{isEmployee ? '••••••••••' : invoiceData.phone}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontWeight: 700, color: '#57123f', fontSize: 15 }}>Date:</div>
@@ -193,6 +193,7 @@ const PAGE_SIZE = 10;
 const ManualService = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const isEmployee = !!localStorage.getItem('employeeToken');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterProgress, setFilterProgress] = useState('');
@@ -282,7 +283,8 @@ const ManualService = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/admin/roles');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await axios.get(`${apiUrl}/api/admin/roles`);
         const employeesArr = Array.isArray(res.data)
           ? res.data.filter(emp => typeof emp.name === 'string' && emp.name.trim() !== '')
           : [];
@@ -297,8 +299,9 @@ const ManualService = () => {
   // Assign employee to manual service
   const handleAssignEmployee = async (row, employeeName) => {
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       await axios.patch(
-        `https://app.zumarlawfirm.com/manualService/${row._id}/assign`,
+        `${apiUrl}/api/manualService/${row._id}/assign`,
         { assignedTo: employeeName }
       );
       setServices(prev => prev.map(r => r._id === row._id ? { ...r, assignedTo: employeeName } : r));
@@ -313,12 +316,35 @@ const ManualService = () => {
     const currentIdx = statusOrder.indexOf(row.status);
     const nextStatus = statusOrder[(currentIdx + 1) % statusOrder.length];
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       await axios.patch(
-        `https://app.zumarlawfirm.com/manualService/${row._id}/status`,
+        `${apiUrl}/api/manualService/${row._id}/status`,
         { status: nextStatus }
       );
       setServices(prev => prev.map(r => r._id === row._id ? { ...r, status: nextStatus } : r));
-      toast.success('Status updated');
+      
+      // Send SMS notification about status change
+      if (row.phone && row._id) {
+        try {
+          const statusLabel = nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1);
+          const smsMessage = `Your service status has been updated to ${statusLabel}. Service: ${row.serviceType || 'N/A'}. Reference: ${row._id?.slice(-6).toUpperCase() || 'N/A'}. Thank you for choosing Zumar Law Firm.`;
+          const token = localStorage.getItem('token');
+          await axios.post(`${apiUrl}/api/serviceMessage`, {
+            userId: row._id,
+            serviceId: row._id,
+            type: 'update',
+            message: smsMessage,
+            phone: row.phone
+          }, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+          console.log('Status update SMS sent to', row.phone);
+        } catch (smsErr) {
+          console.warn('Failed to send status SMS:', smsErr);
+        }
+      }
+      
+      toast.success('Status updated and notification sent');
     } catch (error) {
       toast.error('Failed to update status');
     }
@@ -327,7 +353,8 @@ const ManualService = () => {
   // Update progress status for a row
   const handleProgressChange = async (row, newProgress) => {
     try {
-      await axios.patch(`https://app.zumarlawfirm.com/manualService/${row._id}/progress`, { progressStatus: newProgress });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.patch(`${apiUrl}/api/manualService/${row._id}/progress`, { progressStatus: newProgress });
       setServices(prev => prev.map(r => r._id === row._id ? { ...r, progressStatus: newProgress } : r));
       toast.success('Progress status updated');
     } catch (err) {
@@ -339,7 +366,8 @@ const ManualService = () => {
     const fetchServices = async () => {
       setLoading(true);
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/manualService');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await axios.get(`${apiUrl}/api/manualService`);
         // Ensure status and assignedTo are always present for each row
         const data = Array.isArray(res.data)
           ? res.data.map(row => ({
@@ -501,25 +529,47 @@ const ManualService = () => {
                 return;
               }
               try {
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                 if (selectedRows.length === 1) {
                   // Use new single-certificate endpoint
                   const formData = new FormData();
                   formData.append('certificate', file);
-                  await axios.post(`https://app.zumarlawfirm.com/manualService/${selectedRows[0]}/certificate`, formData, {
+                  await axios.post(`${apiUrl}/api/manualService/${selectedRows[0]}/certificate`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                   });
+                  
+                  // Send SMS notification about certificate upload
+                  const selectedRow = services.find(s => s._id === selectedRows[0]);
+                  if (selectedRow && selectedRow.phone && selectedRow._id) {
+                    try {
+                      const smsMessage = `Your certificate is ready! Service: ${selectedRow.serviceType || 'N/A'}. Reference: ${selectedRow._id?.slice(-6).toUpperCase() || 'N/A'}. You can access it from your account. Thank you for choosing Zumar Law Firm.`;
+                      const token = localStorage.getItem('token');
+                      await axios.post(`${apiUrl}/api/serviceMessage`, {
+                        userId: selectedRow._id,
+                        serviceId: selectedRow._id,
+                        type: 'update',
+                        message: smsMessage,
+                        phone: selectedRow.phone
+                      }, {
+                        headers: token ? { Authorization: `Bearer ${token}` } : {}
+                      });
+                      console.log('Certificate upload SMS sent to', selectedRow.phone);
+                    } catch (smsErr) {
+                      console.warn('Failed to send certificate SMS:', smsErr);
+                    }
+                  }
                 } else {
                   // Use batch upload for multiple
                   const formData = new FormData();
                   formData.append('certificate', file);
                   formData.append('ids', JSON.stringify(selectedRows));
-                  await axios.post('https://app.zumarlawfirm.com/manualService/uploadCertificate', formData, {
+                  await axios.post(`${apiUrl}/api/manualService/uploadCertificate`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                   });
                 }
                 toast.success('Certificate uploaded successfully!');
                 // Refresh data
-                const res = await axios.get('https://app.zumarlawfirm.com/manualService');
+                const res = await axios.get(`${apiUrl}/api/manualService`);
                 setServices(res.data);
               } catch (err) {
                 toast.error('Failed to upload certificate');
@@ -528,8 +578,14 @@ const ManualService = () => {
             }}
           />
           <button
-            className="bg-[#57123f] text-sm text-white px-6 py-2 rounded-full hover:bg-[#57123f] font-semibold"
+            className="bg-[#57123f] text-sm text-white px-6 py-2 rounded-full hover:bg-[#57123f] font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isEmployee}
+            title={isEmployee ? "Employees cannot upload certificates" : ""}
             onClick={() => {
+              if (isEmployee) {
+                toast.error('Employees cannot upload certificates');
+                return;
+              }
               if (selectedRows.length === 0) {
                 toast.error('Please select at least one row.');
                 return;
@@ -541,15 +597,21 @@ const ManualService = () => {
           </button>
           <button
             className="bg-red-600 text-sm text-white px-6 py-2 rounded-full hover:bg-red-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={selectedRows.length === 0}
+            disabled={selectedRows.length === 0 || isEmployee}
+            title={isEmployee ? "Employees cannot delete services" : "Delete Selected"}
             onClick={async () => {
+              if (isEmployee) {
+                toast.error('Employees cannot delete services');
+                return;
+              }
               if (selectedRows.length === 0) {
                 toast.error('Please select at least one row.');
                 return;
               }
               if (!window.confirm('Are you sure you want to delete the selected services?')) return;
               try {
-                await axios.post('https://app.zumarlawfirm.com/manualService/deleteMany', { ids: selectedRows });
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                await axios.post(`${apiUrl}/api/manualService/deleteMany`, { ids: selectedRows });
                 toast.success('Selected services deleted!');
                 setServices(prev => prev.filter(row => !selectedRows.includes(row._id)));
                 setSelectedRows([]);
@@ -598,24 +660,24 @@ const ManualService = () => {
                   <td className="px-4 py-3">
                     <div><span className="font-semibold">{row.name || 'N/A'}</span></div>
                     <div className="text-xs text-gray-500 mb-2">{row.cnic || 'N/A'}</div>
-                   
+
                   </td>
                   <td className="px-4 py-3">
-                    <div>{row.phone || 'N/A'}</div>
+                    <div>{isEmployee ? '••••••••••' : (row.phone || 'N/A')}</div>
                     <div className="text-xs text-gray-500">{row.email || 'N/A'}</div>
                   </td>
                   <td className="px-4 py-3">
                     {row.serviceType || 'N/A'}
- <div>
-                        <select
-                          value={row.progressStatus || ''}
-                          onChange={(e) => handleProgressChange(row, e.target.value)}
-                          className={`text-xs rounded px-2 py-1 mt-1 ${getProgressClass(row.progressStatus)}`}
-                        >
-                          {PROGRESS_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
+                    <div>
+                      <select
+                        value={row.progressStatus || ''}
+                        onChange={(e) => handleProgressChange(row, e.target.value)}
+                        className={`text-xs rounded px-2 py-1 mt-1 ${getProgressClass(row.progressStatus)}`}
+                      >
+                        {PROGRESS_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -631,9 +693,11 @@ const ManualService = () => {
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button
-                        title="View Certificate"
-                        className="text-[#57123f] hover:text-[#a8326e]"
+                        disabled={isEmployee}
+                        title={isEmployee ? "Employees cannot view certificates" : "View Certificate"}
+                        className={`${isEmployee ? 'text-gray-400 cursor-not-allowed' : 'text-[#57123f] hover:text-[#a8326e]'}`}
                         onClick={() => {
+                          if (isEmployee) return toast.error('Employees cannot view certificates');
                           if (row.certificate) {
                             window.open(`/uploads/${row.certificate}`, '_blank');
                           } else {
@@ -644,9 +708,11 @@ const ManualService = () => {
                         <FaEye />
                       </button>
                       <button
-                        title="Download Certificate"
-                        className="text-[#57123f] hover:text-[#a8326e]"
+                        disabled={isEmployee}
+                        title={isEmployee ? "Employees cannot download certificates" : "Download Certificate"}
+                        className={`${isEmployee ? 'text-gray-400 cursor-not-allowed' : 'text-[#57123f] hover:text-[#a8326e]'}`}
                         onClick={() => {
+                          if (isEmployee) return toast.error('Employees cannot download certificates');
                           if (row.certificate) {
                             const link = document.createElement('a');
                             link.href = `/uploads/${row.certificate}`;
@@ -788,8 +854,9 @@ const ManualService = () => {
                         toast('Preparing images zip...');
                         const JSZip = (await import('jszip')).default;
                         const zip = new JSZip();
+                        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                         await Promise.all(imageFiles.map(async (file) => {
-                          const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
+                          const url = `${apiUrl}/uploads/${encodeURIComponent(file)}`;
                           try {
                             const response = await fetch(url);
                             if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -848,8 +915,9 @@ const ManualService = () => {
                         toast('Preparing documents zip...');
                         const JSZip = (await import('jszip')).default;
                         const zip = new JSZip();
+                        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                         await Promise.all(docFiles.map(async (file) => {
-                          const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
+                          const url = `${apiUrl}/uploads/${encodeURIComponent(file)}`;
                           try {
                             const response = await fetch(url);
                             if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -879,7 +947,8 @@ const ManualService = () => {
                       onClick={async () => {
                         if (!invoiceData || !invoiceData._id) return toast.error('No invoice data');
                         try {
-                          await axios.post(`https://app.zumarlawfirm.com/manualService/${invoiceData._id}/send-invoice`);
+                          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                          await axios.post(`${apiUrl}/api/manualService/${invoiceData._id}/send-invoice`);
                           toast.success('Invoice sent to user email!');
                         } catch (err) {
                           toast.error('Failed to send invoice');
@@ -895,7 +964,7 @@ const ManualService = () => {
             </div>
             {/* Hidden print area for PDF generation */}
             <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '100vw', minHeight: '60vh', background: 'white', zIndex: -1 }} id="invoice-print-area">
-              <InvoiceContent invoiceData={invoiceData} />
+              <InvoiceContent invoiceData={invoiceData} isEmployee={isEmployee} />
             </div>
           </>
         )}

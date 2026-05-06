@@ -9,8 +9,6 @@ import {
     FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck, FaComments
 } from 'react-icons/fa';
 import { jwtDecode } from 'jwt-decode';
-import api from '../../utils/api';
-
 
 const Sidebar = () => {
     const location = useLocation();
@@ -36,7 +34,8 @@ const Sidebar = () => {
         const fetchAssignedPages = async () => {
             if (isEmployee) {
                 try {
-                    const res = await axios.get('https://app.zumarlawfirm.com/employee/me', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                    const res = await axios.get(`${apiUrl}/api/employee/me`, {
                         headers: { Authorization: `Bearer ${employeeToken}` },
                         withCredentials: true
                     });
@@ -81,7 +80,8 @@ const Sidebar = () => {
 
     const handleLogout = async () => {
         try {
-            await axios.get('https://app.zumarlawfirm.com/admin/logout', { withCredentials: true });
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            await axios.get(`${apiUrl}/api/admin/logout`, { withCredentials: true });
             localStorage.removeItem('adminToken');
             localStorage.removeItem('employeeToken');
             toast.success('Successfully logged out');
@@ -92,19 +92,6 @@ const Sidebar = () => {
             }
         } catch (err) {
             toast.error('Logout failed');
-        }
-    };
-
-    const handleLogoutAllDevices = async () => {
-        try {
-            await api.post('/auth/logout-all-devices-now');
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('employeeToken');
-            localStorage.removeItem('token');
-            toast.success('All logged-in devices were logged out');
-            navigate('/admin/login');
-        } catch (err) {
-            toast.error(err?.response?.data?.message || 'Failed to log out all devices');
         }
     };
 
@@ -254,14 +241,6 @@ const Sidebar = () => {
                     </nav>
                 </div>
                 <div className="flex-shrink-0 p-4 border-t">
-                    {isAdmin && (
-                        <button
-                            onClick={handleLogoutAllDevices}
-                            className="w-full flex items-center gap-2 px-4 py-2 mb-2 border border-[#57123f] text-[#57123f] rounded hover:bg-[#57123f] hover:text-white"
-                        >
-                            <FaUserShield /> Logout All Devices
-                        </button>
-                    )}
                     {/* <Link to="/admin/attendance" className="w-full flex items-center gap-2 px-4 py-2 mb-2 bg-green-100 text-green-800 rounded hover:bg-green-200 justify-center">
                         <FaClipboardCheck /> Attendance
                     </Link> */}

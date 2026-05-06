@@ -12,8 +12,7 @@ const roleSchema = new mongoose.Schema({
     login: {
         email: String,
         password: String
-    },
-    lastLogoutAt: { type: Date, default: null } // Track when employee last logged out from all devices
+    }
 }, { timestamps: true });
 
 export default mongoose.model('Roles', roleSchema);

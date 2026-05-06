@@ -44,23 +44,15 @@ const UserDashboard = () => {
     );
   };
   useEffect(() => {
-    // ✅ Extract user ID from JWT token instead of localStorage
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decodedToken = JSON.parse(atob(token.split('.')[1]));
-        const userObj = {
-          _id: decodedToken.id || decodedToken._id || decodedToken.userId,
-          id: decodedToken.id || decodedToken._id || decodedToken.userId,
-          email: decodedToken.email,
-          firstName: decodedToken.firstName || '',
-          lastName: decodedToken.lastName || '',
-        };
-        console.log('Loaded user from token:', userObj);
-        setUserInfo(userObj);
-      } catch (error) {
-        console.error('Error decoding token:', error);
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const userObj = JSON.parse(storedUser);
+      // Support both 'id' and '_id' fields
+      if (!userObj._id && userObj.id) {
+        userObj._id = userObj.id;
       }
+      console.log('Loaded user from localStorage:', userObj);
+      setUserInfo(userObj);
     }
     fetchUserServices();
   }, []);
@@ -72,7 +64,8 @@ const UserDashboard = () => {
       if (userInfo && userInfo._id) {
         const params = { userId: String(userInfo._id) };
         console.log('Calling notification API with params:', params);
-        axios.get('https://app.zumarlawfirm.com/serviceMessage', { params })
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        axios.get(`${apiUrl}/api/serviceMessage`, { params })
           .then(res => {
             console.log('Fetched notifications:', res.data);
             setServiceMessages(res.data);
@@ -104,7 +97,7 @@ const UserDashboard = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
 
-      const response = await axios.get('https://app.zumarlawfirm.com/userpanel/services', {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/userpanel/services`, {
         headers: {
           Authorization: `Bearer ${token}`
         },
@@ -122,7 +115,7 @@ const UserDashboard = () => {
   // Helper to get certificate file URL (assuming backend saves filename in service.certificate)
   const getCertificateUrl = (service) => {
     if (!service.certificate) return null;
-    return `https://app.zumarlawfirm.com/uploads/${service.certificate}`;
+    return `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${service.certificate}`;
   };
 
   // View certificate handler
@@ -379,7 +372,8 @@ const UserDashboard = () => {
                               // Immediately fetch notifications for this service
                               if (userInfo && userInfo._id && service._id) {
                                 const params = { userId: String(userInfo._id), serviceId: String(service._id) };
-                                axios.get('https://app.zumarlawfirm.com/serviceMessage', { params })
+                                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                                axios.get(`${apiUrl}/api/serviceMessage`, { params })
                                   .then(res => {
                                     console.log('Fetched modal notifications (on bell click):', res.data);
                                     setModalServiceMessages(res.data);
@@ -656,138 +650,143 @@ const UserDashboard = () => {
                                 setModalServiceMessages([]);
                                 if (userInfo && userInfo._id && service._id) {
                                   const params = { userId: String(userInfo._id), serviceId: String(service._id) };
+                                  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                                   axios
-                                    .get("https://app.zumarlawfirm.com/serviceMessage", { params })
+                                    .get(`${apiUrl}/api/serviceMessage`, {params})
                                     .then(res => setModalServiceMessages(res.data))
                                     .catch(() => setModalServiceMessages([]));
                                 }
                               }}
-                              title="View Notifications"
+                            title="View Notifications"
                             >
-                              <FaBell />
-                              {serviceMessages.filter(msg => String(msg.serviceId) === String(service._id)).length > 0 && (
-                                <span className="absolute -top-2 -right-1 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
-                                  {serviceMessages.filter(msg => String(msg.serviceId) === String(service._id)).length}
-                                </span>
-                              )}
-                            </button>
+                            <FaBell />
+                            {serviceMessages.filter(msg => String(msg.serviceId) === String(service._id)).length > 0 && (
+                              <span className="absolute -top-2 -right-1 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center">
+                                {serviceMessages.filter(msg => String(msg.serviceId) === String(service._id)).length}
+                              </span>
+                            )}
+                          </button>
 
-                            <a
-                              href="https://www.google.com/search?q=Zumar+Law+Firm+Reviews"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block w-full sm:w-auto text-center bg-[#57123f] hover:bg-[#4a0f35] text-white 
+                          <a
+                            href="https://www.google.com/search?q=Zumar+Law+Firm+Reviews"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-full sm:w-auto text-center bg-[#57123f] hover:bg-[#4a0f35] text-white 
                                text-sm sm:text-xs md:text-sm 
                                px-4 sm:px-3 py-2 sm:py-1 
                                rounded-lg font-semibold shadow transition"
-                              title="Write a Review"
-                            >
-                              Write A Review
-                            </a>
-                          </div>
-                        </td>
+                            title="Write a Review"
+                          >
+                            Write A Review
+                          </a>
+                        </div>
+                      </td>
                       </tr>
-                    );
+              );
                   })}
-              </tbody>
-            </table>
+            </tbody>
+          </table>
           </div>
 
         )}
-      </div>
-      {/* Certificate Modal */}
-      {showCertModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-2">
-          <div className="bg-white p-4 md:p-6 rounded-xl w-full max-w-md relative">
-            <button
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl"
-              onClick={() => setShowCertModal(false)}
-              title="Close"
-            >
-              &times;
-            </button>
-            <h2 className="text-lg font-semibold mb-4">Service Completion Certificate</h2>
-            {/* Show status of the service */}
-            {(() => {
-              // Find the service object for the current certFile
-              const service = userServices.find(s => getCertificateUrl(s) === certFile);
-              if (!service) return null;
-              const status = service.formFields?.status || 'N/A';
-              let statusColor = 'bg-gray-100 text-gray-600';
-              if (status === 'completed') statusColor = 'bg-green-100 text-green-700';
-              else if (status === 'in-progress') statusColor = 'bg-yellow-100 text-yellow-700';
-              else if (status === 'pending') statusColor = 'bg-red-100 text-red-700';
-              return (
-                <div className={`mb-4 text-sm font-semibold px-3 py-1 rounded-full inline-block shadow ${statusColor}`}>
-                  Status: {status.charAt(0).toUpperCase() + status.slice(1)}
-                </div>
-              );
-            })()}
-            {certType === 'pdf' ? (
-              <iframe src={certFile} title="Certificate PDF" className="w-full h-96 border rounded" />
-            ) : certType === 'image' ? (
-              <img src={certFile} alt="Certificate" className="w-full max-h-96 object-contain border rounded" />
-            ) : (
-              <div className="text-gray-500">Cannot preview this file type.</div>
-            )}
-            <div className="mt-4 flex justify-end">
-              <a
-                href={certFile}
-                download
-                className="bg-[#57123f] text-white px-4 py-2 rounded-full font-semibold hover:bg-[#4a0f35] transition"
-              >
-                Download
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Notification Modal */}
-      {showNotifModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-2">
-          <div className="bg-white p-4 md:p-6 rounded-xl w-full max-w-md relative shadow-lg">
-            <button
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl"
-              onClick={() => setShowNotifModal(false)}
-              title="Close"
-            >
-              &times;
-            </button>
-            <h2 className="text-xl font-bold mb-4 text-[#57123f] flex items-center gap-2">
-              <FaBell className="text-[#57123f]" /> Service Notifications
-            </h2>
-            {/* Notification modal now auto-refreshes every second, no manual refresh needed */}
-            <div className="space-y-3 min-h-[120px]">
-              {notifLoading ? (
-                <div className="text-center py-6 text-[#57123f] font-semibold">Loading notifications...</div>
-              ) : modalServiceMessages.filter(msg => String(msg.serviceId) === String(notifServiceId)).length === 0 ? (
-                <div className="text-gray-400 text-sm text-center py-6">
-                  No notifications for this service.
-                </div>
-              ) : (
-                modalServiceMessages.filter(msg => String(msg.serviceId) === String(notifServiceId)).map(msg => (
-                  <div
-                    key={msg._id}
-                    className={`p-4 rounded-xl shadow flex flex-col gap-2 ${msg.type === 'alert'
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-blue-100 text-blue-700'
-                      }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold">{msg.type === 'alert' ? 'Alert:' : 'Update:'}</span>
-                      <span>{msg.message}</span>
-                      <span className="ml-auto text-xs text-gray-500">
-                        {new Date(msg.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
+      {/* Certificate Modal */ }
+  {
+    showCertModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-2">
+        <div className="bg-white p-4 md:p-6 rounded-xl w-full max-w-md relative">
+          <button
+            className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl"
+            onClick={() => setShowCertModal(false)}
+            title="Close"
+          >
+            &times;
+          </button>
+          <h2 className="text-lg font-semibold mb-4">Service Completion Certificate</h2>
+          {/* Show status of the service */}
+          {(() => {
+            // Find the service object for the current certFile
+            const service = userServices.find(s => getCertificateUrl(s) === certFile);
+            if (!service) return null;
+            const status = service.formFields?.status || 'N/A';
+            let statusColor = 'bg-gray-100 text-gray-600';
+            if (status === 'completed') statusColor = 'bg-green-100 text-green-700';
+            else if (status === 'in-progress') statusColor = 'bg-yellow-100 text-yellow-700';
+            else if (status === 'pending') statusColor = 'bg-red-100 text-red-700';
+            return (
+              <div className={`mb-4 text-sm font-semibold px-3 py-1 rounded-full inline-block shadow ${statusColor}`}>
+                Status: {status.charAt(0).toUpperCase() + status.slice(1)}
+              </div>
+            );
+          })()}
+          {certType === 'pdf' ? (
+            <iframe src={certFile} title="Certificate PDF" className="w-full h-96 border rounded" />
+          ) : certType === 'image' ? (
+            <img src={certFile} alt="Certificate" className="w-full max-h-96 object-contain border rounded" />
+          ) : (
+            <div className="text-gray-500">Cannot preview this file type.</div>
+          )}
+          <div className="mt-4 flex justify-end">
+            <a
+              href={certFile}
+              download
+              className="bg-[#57123f] text-white px-4 py-2 rounded-full font-semibold hover:bg-[#4a0f35] transition"
+            >
+              Download
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  {/* Notification Modal */ }
+  {
+    showNotifModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-2">
+        <div className="bg-white p-4 md:p-6 rounded-xl w-full max-w-md relative shadow-lg">
+          <button
+            className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl"
+            onClick={() => setShowNotifModal(false)}
+            title="Close"
+          >
+            &times;
+          </button>
+          <h2 className="text-xl font-bold mb-4 text-[#57123f] flex items-center gap-2">
+            <FaBell className="text-[#57123f]" /> Service Notifications
+          </h2>
+          {/* Notification modal now auto-refreshes every second, no manual refresh needed */}
+          <div className="space-y-3 min-h-[120px]">
+            {notifLoading ? (
+              <div className="text-center py-6 text-[#57123f] font-semibold">Loading notifications...</div>
+            ) : modalServiceMessages.filter(msg => String(msg.serviceId) === String(notifServiceId)).length === 0 ? (
+              <div className="text-gray-400 text-sm text-center py-6">
+                No notifications for this service.
+              </div>
+            ) : (
+              modalServiceMessages.filter(msg => String(msg.serviceId) === String(notifServiceId)).map(msg => (
+                <div
+                  key={msg._id}
+                  className={`p-4 rounded-xl shadow flex flex-col gap-2 ${msg.type === 'alert'
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-blue-100 text-blue-700'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold">{msg.type === 'alert' ? 'Alert:' : 'Update:'}</span>
+                    <span>{msg.message}</span>
+                    <span className="ml-auto text-xs text-gray-500">
+                      {new Date(msg.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+    </div >
 
 
   );

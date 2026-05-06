@@ -24,7 +24,8 @@ const Home = () => {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/announcements');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await axios.get(`${apiUrl}/api/announcements`);
         setAnnouncements(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         setAnnouncements([]);
@@ -34,35 +35,37 @@ const Home = () => {
   }, []);
 
   useEffect(() => {
+    const storedUser = localStorage.getItem('user');
     const token = localStorage.getItem('token');
 
-    if (token) {
+    if (storedUser && token) {
       const expired = isTokenExpired(token);
       if (expired) {
         console.log('Token expired — logging out');
-        localStorage.removeItem('token');
         localStorage.removeItem('user');
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('employeeToken');
+        localStorage.removeItem('token');
         navigate('/login');
         return;
       }
 
       try {
-        // Decode token only (don't store large user object in localStorage)
+        // Decode token first
         const decodedToken = JSON.parse(atob(token.split('.')[1]));
         console.log('Decoded token:', decodedToken);
 
-        // Set user info from token claims (in memory only)
+        // Parse stored user data
+        const parsedUser = JSON.parse(storedUser);
+        console.log('Stored user:', parsedUser);
+
+        // Use the data from the token as it's more reliable
         const userData = {
-          id: decodedToken.id,
-          email: decodedToken.email,
-          firstName: decodedToken.firstName || '',
-          lastName: decodedToken.lastName || '',
+          ...decodedToken,
+          firstName: decodedToken.firstName || parsedUser.firstName || '',
         };
 
         console.log('Final user data:', userData);
-        // ✅ Don't store large objects - keep in memory
+        // Update stored user data
+        localStorage.setItem('user', JSON.stringify(userData));
         setUserInfo(userData);
       } catch (error) {
         console.error('Error parsing user data:', error);
@@ -71,24 +74,21 @@ const Home = () => {
 
       const verifyUser = async () => {
         try {
-          const res = await fetch('https://app.zumarlawfirm.com/auth/verify-user', {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+          const res = await fetch(`${apiUrl}/api/auth/verify-user`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
           });
 
           if (res.status === 401) {
-            localStorage.removeItem('token');
             localStorage.removeItem('user');
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('employeeToken');
+            localStorage.removeItem('token');
             navigate('/login');
           }
         } catch (error) {
-          localStorage.removeItem('token');
           localStorage.removeItem('user');
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('employeeToken');
+          localStorage.removeItem('token');
           navigate('/login');
         }
       };
@@ -96,6 +96,7 @@ const Home = () => {
       verifyUser();
     }
   }, []);
+
 
   return (
     <div className="min-h-[calc(100vh-80px)] bg-gray-50">

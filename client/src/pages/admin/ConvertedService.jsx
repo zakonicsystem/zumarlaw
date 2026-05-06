@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { FaSearch ,FaEye, FaDownload } from 'react-icons/fa';
+import { FaSearch, FaEye, FaDownload } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import ZumarLogo from '../../assets/ZumarLogo.png';
 
 
 // InvoiceContent component for both modal and print area
-function InvoiceContent({ invoiceData }) {
+function InvoiceContent({ invoiceData, isEmployee }) {
   if (!invoiceData) return null;
   // Enhanced invoice design
   return (
@@ -32,7 +32,7 @@ function InvoiceContent({ invoiceData }) {
           <div style={{ fontWeight: 600, color: '#57123f' }}>Billed To:</div>
           <div style={{ fontSize: 15 }}>{invoiceData.name}</div>
           <div style={{ fontSize: 13, color: '#555' }}>{invoiceData.email}</div>
-          <div style={{ fontSize: 13, color: '#555' }}>{invoiceData.phone}</div>
+          <div style={{ fontSize: 13, color: '#555' }}>{isEmployee ? '••••••••••' : invoiceData.phone}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div><span style={{ fontWeight: 600, color: '#57123f' }}>Date:</span> {invoiceData.createdAt ? new Date(invoiceData.createdAt).toLocaleDateString() : ''}</div>
@@ -59,7 +59,7 @@ function InvoiceContent({ invoiceData }) {
                         return (
                           <img
                             key={i}
-                            src={`https://app.zumarlawfirm.com/uploads/${item.replace(/.*uploads[\\/]/, '')}`}
+                            src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${item.replace(/.*uploads[\\/]/, '')}`}
                             alt={`Uploaded ${key} ${i + 1}`}
                             className={`h-auto border rounded mb-1 ${key.toLowerCase().includes('cnic') || key.toLowerCase().includes('document') ? 'w-full max-w-xs' : 'w-[100px]'}`}
                             style={{ maxWidth: '100%' }}
@@ -67,7 +67,7 @@ function InvoiceContent({ invoiceData }) {
                         );
                       } else if (typeof item === 'string' && item.match(/\.pdf$/i)) {
                         return (
-                          <a key={i} href={`https://app.zumarlawfirm.com/uploads/${item.replace(/.*uploads[\\/]/, '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline block">PDF File {i + 1}</a>
+                          <a key={i} href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${item.replace(/.*uploads[\\/]/, '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline block">PDF File {i + 1}</a>
                         );
                       } else if (typeof item === 'object' && item !== null) {
                         // Render object (e.g. member details)
@@ -86,13 +86,13 @@ function InvoiceContent({ invoiceData }) {
                     })
                   ) : typeof value === 'string' && value.match(/\.(jpg|jpeg|png)$/i) ? (
                     <img
-                      src={`https://app.zumarlawfirm.com/uploads/${value.replace(/.*uploads[\\/]/, '')}`}
+                      src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${value.replace(/.*uploads[\\/]/, '')}`}
                       alt={`Uploaded ${key}`}
                       className={`h-auto border rounded mb-1 ${key.toLowerCase().includes('cnic') || key.toLowerCase().includes('document') ? 'w-full max-w-xs' : 'w-[100px]'}`}
                       style={{ maxWidth: '100%' }}
                     />
                   ) : typeof value === 'string' && value.match(/\.pdf$/i) ? (
-                    <a href={`https://app.zumarlawfirm.com/uploads/${value.replace(/.*uploads[\\/]/, '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">PDF File</a>
+                    <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${value.replace(/.*uploads[\\/]/, '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">PDF File</a>
                   ) : typeof value === 'object' && value !== null ? (
                     <div>
                       {Object.entries(value).map(([k, v]) => (
@@ -117,13 +117,13 @@ function InvoiceContent({ invoiceData }) {
                       <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginRight: 16 }}>
                         <span style={{ fontWeight: 500, fontSize: 13 }}>Front:</span>
                         {group.front && group.front.replace(/\\/g, '/').includes('uploads/') ? (
-                          <img src={`https://app.zumarlawfirm.com/uploads/${group.front.replace(/\\/g, '/').split('uploads/').pop().replace(/^\/+/, '')}`} alt="CNIC Front" className="w-full max-w-xs h-auto border rounded mb-1" style={{ maxWidth: '100%' }} crossOrigin="anonymous" />
+                          <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${group.front.replace(/\\/g, '/').split('uploads/').pop().replace(/^\\\/+/, '')}`} alt="CNIC Front" className="w-full max-w-xs h-auto border rounded mb-1" style={{ maxWidth: '100%' }} crossOrigin="anonymous" />
                         ) : group.front ? (
                           <span>{group.front}</span>
                         ) : null}
                         <span style={{ fontWeight: 500, fontSize: 13 }}>Back:</span>
                         {group.back && group.back.replace(/\\/g, '/').includes('uploads/') ? (
-                          <img src={`https://app.zumarlawfirm.com/uploads/${group.back.replace(/\\/g, '/').split('uploads/').pop().replace(/^\/+/, '')}`} alt="CNIC Back" className="w-full max-w-xs h-auto border rounded mb-1" style={{ maxWidth: '100%' }} crossOrigin="anonymous" />
+                          <img src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${group.back.replace(/\\/g, '/').split('uploads/').pop().replace(/^\\\/+/, '')}`} alt="CNIC Back" className="w-full max-w-xs h-auto border rounded mb-1" style={{ maxWidth: '100%' }} crossOrigin="anonymous" />
                         ) : group.back ? (
                           <span>{group.back}</span>
                         ) : null}
@@ -176,7 +176,8 @@ const ConvertedService = () => {
 
   const handleProgressChange = async (row, newProgress) => {
     try {
-      await axios.patch(`https://app.zumarlawfirm.com/convertedService/${row._id}/progress`, { progressStatus: newProgress });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.patch(`${apiUrl}/api/convertedService/${row._id}/progress`, { progressStatus: newProgress });
       setLeads(prev => prev.map(l => l._id === row._id ? { ...l, progressStatus: newProgress } : l));
       toast.success('Progress status updated');
     } catch (err) {
@@ -195,12 +196,14 @@ const ConvertedService = () => {
   const [invoiceData, setInvoiceData] = useState(null);
   const [employees, setEmployees] = useState([]);
   const invoiceRef = useRef();
+  const isEmployee = !!localStorage.getItem('employeeToken');
 
   useEffect(() => {
     const fetchLeads = async () => {
       setLoading(true);
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/convertedService');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await axios.get(`${apiUrl}/api/convertedService`);
         setLeads(res.data);
       } catch (err) {
         toast.error('Failed to fetch converted leads');
@@ -212,7 +215,8 @@ const ConvertedService = () => {
     // Fetch employee list from roles
     const fetchEmployees = async () => {
       try {
-        const res = await axios.get('https://app.zumarlawfirm.com/admin/roles');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await axios.get(`${apiUrl}/api/admin/roles`);
         const employeesArr = Array.isArray(res.data)
           ? res.data.filter(emp => typeof emp.name === 'string' && emp.name.trim() !== '')
           : [];
@@ -251,7 +255,7 @@ const ConvertedService = () => {
       setSelectAll(true);
     }
   };
-  
+
   const handleSelectRow = (id) => {
     if (selectedRows.includes(id)) {
       setSelectedRows(selectedRows.filter(rowId => rowId !== id));
@@ -288,7 +292,7 @@ const ConvertedService = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold text-[#57123f]">Converted Leads</h1>
-          
+
           </div>
           <div className="relative w-80">
             <FaSearch className="absolute left-3 top-2 text-gray-400" />
@@ -305,24 +309,24 @@ const ConvertedService = () => {
           </div>
         </div>
         <div className="flex flex-wrap gap-4 mb-6 items-center">
-            <select
-              value={filterProgress}
-              onChange={(e) => { setFilterProgress(e.target.value); setCurrentPage(1); }}
-              className="bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-sm focus:outline-none"
-              title="Filter by progress status"
-            >
-              <option value="">All Progress</option>
-              <option value="under_review">Under Review</option>
-              <option value="challan_pending">Challan Pending</option>
-              <option value="objection">Objection</option>
-              <option value="name_reserved">Name Reserved</option>
-              <option value="file_submitted">File Submitted</option>
-              <option value="objection_resolved">Objection Resolved</option>
-              <option value="incorporated">Incorporated</option>
-              <option value="case_holding">Case Holding</option>
-              <option value="case_rejected">Case Rejected</option>
-              <option value="case_refund">Case Refund</option>
-            </select>
+          <select
+            value={filterProgress}
+            onChange={(e) => { setFilterProgress(e.target.value); setCurrentPage(1); }}
+            className="bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-sm focus:outline-none"
+            title="Filter by progress status"
+          >
+            <option value="">All Progress</option>
+            <option value="under_review">Under Review</option>
+            <option value="challan_pending">Challan Pending</option>
+            <option value="objection">Objection</option>
+            <option value="name_reserved">Name Reserved</option>
+            <option value="file_submitted">File Submitted</option>
+            <option value="objection_resolved">Objection Resolved</option>
+            <option value="incorporated">Incorporated</option>
+            <option value="case_holding">Case Holding</option>
+            <option value="case_rejected">Case Rejected</option>
+            <option value="case_refund">Case Refund</option>
+          </select>
           <select
             value={filterStatus}
             onChange={(e) => {
@@ -344,9 +348,12 @@ const ConvertedService = () => {
           >
             Generate Invoice
           </button>
- <button
-            className="bg-[#57123f] text-white px-5 py-2 rounded-full font-semibold hover:bg-[#57123f] transition"
+          <button
+            className="bg-[#57123f] text-white px-5 py-2 rounded-full font-semibold hover:bg-[#57123f] transition disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isEmployee}
+            title={isEmployee ? "Employees cannot upload certificates" : ""}
             onClick={() => {
+              if (isEmployee) return toast.error('Employees cannot upload certificates');
               if (selectedRows.length !== 1) return toast.error('Select exactly one lead to upload certificate');
               document.getElementById('certificate-upload-input').click();
             }}
@@ -368,7 +375,30 @@ const ConvertedService = () => {
                 toast('Uploading certificate...');
                 // Do NOT set the Content-Type header manually — let the browser/axios set the
                 // correct multipart boundary so multer can parse the file correctly.
-                await axios.post(`https://app.zumarlawfirm.com/convertedService/${selectedRows[0]}/certificate`, formData);
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                await axios.post(`${apiUrl}/api/convertedService/${selectedRows[0]}/certificate`, formData);
+                
+                // Send SMS notification about certificate upload
+                const selectedRow = leads.find(l => l._id === selectedRows[0]);
+                if (selectedRow && selectedRow.phone && selectedRow._id) {
+                  try {
+                    const smsMessage = `Your certificate is ready! Service: ${selectedRow.service || 'N/A'}. Reference: ${selectedRow._id?.slice(-6).toUpperCase() || 'N/A'}. You can access it from your account. Thank you for choosing Zumar Law Firm.`;
+                    const token = localStorage.getItem('token');
+                    await axios.post(`${apiUrl}/api/serviceMessage`, {
+                      userId: selectedRow._id,
+                      serviceId: selectedRow._id,
+                      type: 'update',
+                      message: smsMessage,
+                      phone: selectedRow.phone
+                    }, {
+                      headers: token ? { Authorization: `Bearer ${token}` } : {}
+                    });
+                    console.log('Certificate upload SMS sent to', selectedRow.phone);
+                  } catch (smsErr) {
+                    console.warn('Failed to send certificate SMS:', smsErr);
+                  }
+                }
+                
                 toast.success('Certificate uploaded');
                 // Optionally refresh leads
                 setLeads(prev => prev.map(l => l._id === selectedRows[0] ? { ...l, certificate: true } : l));
@@ -380,8 +410,11 @@ const ConvertedService = () => {
             }}
           />
           <button
-            className="bg-red-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-red-700 transition"
+            className="bg-red-600 text-white px-5 py-2 rounded-full font-semibold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isEmployee}
+            title={isEmployee ? "Employees cannot delete services" : "Delete Selected"}
             onClick={async () => {
+              if (isEmployee) return toast.error('Employees cannot delete services');
               if (selectedRows.length === 0) return toast.error('No leads selected');
               if (!window.confirm('Are you sure you want to delete the selected leads?')) return;
               toast('Deleting selected leads...');
@@ -389,7 +422,8 @@ const ConvertedService = () => {
                 console.log('Attempting to delete IDs:', selectedRows);
                 for (const id of selectedRows) {
                   try {
-                    const resp = await axios.delete(`https://app.zumarlawfirm.com/convertedService/${id}`);
+                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                    const resp = await axios.delete(`${apiUrl}/api/convertedService/${id}`);
                     console.log(`Deleted lead ${id}:`, resp.data);
                   } catch (err) {
                     console.error(`Delete failed for ${id}:`, err?.response?.data || err.message || err);
@@ -397,7 +431,8 @@ const ConvertedService = () => {
                   }
                 }
                 // Refresh leads from server after deletion
-                const res = await axios.get('https://app.zumarlawfirm.com/convertedService');
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                const res = await axios.get(`${apiUrl}/api/convertedService`);
                 setLeads(res.data);
                 setSelectedRows([]);
                 setSelectAll(false);
@@ -430,7 +465,7 @@ const ConvertedService = () => {
                 <th className="px-4 py-3">Service</th>
                 <th className="px-4 py-3">Assigned To</th>
                 <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Actions</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -462,7 +497,7 @@ const ConvertedService = () => {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div>{row.phone || 'N/A'}</div>
+                    <div>{isEmployee ? '••••••••••' : (row.phone || 'N/A')}</div>
                     <div className="text-xs text-gray-500">{row.email || 'N/A'}</div>
                   </td>
                   <td className="px-4 py-3">{row.service || 'N/A'}</td>
@@ -473,7 +508,8 @@ const ConvertedService = () => {
                       onChange={async (e) => {
                         const newAssigned = e.target.value;
                         try {
-                          await axios.patch(`https://app.zumarlawfirm.com/convertedService/${row._id}`, { assigned: newAssigned });
+                          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                          await axios.patch(`${apiUrl}/api/convertedService/${row._id}`, { assigned: newAssigned });
                           setLeads(prev => prev.map(l => l._id === row._id ? { ...l, assigned: newAssigned } : l));
                           toast.success('Assigned to updated');
                         } catch (err) {
@@ -498,9 +534,32 @@ const ConvertedService = () => {
                       onChange={async (e) => {
                         const newStatus = e.target.value;
                         try {
-                          await axios.put(`https://app.zumarlawfirm.com/convertedService/${row._id}/status`, { status: newStatus });
+                          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                          await axios.put(`${apiUrl}/api/convertedService/${row._id}/status`, { status: newStatus });
                           setLeads(prev => prev.map(l => l._id === row._id ? { ...l, status: newStatus } : l));
-                          toast.success('Status updated');
+                          
+                          // Send SMS notification about status change
+                          if (row.phone && row._id) {
+                            try {
+                              const statusLabel = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+                              const smsMessage = `Your service status has been updated to ${statusLabel}. Service: ${row.service || 'N/A'}. Reference: ${row._id?.slice(-6).toUpperCase() || 'N/A'}. Thank you for choosing Zumar Law Firm.`;
+                              const token = localStorage.getItem('token');
+                              await axios.post(`${apiUrl}/api/serviceMessage`, {
+                                userId: row._id,
+                                serviceId: row._id,
+                                type: 'update',
+                                message: smsMessage,
+                                phone: row.phone
+                              }, {
+                                headers: token ? { Authorization: `Bearer ${token}` } : {}
+                              });
+                              console.log('Status update SMS sent to', row.phone);
+                            } catch (smsErr) {
+                              console.warn('Failed to send status SMS:', smsErr);
+                            }
+                          }
+                          
+                          toast.success('Status updated and notification sent');
                         } catch (err) {
                           toast.error('Failed to update status');
                         }
@@ -513,41 +572,45 @@ const ConvertedService = () => {
                       <option value="rejected">Rejected</option>
                     </select>
                   </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button
-                          title="View Certificate"
-                          className="text-[#57123f] hover:text-[#a8326e]"
-                          onClick={() => {
-                            if (row.certificate) {
-                              window.open(`/uploads/${row.certificate}`, '_blank');
-                            } else {
-                              toast.error('No certificate found for this service');
-                            }
-                          }}
-                        >
-                          <FaEye />
-                        </button>
-                        <button
-                          title="Download Certificate"
-                          className="text-[#57123f] hover:text-[#a8326e]"
-                          onClick={() => {
-                            if (row.certificate) {
-                              const link = document.createElement('a');
-                              link.href = `/uploads/${row.certificate}`;
-                              link.download = row.certificate;
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
-                            } else {
-                              toast.error('No certificate found for this service');
-                            }
-                          }}
-                        >
-                          <FaDownload />
-                        </button>
-                      </div>
-                    </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button
+                        disabled={isEmployee}
+                        title={isEmployee ? "Employees cannot view certificates" : "View Certificate"}
+                        className={`${isEmployee ? 'text-gray-400 cursor-not-allowed' : 'text-[#57123f] hover:text-[#a8326e]'}`}
+                        onClick={() => {
+                          if (isEmployee) return toast.error('Employees cannot view certificates');
+                          if (row.certificate) {
+                            window.open(`/uploads/${row.certificate}`, '_blank');
+                          } else {
+                            toast.error('No certificate found for this service');
+                          }
+                        }}
+                      >
+                        <FaEye />
+                      </button>
+                      <button
+                        disabled={isEmployee}
+                        title={isEmployee ? "Employees cannot download certificates" : "Download Certificate"}
+                        className={`${isEmployee ? 'text-gray-400 cursor-not-allowed' : 'text-[#57123f] hover:text-[#a8326e]'}`}
+                        onClick={() => {
+                          if (isEmployee) return toast.error('Employees cannot download certificates');
+                          if (row.certificate) {
+                            const link = document.createElement('a');
+                            link.href = `/uploads/${row.certificate}`;
+                            link.download = row.certificate;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          } else {
+                            toast.error('No certificate found for this service');
+                          }
+                        }}
+                      >
+                        <FaDownload />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {currentData.length === 0 && !loading && (
@@ -588,7 +651,7 @@ const ConvertedService = () => {
                         if (!invoiceRef.current) return toast.error('Invoice content not found');
                         // Wait for images to load
                         const images = invoiceRef.current.querySelectorAll('img');
-                        await Promise.all(Array.from(images).map(img => img.complete ? Promise.resolve() : new Promise(res => { img.onload = res; }))); 
+                        await Promise.all(Array.from(images).map(img => img.complete ? Promise.resolve() : new Promise(res => { img.onload = res; })));
                         await new Promise(res => setTimeout(res, 300));
                         // Fix unsupported oklch() color by overriding all color/backgroundColor styles
                         const elements = invoiceRef.current.querySelectorAll('*');
@@ -682,7 +745,8 @@ const ConvertedService = () => {
                         // Fetch all images as blobs, compress to JPEG, and add to zip
                         await Promise.all(imageFiles.map(async (file) => {
                           const fileName = file.replace(/.*uploads[\\/]/, '');
-                          const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(fileName)}`;
+                          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                          const url = `${apiUrl}/uploads/${encodeURIComponent(fileName)}`;
                           try {
                             const response = await fetch(url);
                             if (!response.ok) throw new Error('Failed to fetch ' + fileName);
@@ -725,7 +789,7 @@ const ConvertedService = () => {
                         {invoiceData.files.filter(f => typeof f === 'string' && f.match(/\.(jpg|jpeg|png)$/i)).map((file, idx) => (
                           <img
                             key={idx}
-                            src={`https://app.zumarlawfirm.com/uploads/${file.replace(/.*uploads[\\/]/, '')}`}
+                            src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/uploads/${file.replace(/.*uploads[\\/]/, '')}`}
                             alt={`Uploaded file ${idx + 1}`}
                             className="h-auto border rounded mb-1 max-w-[120px] max-h-[90px]"
                             style={{ objectFit: 'cover' }}
@@ -780,7 +844,8 @@ const ConvertedService = () => {
                         const JSZip = (await import('jszip')).default;
                         const zip = new JSZip();
                         await Promise.all(docFiles.map(async (file) => {
-                          const url = `https://app.zumarlawfirm.com/uploads/${encodeURIComponent(file)}`;
+                          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                          const url = `${apiUrl}/uploads/${encodeURIComponent(file)}`;
                           try {
                             const response = await fetch(url);
                             if (!response.ok) throw new Error('Failed to fetch ' + file);
@@ -811,7 +876,8 @@ const ConvertedService = () => {
                         if (!invoiceData || !invoiceData._id) return toast.error('No invoice data');
                         if (!invoiceData.email) return toast.error('No email found for this client');
                         try {
-                          await axios.post(`https://app.zumarlawfirm.com/convertedService/${invoiceData._id}/send-invoice`, { email: invoiceData.email });
+                          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                          await axios.post(`${apiUrl}/api/convertedService/${invoiceData._id}/send-invoice`, { email: invoiceData.email });
                           toast.success('Invoice sent to user email!');
                         } catch (err) {
                           toast.error('Failed to send invoice');
@@ -828,7 +894,7 @@ const ConvertedService = () => {
             {/* Hidden print area for PDF generation using ref */}
             <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '100vw', minHeight: '60vh', background: 'white', zIndex: -1 }}>
               <div ref={invoiceRef}>
-                <InvoiceContent invoiceData={invoiceData} />
+                <InvoiceContent invoiceData={invoiceData} isEmployee={isEmployee} />
               </div>
             </div>
           </>

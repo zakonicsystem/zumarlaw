@@ -22,7 +22,8 @@ const EmployeeLogin = () => {
         setLoading(true);
 
         try {
-            const res = await axios.post("https://app.zumarlawfirm.com/employee-login", {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const res = await axios.post(`${apiUrl}/api/employee-login`, {
                 email,
                 password
             });
@@ -31,16 +32,14 @@ const EmployeeLogin = () => {
             const { token, assignedPages } = res.data;
 
             if (token) {
-                localStorage.removeItem('token');
-                localStorage.removeItem('adminToken');
                 localStorage.setItem("employeeToken", token);
                 if (assignedPages) {
                     localStorage.setItem("assignedPages", JSON.stringify(assignedPages));
                     console.log('EmployeeLogin: assignedPages saved to localStorage', assignedPages);
                 }
                 toast.success("Login successful");
-                const firstAssignedPage = Array.isArray(assignedPages) ? assignedPages.find(Boolean) : null;
-                window.location.href = firstAssignedPage || "/admin/employee-login";
+                // Force reload so Sidebar picks up assignedPages from localStorage
+                window.location.href = "/admin";
             } else {
                 toast.error("Unauthorized access");
             }
@@ -128,7 +127,8 @@ const EmployeeLogin = () => {
                                     onClick={async () => {
                                         if (!resetEmail) return toast.error('Enter your email');
                                         try {
-                                            const res = await axios.post('https://app.zumarlawfirm.com/employee-forgot-password', { email: resetEmail });
+                                            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                                            const res = await axios.post(`${apiUrl}/api/employee-forgot-password`, { email: resetEmail });
                                             setResetToken(res.data.resetToken);
                                             setResetStep(2);
                                             toast.success('Reset token generated. Check your email or paste below.');
@@ -162,7 +162,8 @@ const EmployeeLogin = () => {
                                     onClick={async () => {
                                         if (!resetToken || !newPassword) return toast.error('Fill all fields');
                                         try {
-                                            await axios.post('https://app.zumarlawfirm.com/employee-reset-password', { resetToken, newPassword });
+                                            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                                            await axios.post(`${apiUrl}/api/employee-reset-password`, { resetToken, newPassword });
                                             toast.success('Password reset! You can now log in.');
                                             setShowResetModal(false);
                                             setResetStep(1);

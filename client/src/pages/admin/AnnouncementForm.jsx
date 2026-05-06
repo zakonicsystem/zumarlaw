@@ -17,7 +17,8 @@ const AnnouncementForm = () => {
 
   const fetchAnnouncements = async () => {
     try {
-      const res = await axios.get('https://app.zumarlawfirm.com/announcements');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${apiUrl}/api/announcements`);
       setAnnouncements(res.data);
     } catch (err) {
       toast.error('Failed to fetch announcements');
@@ -28,7 +29,8 @@ const AnnouncementForm = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post('https://app.zumarlawfirm.com/announcements', { heading, paragraph });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.post(`${apiUrl}/api/announcements`, { heading, paragraph });
       setHeading('');
       setParagraph('');
       fetchAnnouncements();
@@ -42,7 +44,8 @@ const AnnouncementForm = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`https://app.zumarlawfirm.com/announcements/${id}`);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.delete(`${apiUrl}/api/announcements/${id}`);
       fetchAnnouncements();
       toast.success('Announcement deleted');
     } catch (err) {
@@ -59,7 +62,8 @@ const AnnouncementForm = () => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`https://app.zumarlawfirm.com/announcements/${editId}`, { heading: editHeading, paragraph: editParagraph });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.put(`${apiUrl}/api/announcements/${editId}`, { heading: editHeading, paragraph: editParagraph });
       setEditId(null);
       setEditHeading('');
       setEditParagraph('');

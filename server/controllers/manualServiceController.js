@@ -91,6 +91,51 @@ export const getPaymentsForManualService = async (req, res) => {
   }
 };
 
+// Update a manual service submission
+export const updateManualService = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const update = req.body;
+    const submission = await ManualServiceSubmission.findById(id);
+    if (!submission) return res.status(404).json({ success: false, message: 'Submission not found' });
+    
+    // Handle nested field updates (e.g., 'pricing.totalPayment')
+    Object.keys(update).forEach(key => {
+      if (key.includes('.')) {
+        // Handle dot notation (nested fields)
+        const keys = key.split('.');
+        let obj = submission;
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!obj[keys[i]]) obj[keys[i]] = {};
+          obj = obj[keys[i]];
+        }
+        obj[keys[keys.length - 1]] = update[key];
+      } else {
+        // Handle regular fields
+        submission[key] = update[key];
+      }
+    });
+
+    // normalize phone number before saving (use CPaaS helper if available)
+    if (submission.phone) {
+      try {
+        // import locally to avoid circular dependency
+        const cpaas = await import('../services/cpaasService.js');
+        if (typeof cpaas.default.normalizeNumber === 'function') {
+          submission.phone = cpaas.default.normalizeNumber(submission.phone);
+        }
+      } catch (e) {
+        // ignore if normalization fails
+      }
+    }
+
+    await submission.save();
+    res.json({ success: true, submission });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 // Delete many manual service submissions by IDs
 export const deleteManyManualServices = async (req, res) => {
   try {

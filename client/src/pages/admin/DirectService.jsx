@@ -582,7 +582,8 @@ const DirectService = () => {
   data.append('paymentDate', priceFields.paymentDate || '');
 
       // POST to backend (use relative path for Vite proxy)
-      await axios.post('/manualService', data, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.post(`${apiUrl}/api/manualService`, data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Service submitted successfully!');

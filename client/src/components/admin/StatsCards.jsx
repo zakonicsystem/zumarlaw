@@ -30,7 +30,8 @@ const StatsCards = () => {
     const fetchStats = async () => {
       setLoading(true);
       try {
-        let url = `https://app.zumarlawfirm.com/admin/stats?filter=${filter}`;
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        let url = `${apiUrl}/api/admin/stats?filter=${filter}`;
         if (filter === 'day') {
           url += `&date=${selectedDate}`;
         } else if (filter === 'month') {

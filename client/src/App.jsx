@@ -5,7 +5,6 @@ import ChallanManagement from './pages/admin/ChallanManagement';
 import UserPrivateRoute from './routes/UserPrivateRoute';
 import AdminPrivateRoute from './routes/AdminPrivareRoute';
 import EmployeeProtectedRoute from './routes/EmployeeProtectedRoute';
-import AdminHomeRoute from './routes/AdminHomeRoute';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -44,8 +43,8 @@ import MatureLeads from './pages/admin/MatureLeads';
 import ContactedLeads from './pages/admin/ContactedLeads';
 import Attendance from './pages/admin/Attendance';
 import RefundManagement from './pages/admin/RefundManagement';
-import UserChat from './pages/UserChat';
 import AdminChat from './pages/admin/AdminChat';
+import ChatButton from './components/ChatButton';
 
 const AppContent = () => {
   const location = useLocation();
@@ -56,6 +55,7 @@ const AppContent = () => {
       <Toaster position="top-center" />
       {!isAdminRoute && <Navbar />}
       <AuthRedirectHandler />
+      <ChatButton />
       <Routes>
         {/* Public and User Routes */}
         <Route path="/login" element={<Login />} />
@@ -70,11 +70,6 @@ const AppContent = () => {
         <Route path="/my-refund-requests" element={
           <UserPrivateRoute>
             <MyRefundRequests />
-          </UserPrivateRoute>
-        } />
-        <Route path="/chat" element={
-          <UserPrivateRoute>
-            <UserChat />
           </UserPrivateRoute>
         } />
         <Route path="/userpanel" element={<UserDashboard />} />
@@ -94,9 +89,9 @@ const AppContent = () => {
           </AdminPrivateRoute>
         }>
           {/* This index route renders inside AdminLayout's <Outlet /> */}
-          <Route path='/admin' index element={<AdminHomeRoute />} />
-          <Route path='/admin/add-Service' element={<EmployeeProtectedRoute><DirectService /></EmployeeProtectedRoute>} />
-          <Route path='/admin/salary' element={<EmployeeProtectedRoute><Salary /></EmployeeProtectedRoute>} />
+          <Route path='/admin' index element={<Dashboard />} />
+          <Route path='/admin/add-Service' element={<DirectService />} />
+          <Route path='/admin/salary' element={<Salary />} />
           <Route path='/admin/announcment' element={<EmployeeProtectedRoute><AnnouncementForm /></EmployeeProtectedRoute>} />
           <Route path="leads" element={<EmployeeProtectedRoute><LeadsManagment /></EmployeeProtectedRoute>} />
           <Route path="services" element={<EmployeeProtectedRoute><ServiceProcessingPage /></EmployeeProtectedRoute>} />
@@ -122,8 +117,8 @@ const AppContent = () => {
 
           <Route path='/admin/attendance' element={<EmployeeProtectedRoute><Attendance /></EmployeeProtectedRoute>} />
           <Route path='/admin/refund-management' element={<EmployeeProtectedRoute><RefundManagement /></EmployeeProtectedRoute>} />
-          <Route path='/admin/chat' element={<EmployeeProtectedRoute><AdminChat /></EmployeeProtectedRoute>} />
-          <Route path='/admin/challan' element={<EmployeeProtectedRoute><ChallanManagement /></EmployeeProtectedRoute>} />
+          <Route path='/admin/chat' element={<AdminChat />} />
+          <Route path='/admin/challan' element={< ChallanManagement/>} />
         </Route>
       </Routes>
     </>

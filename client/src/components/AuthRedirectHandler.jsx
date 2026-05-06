@@ -8,10 +8,11 @@ const AuthRedirectHandler = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const token = params.get('token');
+    const user = params.get('user');
 
-    if (token) {
-      // ✅ Only store token, not full user object
+    if (token && user) {
       localStorage.setItem('token', token);
+      localStorage.setItem('user', user);
       navigate('/home', { replace: true });
     }
   }, [location, navigate]);

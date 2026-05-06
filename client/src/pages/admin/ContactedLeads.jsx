@@ -44,7 +44,8 @@ const ContactedLeads = () => {
 
   const fetchLeads = async () => {
     try {
-      const res = await axios.get('https://app.zumarlawfirm.com/leads');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${apiUrl}/api/leads`);
       setLeads(res.data);
     } catch (err) {
       setLeads([]);
@@ -68,7 +69,8 @@ const ContactedLeads = () => {
 
   const handleStatusChange = async (leadId, value) => {
     try {
-      await axios.put(`https://app.zumarlawfirm.com/leads/${leadId}/status`, { status: value });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.put(`${apiUrl}/api/leads/${leadId}/status`, { status: value });
     } catch (err) { }
     setLeads(prev => {
       // Update status and remove from current page if status changes
@@ -86,7 +88,8 @@ const ContactedLeads = () => {
 
   const handleEditSave = async () => {
     try {
-      await axios.put(`https://app.zumarlawfirm.com/leads/${editModal.lead._id}`, editModal.lead);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.put(`${apiUrl}/api/leads/${editModal.lead._id}`, editModal.lead);
       setLeads(prev => prev.map(l => l._id === editModal.lead._id ? { ...editModal.lead } : l));
       setEditModal({ open: false, lead: null });
       toast.success('Lead updated successfully');
@@ -99,7 +102,8 @@ const ContactedLeads = () => {
   const handleDeleteLead = async (leadId) => {
     if (!window.confirm('Are you sure you want to delete this lead?')) return;
     try {
-      await axios.delete(`https://app.zumarlawfirm.com/leads/${leadId}`);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.delete(`${apiUrl}/api/leads/${leadId}`);
       setLeads(prev => prev.filter(l => l._id !== leadId));
       setSelectedRows(prev => prev.filter(id => id !== leadId));
       toast.success('Lead deleted successfully');
@@ -225,7 +229,8 @@ const ContactedLeads = () => {
       if (item.phone) formData.append(`memberDetail[${idx}][phone]`, item.phone);
     });
     try {
-      await axios.post('https://app.zumarlawfirm.com/convertedService', formData, {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.post(`${apiUrl}/api/convertedService`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Lead converted and submitted!');

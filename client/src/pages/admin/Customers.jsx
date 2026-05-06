@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import api from '../../utils/api.js';
 
 const Customers = () => {
   const [users, setUsers] = useState([]);
@@ -10,6 +11,9 @@ const Customers = () => {
   const [visibleHashes, setVisibleHashes] = useState({});
   const [revealedPasswords, setRevealedPasswords] = useState({});
   const [confirmResetId, setConfirmResetId] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerServices, setCustomerServices] = useState([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
 
   // Helper to attach admin token from localStorage (same pattern used elsewhere)
   const getAuthHeaders = () => {
@@ -17,10 +21,48 @@ const Customers = () => {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
+  const fetchCustomerServices = async (customer) => {
+    setSelectedCustomer(customer);
+    setServicesLoading(true);
+    try {
+      const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const url = base.replace(/\/$/, '');
+
+      // Fetch from all service endpoints
+      const [processingRes, manualRes, convertedRes] = await Promise.all([
+        axios.get(`${url}/api/service`).catch(() => ({ data: [] })),
+        axios.get(`${url}/api/manualService`).catch(() => ({ data: [] })),
+        axios.get(`${url}/api/convertedService`).catch(() => ({ data: [] }))
+      ]);
+
+      const allServices = [
+        ...(Array.isArray(processingRes.data) ? processingRes.data : []).map(s => ({ ...s, sourceType: 'Processing' })),
+        ...(Array.isArray(manualRes.data) ? manualRes.data : []).map(s => ({ ...s, sourceType: 'Manual' })),
+        ...(Array.isArray(convertedRes.data) ? convertedRes.data : []).map(s => ({ ...s, sourceType: 'Converted' }))
+      ];
+
+      // Filter by email or user reference
+      const userServices = allServices.filter(s =>
+        s.email === customer.email ||
+        s.clientEmail === customer.email ||
+        s.name?.toLowerCase() === customer.name?.toLowerCase() ||
+        s.clientName?.toLowerCase() === customer.name?.toLowerCase()
+      );
+
+      setCustomerServices(userServices);
+    } catch (err) {
+      console.error('Error fetching services:', err);
+      toast.error('Failed to load services');
+      setCustomerServices([]);
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
   const fetchSingleUser = async (id) => {
     try {
-      const base = import.meta.env.VITE_API_URL || 'https://app.zumarlawfirm.com';
-      const url = `${base.replace(/\/$/, '')}/admin/customers/${id}`;
+      const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const url = `${base.replace(/\/$/, '')}/api/admin/customers/${id}`;
       const res = await axios.get(url, { headers: getAuthHeaders() });
       if (res && res.data) {
         // update users state with the returned password
@@ -37,14 +79,14 @@ const Customers = () => {
 
   useEffect(() => {
     const fetchUsers = async () => {
-  try {
-  const base = import.meta.env.VITE_API_URL || 'https://app.zumarlawfirm.com';
-  const url = `${base.replace(/\/$/, '')}/admin/customers`;
-  const res = await axios.get(url);
-    console.log('Fetched customers:', res.data);
-    const arr = Array.isArray(res.data) ? res.data : [];
-    setUsers(arr);
-    setFilteredUsers(arr);
+      try {
+        const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const url = `${base.replace(/\/$/, '')}/api/admin/customers`;
+        const res = await axios.get(url, { headers: getAuthHeaders() });
+        console.log('Fetched customers:', res.data);
+        const arr = Array.isArray(res.data) ? res.data : [];
+        setUsers(arr);
+        setFilteredUsers(arr);
       } catch (error) {
         console.error('Error fetching customers:', error);
       } finally {
@@ -69,7 +111,7 @@ const Customers = () => {
   return (
     <div className="">
       <h2 className="text-2xl font-semibold mb-4">Customers</h2>
-  {/* Search Bar */}
+      {/* Search Bar */}
       <input
         type="text"
         placeholder="Search by name, email, phone or CNIC..."
@@ -96,9 +138,9 @@ const Customers = () => {
                   const userId = confirmResetId;
                   setConfirmResetId(null);
                   try {
-                    const base = import.meta.env.VITE_API_URL || 'https://app.zumarlawfirm.com';
-                    const url = `${base.replace(/\/$/, '')}/admin/customers/${userId}/reset-password`;
-                    const res = await axios.post(url, {}, { headers: { 'Content-Type': 'application/json', ...getAuthHeaders() } });
+                    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                    const url = `/api/admin/customers/${userId}/reset-password`;
+                    const res = await api.post(url, {});
                     if (res && res.data && res.data.newPassword) {
                       setRevealedPasswords((s) => ({ ...s, [userId]: res.data.newPassword }));
                       toast.success('Password reset — showing temporary password');
@@ -111,11 +153,11 @@ const Customers = () => {
                         });
                       }, 60000);
                     } else {
-                      toast.error('Reset failed: no password returned');
+                      toast.error(res.data?.message || 'Reset failed: no password returned');
                     }
                   } catch (err) {
                     console.error('Reset error', err);
-                    toast.error('Reset failed');
+                    toast.error(err.response?.data?.message || 'Reset failed');
                   }
                 }}
                 className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
@@ -138,10 +180,9 @@ const Customers = () => {
               <tr className="bg-gray-100 text-gray-700 text-sm uppercase">
                 <th className="py-2 px-4 text-left">Name</th>
                 <th className="py-2 px-4 text-left">Email</th>
+                <th className="py-2 px-4 text-left"> Phone</th>
                 <th className="py-2 px-4 text-left">Password</th>
-                <th className="py-2 px-4 text-left">Phone</th>
-                <th className="py-2 px-4 text-left">Date Joined</th>
-                <th className="py-2 px-4 text-left">Status</th>
+                <th className="py-2 px-4 text-left">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -150,78 +191,118 @@ const Customers = () => {
                 const masked = user.password ? '*'.repeat(8) : '-';
                 return (
                   <tr key={user._id} className="border-t hover:bg-gray-50">
-                    <td className="py-2 px-4">{user.name}</td>
-                    <td className="py-2 px-4">{user.email}</td>
-                    <td className="py-2 px-4 font-mono text-sm break-all">
-                      {revealedPasswords[user._id]
-                        ? (
-                          <span className="inline-flex items-center">
-                            <span className="font-mono text-sm mr-2">{revealedPasswords[user._id]}</span>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard?.writeText(revealedPasswords[user._id]);
-                                toast.success('Copied to clipboard');
-                              }}
-                              className="text-xs px-2 py-0.5 bg-gray-200 rounded mr-1"
-                            >
-                              Copy
-                            </button>
-                            <button
-                              onClick={() => setRevealedPasswords((s) => { const c = { ...s }; delete c[user._id]; return c; })}
-                              className="text-xs px-2 py-0.5 bg-gray-200 rounded"
-                            >
-                              Close
-                            </button>
-                          </span>
-                        ) : isVisible
-                        ? user.password || '-'
-                        : masked}
-                      <div className="inline-block ml-2">
-                        {user.password ? (
-                          <>
-                            <button
-                              onClick={async () => {
-                                if (!user.password) {
-                                  const data = await fetchSingleUser(user._id);
-                                  if (!data || !data.password) return; // fetch failed or no password
-                                }
-                                setVisibleHashes((s) => ({ ...s, [user._id]: !s[user._id] }));
-                              }}
-                              className={`mr-2 text-xs ${user.password ? 'text-blue-600 hover:underline' : 'text-gray-600 hover:underline'}`}
-                            >
-                                {isVisible ? 'Hide' : 'Show'}
-                            </button>
-                              {user.password && (
-                                <span className="sr-only">pw-visible-{isVisible ? '1' : '0'}</span>
-                              )}
-                            <button
-                              onClick={() => setConfirmResetId(user._id)}
-                              className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded"
-                            >
-                              Reset & Show
-                            </button>
-                          </>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
+                    <td className="py-2 px-4 font-semibold">{user.name}</td>
+                    <td className="py-2 px-4">
+                      <div className="text-sm">
+                        <p className="font-medium">{user.email}</p>
+
                       </div>
                     </td>
-                    <td className="py-2 px-4">{user.phone}</td>
-                    <td className="py-2 px-4">
-                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
+                    <td className='px-4 py-2' > <div className='text-sm'>
+                      <p className="text-gray-600">{user.phone || '-'}</p> </div></td>
+
+                    <td className="py-2 px-4 font-mono text-sm break-all">
+                      <button
+                        onClick={() => setConfirmResetId(user._id)}
+                        className="text-xs bg-orange-600 text-white px-2 py-0.5 rounded hover:bg-orange-700"
+                      >
+                        Reset Password
+                      </button>
                     </td>
+
                     <td className="py-2 px-4">
-                      {user.isActive ? (
-                        <span className="text-green-600 font-semibold">Active</span>
-                      ) : (
-                        <span className="text-red-600 font-semibold">Inactive</span>
-                      )}
+                      <button
+                        onClick={() => fetchCustomerServices(user)}
+                        className="text-xs bg-[#57123f] text-white px-3 py-1.5 rounded hover:bg-opacity-80 transition"
+                      >
+                        View Services
+                      </button>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Customer Services Modal */}
+      {selectedCustomer && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-auto">
+            <div className="sticky top-0 bg-[#57123f] text-white p-4 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold">{selectedCustomer.name}</h2>
+                <p className="text-sm opacity-90">{selectedCustomer.email}</p>
+              </div>
+              <button
+                onClick={() => { setSelectedCustomer(null); setCustomerServices([]); }}
+                className="text-2xl hover:opacity-80"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6">
+              {servicesLoading ? (
+                <p className="text-center text-gray-500">Loading services...</p>
+              ) : customerServices.length === 0 ? (
+                <p className="text-center text-gray-500">No services found for this customer.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-gray-200 text-gray-800">
+                        <th className="border px-4 py-2 text-left">Service Type</th>
+                        <th className="border px-4 py-2 text-left">Source</th>
+                        <th className="border px-4 py-2 text-left">Date</th>
+                        <th className="border px-4 py-2 text-left">Total Payment</th>
+                        <th className="border px-4 py-2 text-left">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {customerServices.map((service, idx) => {
+                        const totalPayment = service.pricing?.totalPayment || service.totalPayment || 0;
+                        const received = service.pricing?.receivedPayment || service.receivedPayment || 0;
+                        const remaining = totalPayment - received;
+                        const status = service.status || service.serviceStatus || 'Active';
+
+                        return (
+                          <tr key={idx} className="border-t hover:bg-gray-50">
+                            <td className="border px-4 py-2">
+                              <span className="font-semibold">{service.serviceType || service.type || service.service || service.serviceName || 'N/A'}</span>
+                            </td>
+                            <td className="border px-4 py-2">
+                              <span className={`text-xs px-2 py-1 rounded font-semibold ${service.sourceType === 'Processing' ? 'bg-blue-100 text-blue-800' :
+                                service.sourceType === 'Manual' ? 'bg-orange-100 text-orange-800' :
+                                  'bg-green-100 text-green-800'
+                                }`}>
+                                {service.sourceType || 'Unknown'}
+                              </span>
+                            </td>
+                            <td className="border px-4 py-2 text-xs">
+                              {service.createdAt ? new Date(service.createdAt).toLocaleDateString() : '-'}
+                            </td>
+                            <td className="border px-4 py-2 font-semibold">PKR {totalPayment.toLocaleString()}</td>
+                            <td className="border px-4 py-2">
+                              <span className={`text-xs px-2 py-1 rounded ${status?.toLowerCase() === 'completed' || status?.toLowerCase() === 'done'
+                                ? 'bg-green-100 text-green-800'
+                                : status?.toLowerCase() === 'hold' || status?.toLowerCase() === 'on hold'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                {status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
