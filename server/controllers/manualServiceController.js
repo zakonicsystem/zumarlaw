@@ -51,6 +51,7 @@ export const deletePaymentForManualService = async (id, paymentIdx) => {
 import ManualServiceSubmission from '../models/ManualServiceSubmission.js';
 import { notifyPaymentReceived } from '../utils/paymentNotification.js';
 
+const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 'System';
 
 
 // Add a payment to a manual service submission
@@ -110,6 +111,17 @@ export const updateManualService = async (req, res) => {
     const submission = await ManualServiceSubmission.findById(id);
     if (!submission) return res.status(404).json({ success: false, message: 'Submission not found' });
     
+    const historyPush = {};
+    if (Object.prototype.hasOwnProperty.call(update, 'assignedTo') && String(submission.assignedTo || '') !== String(update.assignedTo || '')) {
+      historyPush.assignmentHistory = { from: submission.assignedTo || '', to: update.assignedTo || '', changedAt: new Date(), changedBy: actorName(req) };
+    }
+    if (Object.prototype.hasOwnProperty.call(update, 'status') && String(submission.status || '') !== String(update.status || '')) {
+      historyPush.statusHistory = { from: submission.status || '', to: update.status || '', changedAt: new Date(), changedBy: actorName(req) };
+    }
+    if (Object.prototype.hasOwnProperty.call(update, 'progressStatus') && String(submission.progressStatus || '') !== String(update.progressStatus || '')) {
+      historyPush.progressHistory = { from: submission.progressStatus || '', to: update.progressStatus || '', changedAt: new Date(), changedBy: actorName(req) };
+    }
+
     // Handle nested field updates (e.g., 'pricing.totalPayment')
     Object.keys(update).forEach(key => {
       if (key.includes('.')) {
@@ -125,6 +137,10 @@ export const updateManualService = async (req, res) => {
         // Handle regular fields
         submission[key] = update[key];
       }
+    });
+    Object.entries(historyPush).forEach(([key, value]) => {
+      submission[key] = submission[key] || [];
+      submission[key].push(value);
     });
 
     // normalize phone number before saving (use CPaaS helper if available)

@@ -48,9 +48,33 @@ const ManualServiceSubmissionSchema = new mongoose.Schema({
   ],
   certificate: { type: String },
   assignedTo: { type: String, default: '' },
+  assignmentHistory: [
+    {
+      from: String,
+      to: String,
+      changedAt: { type: Date, default: Date.now },
+      changedBy: String
+    }
+  ],
   status: { type: String, default: 'pending' },
+  statusHistory: [
+    {
+      from: String,
+      to: String,
+      changedAt: { type: Date, default: Date.now },
+      changedBy: String
+    }
+  ],
   // Progress status represents granular case progress (e.g., under_review, challan_pending, incorporated, etc.)
   progressStatus: { type: String, default: '' },
+  progressHistory: [
+    {
+      from: String,
+      to: String,
+      changedAt: { type: Date, default: Date.now },
+      changedBy: String
+    }
+  ],
   // Merge tracking
   mergedIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ManualServiceSubmission' }],
   mergedCount: { type: Number, default: 0 },

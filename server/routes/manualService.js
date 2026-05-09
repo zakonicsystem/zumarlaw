@@ -47,6 +47,7 @@ const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
     }))
   };
 };
+const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 'System';
 
 // Debug endpoint to verify merge route is loaded
 router.get('/debug/merge-route-test', (req, res) => {
@@ -375,12 +376,13 @@ router.post('/:id/send-invoice', async (req, res) => {
 router.patch('/:id/assign', async (req, res) => {
   try {
     const { assignedTo } = req.body;
-    const updated = await ManualServiceSubmission.findByIdAndUpdate(
-      req.params.id,
-      { assignedTo },
-      { new: true }
-    );
-    if (!updated) return res.status(404).json({ error: 'Submission not found' });
+    const existing = await ManualServiceSubmission.findById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Submission not found' });
+    const update = { $set: { assignedTo } };
+    if (String(existing.assignedTo || '') !== String(assignedTo || '')) {
+      update.$push = { assignmentHistory: { from: existing.assignedTo || '', to: assignedTo || '', changedAt: new Date(), changedBy: actorName(req) } };
+    }
+    await ManualServiceSubmission.findByIdAndUpdate(req.params.id, update, { new: true });
     res.json({ message: 'Assigned employee updated', assignedTo });
   } catch (err) {
     res.status(500).json({ error: 'Failed to assign employee' });
@@ -425,12 +427,13 @@ router.delete('/:id/payments/:paymentIdx', async (req, res) => {
 router.patch('/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
-    const updated = await ManualServiceSubmission.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-    if (!updated) return res.status(404).json({ error: 'Submission not found' });
+    const existing = await ManualServiceSubmission.findById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Submission not found' });
+    const update = { $set: { status } };
+    if (String(existing.status || '') !== String(status || '')) {
+      update.$push = { statusHistory: { from: existing.status || '', to: status || '', changedAt: new Date(), changedBy: actorName(req) } };
+    }
+    await ManualServiceSubmission.findByIdAndUpdate(req.params.id, update, { new: true });
     
     res.json({ message: 'Status updated', status });
   } catch (err) {
@@ -442,12 +445,13 @@ router.patch('/:id/status', async (req, res) => {
 router.patch('/:id/progress', async (req, res) => {
   try {
     const { progressStatus } = req.body;
-    const updated = await ManualServiceSubmission.findByIdAndUpdate(
-      req.params.id,
-      { progressStatus },
-      { new: true }
-    );
-    if (!updated) return res.status(404).json({ error: 'Submission not found' });
+    const existing = await ManualServiceSubmission.findById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Submission not found' });
+    const update = { $set: { progressStatus } };
+    if (String(existing.progressStatus || '') !== String(progressStatus || '')) {
+      update.$push = { progressHistory: { from: existing.progressStatus || '', to: progressStatus || '', changedAt: new Date(), changedBy: actorName(req) } };
+    }
+    await ManualServiceSubmission.findByIdAndUpdate(req.params.id, update, { new: true });
     res.json({ message: 'Progress status updated', progressStatus });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update progress status' });

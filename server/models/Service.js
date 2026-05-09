@@ -41,12 +41,44 @@ const ServiceDetailSchema = new mongoose.Schema({
     enum: ['pending', 'advance', 'full'],
     default: 'pending'
   },
+  paymentStatusHistory: [
+    {
+      from: String,
+      to: String,
+      changedAt: { type: Date, default: Date.now },
+      changedBy: String
+    }
+  ],
   assignedTo: {
     type: String,
     default: ''
   },
+  assignmentHistory: [
+    {
+      from: String,
+      to: String,
+      changedAt: { type: Date, default: Date.now },
+      changedBy: String
+    }
+  ],
   // Granular progress status for admin workflow steps
   progressStatus: { type: String, default: '' },
+  progressHistory: [
+    {
+      from: String,
+      to: String,
+      changedAt: { type: Date, default: Date.now },
+      changedBy: String
+    }
+  ],
+  statusHistory: [
+    {
+      from: String,
+      to: String,
+      changedAt: { type: Date, default: Date.now },
+      changedBy: String
+    }
+  ],
   certificate: { type: String, default: null },
   invoiceSent: { type: Boolean, default: false },
   payments: [PaymentSchema],

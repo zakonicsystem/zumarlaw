@@ -6,7 +6,7 @@ import logo from '../../assets/ZumarLogo.png';
 import {
     FaTachometerAlt, FaUsers, FaTasks, FaSignOutAlt, FaBars, FaMoneyCheckAlt,
     FaUserShield, FaUserFriends, FaUserCog, FaChevronDown, FaPlus,
-    FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck, FaComments, FaBan
+    FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck, FaComments, FaBan, FaHistory
 } from 'react-icons/fa';
 import { jwtDecode } from 'jwt-decode';
 
@@ -133,7 +133,13 @@ const Sidebar = () => {
                 { name: 'Add New Employee', path: '/admin/roles/add', icon: <FaPlus /> },
             ]
         },
-        { name: 'Customers', icon: <FaUsers />, path: '/admin/customers' },
+        {
+            name: 'Clients', icon: <FaUsers />, path: '/admin/customers',
+            children: [
+                { name: 'Customers', icon: <FaUsers />, path: '/admin/customers' },
+                { name: 'Client History', icon: <FaHistory />, path: '/admin/client-history' },
+            ]
+        },
         { name: 'Support Chat', icon: <FaComments />, path: '/admin/chat' },
         {
             name: 'Account', icon: <FaUserCog />, path: '/admin/account',

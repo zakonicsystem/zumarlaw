@@ -34,6 +34,7 @@ const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
     }))
   };
 };
+const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 'System';
 
 // Upload certificate (pending logic)
 // Allow certificate upload even if token is missing/expired; tryVerify will attach user if present
@@ -132,11 +133,13 @@ router.get('/admin/services', verifyJWT, async (req, res) => {
 router.patch('/services/:id/assign', async (req, res) => {
   try {
     const { assignedTo } = req.body;
-    const updated = await Service.findByIdAndUpdate(
-      req.params.id,
-      { assignedTo },
-      { new: true }
-    );
+    const service = await Service.findById(req.params.id);
+    if (!service) return res.status(404).json({ message: 'Service not found' });
+    const update = { $set: { assignedTo } };
+    if (String(service.assignedTo || '') !== String(assignedTo || '')) {
+      update.$push = { assignmentHistory: { from: service.assignedTo || '', to: assignedTo || '', changedAt: new Date(), changedBy: actorName(req) } };
+    }
+    const updated = await Service.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!updated) return res.status(404).json({ message: 'Service not found' });
     res.json(updated);
   } catch (err) {
@@ -147,12 +150,13 @@ router.patch('/services/:id/assign', async (req, res) => {
 router.patch('/services/:id/payment-status', async (req, res) => {
   try {
     const { paymentStatus } = req.body;
-    const service = await Service.findByIdAndUpdate(
-      req.params.id,
-      { paymentStatus },
-      { new: true }
-    );
-    if (!service) return res.status(404).json({ error: 'Service not found' });
+    const existing = await Service.findById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Service not found' });
+    const update = { $set: { paymentStatus } };
+    if (String(existing.paymentStatus || '') !== String(paymentStatus || '')) {
+      update.$push = { paymentStatusHistory: { from: existing.paymentStatus || '', to: paymentStatus || '', changedAt: new Date(), changedBy: actorName(req) } };
+    }
+    const service = await Service.findByIdAndUpdate(req.params.id, update, { new: true });
     res.json(service);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -162,12 +166,13 @@ router.patch('/services/:id/payment-status', async (req, res) => {
 router.patch('/services/:id/status', tryVerify, async (req, res) => {
   try {
     const { status } = req.body;
-    const service = await Service.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-    if (!service) return res.status(404).json({ error: 'Service not found' });
+    const existing = await Service.findById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Service not found' });
+    const update = { $set: { status } };
+    if (String(existing.status || '') !== String(status || '')) {
+      update.$push = { statusHistory: { from: existing.status || '', to: status || '', changedAt: new Date(), changedBy: actorName(req) } };
+    }
+    const service = await Service.findByIdAndUpdate(req.params.id, update, { new: true });
     res.json(service);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });

@@ -39,20 +39,22 @@ const NewEmployee = ({ onEmployeeAdded }) => {
       children: [
         { label: 'Service Processing', path: '/admin/services' },
         { label: 'Converted Services', path: '/admin/services/converted' },
-            { label: 'Manual Services', path: '/admin/services/manual' },
-            { label: 'Merged Services', path: '/admin/services/merged' },
+        { label: 'Manual Services', path: '/admin/services/manual' },
+        { label: 'Merged Services', path: '/admin/services/merged' },
         { label: 'Add Manual Service', path: '/admin/add-service' },
         { label: 'Refunds Admin', path: '/admin/refunds' },
       ]
     },
-    { label: 'Payroll', path: '/admin/payroll',
-      children:[
-        { label: 'AddPayroll', path:'/admin/payroll/add' },
+    {
+      label: 'Payroll', path: '/admin/payroll',
+      children: [
+        { label: 'AddPayroll', path: '/admin/payroll/add' },
         { label: 'Account', path: '/admin/account' }
       ]
-     },
+    },
     { label: 'Expense', path: '/admin/expense', },
     { label: 'Attendance', path: '/admin/attendance', },
+    { label: 'Client History', path: '/admin/client-history' },
   ];
 
   const handleChange = (e) => {
@@ -118,9 +120,10 @@ const NewEmployee = ({ onEmployeeAdded }) => {
 
     try {
       setLoading(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const endpoint = isEditing
-        ? `http://localhost:5000/admin/roles/${editId}`
-        : 'http://localhost:5000/admin/roles';
+        ? `${apiUrl}/api/admin/roles/${editId}`
+        : `${apiUrl}/api/admin/roles`;
 
       const method = isEditing ? 'put' : 'post';
 
@@ -129,14 +132,15 @@ const NewEmployee = ({ onEmployeeAdded }) => {
       });
 
       // If backend returns the created employee with plainPassword, store it for display and pass to parent
-      if (!isEditing && res.data && res.data.email && res.data.plainPassword) {
+      const credentials = res.data?.credentials;
+      if (!isEditing && credentials?.email && credentials?.password) {
         setLastCreatedEmployee({
-          email: res.data.email,
-          password: res.data.plainPassword
+          email: credentials.email,
+          password: credentials.password
         });
         if (onEmployeeAdded) onEmployeeAdded({
-          email: res.data.email,
-          password: res.data.plainPassword
+          email: credentials.email,
+          password: credentials.password
         });
       } else {
         if (onEmployeeAdded) onEmployeeAdded();

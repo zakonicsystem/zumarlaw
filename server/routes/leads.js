@@ -66,6 +66,7 @@ const employeeCanAccessLead = (req, lead) => {
 };
 
 const sendForbiddenLead = (res) => res.status(403).json({ message: 'You can only access leads assigned to you' });
+const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 'System';
 
 // Bulk import leads
 router.post('/import', async (req, res) => {
@@ -123,7 +124,18 @@ router.put('/:id/status', async (req, res) => {
             return sendForbiddenLead(res);
         }
 
-        const lead = await Lead.findByIdAndUpdate(id, update, { new: true });
+        const mongoUpdate = { $set: update };
+        if (String(existing.status || '') !== String(status || '')) {
+            mongoUpdate.$push = {
+                statusHistory: {
+                    from: existing.status || '',
+                    to: status,
+                    changedAt: statusChangedAt,
+                    changedBy: actorName(req)
+                }
+            };
+        }
+        const lead = await Lead.findByIdAndUpdate(id, mongoUpdate, { new: true });
         if (!lead) {
             return res.status(404).json({ message: 'Lead not found' });
         }
@@ -220,7 +232,7 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const update = req.body;
+        const update = { ...req.body };
         const existing = await Lead.findById(id);
         if (!existing) {
             return res.status(404).json({ message: 'Lead not found' });
@@ -229,7 +241,27 @@ router.put('/:id', async (req, res) => {
             return sendForbiddenLead(res);
         }
 
-        const lead = await Lead.findByIdAndUpdate(id, update, { new: true });
+        const push = {};
+        if (Object.prototype.hasOwnProperty.call(update, 'assigned') && String(existing.assigned || '') !== String(update.assigned || '')) {
+            push.assignmentHistory = {
+                from: existing.assigned || '',
+                to: update.assigned || '',
+                changedAt: new Date(),
+                changedBy: actorName(req)
+            };
+        }
+        if (Object.prototype.hasOwnProperty.call(update, 'status') && String(existing.status || '') !== String(update.status || '')) {
+            update.statusChangedAt = new Date();
+            push.statusHistory = {
+                from: existing.status || '',
+                to: update.status || '',
+                changedAt: update.statusChangedAt,
+                changedBy: actorName(req)
+            };
+        }
+
+        const mongoUpdate = Object.keys(push).length ? { $set: update, $push: push } : update;
+        const lead = await Lead.findByIdAndUpdate(id, mongoUpdate, { new: true });
         if (!lead) {
             return res.status(404).json({ message: 'Lead not found' });
         }

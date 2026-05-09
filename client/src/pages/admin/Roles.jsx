@@ -48,6 +48,7 @@ const pages = [
     ]
   },
   { label: 'Customers', path: '/admin/customers' },
+  { label: 'Client History', path: '/admin/client-history' },
   {
     label: 'Account', path: '/admin/account',
     children: [

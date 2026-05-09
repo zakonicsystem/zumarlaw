@@ -39,6 +39,7 @@ import smsRoutes from './routes/sms.js';
 import formsRoutes from './routes/forms.js';
 import mergeConvertedLeadsRoutes from './routes/mergeConvertedLeads.js';
 import mergeServiceRoutes from './routes/mergeService.js';
+import clientHistoryRoutes from './routes/clientHistory.js';
 
 import './config/passport.js';
 import path from 'path';
@@ -113,6 +114,7 @@ app.use('/api/refund', refundRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/forms', formsRoutes);
 app.use('/api/attendance', attendanceRoutes); // Register attendance routes
+app.use('/api/client-history', clientHistoryRoutes);
 // Merge routes
 app.use('/api/mergeConvertedLeads', mergeConvertedLeadsRoutes);
 app.use('/api/mergeService', mergeServiceRoutes);

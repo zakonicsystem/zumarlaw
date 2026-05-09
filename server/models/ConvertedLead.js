@@ -36,10 +36,34 @@ const ConvertedLeadSchema = new mongoose.Schema({
   phone: String,
   email: String,
   assigned: { type: String, default: '' },
+  assignmentHistory: [
+    {
+      from: String,
+      to: String,
+      changedAt: { type: Date, default: Date.now },
+      changedBy: String
+    }
+  ],
   service: String,
   // Granular progress status (e.g., under_review, challan_pending, incorporated...)
   progressStatus: { type: String, default: '' },
   status: { type: String, enum: ['pending', 'processing', 'converted', 'completed', 'rejected', 'Follow-up', 'Mature', 'Contacted'], default: 'converted' },
+  statusHistory: [
+    {
+      from: String,
+      to: String,
+      changedAt: { type: Date, default: Date.now },
+      changedBy: String
+    }
+  ],
+  progressHistory: [
+    {
+      from: String,
+      to: String,
+      changedAt: { type: Date, default: Date.now },
+      changedBy: String
+    }
+  ],
   // Dynamic fields
   fields: { type: Object, default: {} },
   // File uploads (store file names/paths)

@@ -4,6 +4,7 @@ import path from 'path';
 import * as convertedLeadController from '../controllers/convertedLeadController.js';
 import { tryVerify, verifyJWT } from '../middleware/authMiddleware.js';
 const router = express.Router();
+const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 'System';
 
 // Multer setup for file uploads
 const storage = multer.diskStorage({
@@ -65,8 +66,13 @@ router.patch('/:id/progress', async (req, res) => {
     const { progressStatus } = req.body;
     const ConvertedLead = await import('../models/ConvertedLead.js');
     const Model = ConvertedLead.default || ConvertedLead;
-    const updated = await Model.findByIdAndUpdate(req.params.id, { progressStatus }, { new: true });
-    if (!updated) return res.status(404).json({ error: 'Lead not found' });
+    const existing = await Model.findById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Lead not found' });
+    const update = { $set: { progressStatus } };
+    if (String(existing.progressStatus || '') !== String(progressStatus || '')) {
+      update.$push = { progressHistory: { from: existing.progressStatus || '', to: progressStatus || '', changedAt: new Date(), changedBy: actorName(req) } };
+    }
+    const updated = await Model.findByIdAndUpdate(req.params.id, update, { new: true });
     res.json({ message: 'Progress status updated', progressStatus: updated.progressStatus });
   } catch (err) {
     console.error('Failed to update progress for converted lead:', err);

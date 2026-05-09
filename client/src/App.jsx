@@ -46,6 +46,7 @@ import Attendance from './pages/admin/Attendance';
 import RefundManagement from './pages/admin/RefundManagement';
 import AdminChat from './pages/admin/AdminChat';
 import ChatButton from './components/ChatButton';
+import ClientHistory from './pages/admin/ClientHistory';
 
 const AppContent = () => {
   const location = useLocation();
@@ -101,6 +102,7 @@ const AppContent = () => {
           <Route path="/admin/payroll" element={<EmployeeProtectedRoute><Payroll /></EmployeeProtectedRoute>} />
           <Route path="/admin/payroll/add/:id" element={<EmployeeProtectedRoute><NewPayroll /></EmployeeProtectedRoute>} />
           <Route path="customers" element={<EmployeeProtectedRoute><Customers /></EmployeeProtectedRoute>} />
+          <Route path="/admin/client-history" element={<EmployeeProtectedRoute><ClientHistory /></EmployeeProtectedRoute>} />
           {/* Nested routes for leads management */}
           <Route path='/admin/leads/import' element={<EmployeeProtectedRoute><ImportLeads /></EmployeeProtectedRoute>} />
           <Route path="/admin/leads/add" element={<EmployeeProtectedRoute><AddLeads /></EmployeeProtectedRoute>} />

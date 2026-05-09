@@ -42,6 +42,7 @@ const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
     ]
   };
 };
+const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 'System';
 
 
 // 🟢 POST: Save Invoice Details + Files
@@ -222,8 +223,13 @@ router.patch('/admin/services/:id/status', tryVerify, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const updated = await ServiceDetail.findByIdAndUpdate(id, { status }, { new: true }).populate('personalId', 'phone');
-    if (!updated) return res.status(404).json({ error: 'Service not found' });
+    const existing = await ServiceDetail.findById(id);
+    if (!existing) return res.status(404).json({ error: 'Service not found' });
+    const update = { $set: { status } };
+    if (String(existing.status || '') !== String(status || '')) {
+      update.$push = { statusHistory: { from: existing.status || '', to: status || '', changedAt: new Date(), changedBy: actorName(req) } };
+    }
+    const updated = await ServiceDetail.findByIdAndUpdate(id, update, { new: true }).populate('personalId', 'phone');
 
     res.json({ message: 'Status updated', service: updated });
   } catch (err) {
@@ -235,8 +241,13 @@ router.patch('/admin/services/:id/progress', tryVerify, async (req, res) => {
   try {
     const { id } = req.params;
     const { progressStatus } = req.body;
-    const updated = await ServiceDetail.findByIdAndUpdate(id, { progressStatus }, { new: true });
-    if (!updated) return res.status(404).json({ error: 'Service not found' });
+    const existing = await ServiceDetail.findById(id);
+    if (!existing) return res.status(404).json({ error: 'Service not found' });
+    const update = { $set: { progressStatus } };
+    if (String(existing.progressStatus || '') !== String(progressStatus || '')) {
+      update.$push = { progressHistory: { from: existing.progressStatus || '', to: progressStatus || '', changedAt: new Date(), changedBy: actorName(req) } };
+    }
+    const updated = await ServiceDetail.findByIdAndUpdate(id, update, { new: true });
     res.json({ message: 'Progress status updated', service: updated });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update progress status' });
@@ -300,6 +311,17 @@ router.patch('/processing/:id', async (req, res) => {
     if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
 
     // Handle nested field updates (e.g., 'pricing.totalPayment')
+    const historyPush = {};
+    if (Object.prototype.hasOwnProperty.call(update, 'assignedTo') && String(service.assignedTo || '') !== String(update.assignedTo || '')) {
+      historyPush.assignmentHistory = { from: service.assignedTo || '', to: update.assignedTo || '', changedAt: new Date(), changedBy: actorName(req) };
+    }
+    if (Object.prototype.hasOwnProperty.call(update, 'status') && String(service.status || '') !== String(update.status || '')) {
+      historyPush.statusHistory = { from: service.status || '', to: update.status || '', changedAt: new Date(), changedBy: actorName(req) };
+    }
+    if (Object.prototype.hasOwnProperty.call(update, 'progressStatus') && String(service.progressStatus || '') !== String(update.progressStatus || '')) {
+      historyPush.progressHistory = { from: service.progressStatus || '', to: update.progressStatus || '', changedAt: new Date(), changedBy: actorName(req) };
+    }
+
     Object.keys(update).forEach(key => {
       if (key.includes('.')) {
         // Handle dot notation (nested fields)
@@ -364,6 +386,10 @@ router.post('/processing/:id/payments', async (req, res) => {
       phone: populatedService?.personalId?.phone,
       userId: populatedService?.userId,
       serviceId: populatedService?._id,
+    });
+    Object.entries(historyPush).forEach(([key, value]) => {
+      service[key] = service[key] || [];
+      service[key].push(value);
     });
     res.json({ success: true, payments: service.payments, pricing: service.pricing });
   } catch (err) {

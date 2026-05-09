@@ -122,6 +122,7 @@ const assignedToCurrentEmployeeQuery = (req, field = 'assigned') => {
     }))
   };
 };
+const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 'System';
 
 // Delete a converted lead by ID (hard delete)
 export const deleteConvertedLead = async (req, res) => {
@@ -367,8 +368,13 @@ export const updateAssigned = async (req, res) => {
   try {
     const { id } = req.params;
     const { assigned } = req.body;
-    const lead = await ConvertedLead.findByIdAndUpdate(id, { assigned }, { new: true });
-    if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+    const existing = await ConvertedLead.findById(id);
+    if (!existing) return res.status(404).json({ success: false, message: 'Lead not found' });
+    const update = { $set: { assigned } };
+    if (String(existing.assigned || '') !== String(assigned || '')) {
+      update.$push = { assignmentHistory: { from: existing.assigned || '', to: assigned || '', changedAt: new Date(), changedBy: actorName(req) } };
+    }
+    const lead = await ConvertedLead.findByIdAndUpdate(id, update, { new: true });
     res.json({ success: true, lead });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -380,8 +386,13 @@ export const updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const lead = await ConvertedLead.findByIdAndUpdate(id, { status }, { new: true });
-    if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+    const existing = await ConvertedLead.findById(id);
+    if (!existing) return res.status(404).json({ success: false, message: 'Lead not found' });
+    const update = { $set: { status } };
+    if (String(existing.status || '') !== String(status || '')) {
+      update.$push = { statusHistory: { from: existing.status || '', to: status || '', changedAt: new Date(), changedBy: actorName(req) } };
+    }
+    const lead = await ConvertedLead.findByIdAndUpdate(id, update, { new: true });
 
     res.json({ success: true, lead });
   } catch (err) {
@@ -396,6 +407,17 @@ export const updateConvertedLead = async (req, res) => {
     const update = req.body;
     const lead = await ConvertedLead.findById(id);
     if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+
+    const historyPush = {};
+    if (Object.prototype.hasOwnProperty.call(update, 'assigned') && String(lead.assigned || '') !== String(update.assigned || '')) {
+      historyPush.assignmentHistory = { from: lead.assigned || '', to: update.assigned || '', changedAt: new Date(), changedBy: actorName(req) };
+    }
+    if (Object.prototype.hasOwnProperty.call(update, 'status') && String(lead.status || '') !== String(update.status || '')) {
+      historyPush.statusHistory = { from: lead.status || '', to: update.status || '', changedAt: new Date(), changedBy: actorName(req) };
+    }
+    if (Object.prototype.hasOwnProperty.call(update, 'progressStatus') && String(lead.progressStatus || '') !== String(update.progressStatus || '')) {
+      historyPush.progressHistory = { from: lead.progressStatus || '', to: update.progressStatus || '', changedAt: new Date(), changedBy: actorName(req) };
+    }
 
     // Handle nested field updates (e.g., 'pricing.totalPayment')
     Object.keys(update).forEach(key => {
@@ -412,6 +434,10 @@ export const updateConvertedLead = async (req, res) => {
         // Handle regular fields
         lead[key] = update[key];
       }
+    });
+    Object.entries(historyPush).forEach(([key, value]) => {
+      lead[key] = lead[key] || [];
+      lead[key].push(value);
     });
 
     await lead.save();
