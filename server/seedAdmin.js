@@ -10,15 +10,15 @@ async function createAdmin() {
         await mongoose.connect(process.env.MONGO_URI);
 
         // First Admin
-        const existingAdmin1 = await Admin.findOne({ email: 'admin@zumarlawfirm.com' });
+        const existingAdmin1 = await Admin.findOne({ email: 'team@zumarlawfirm.com' });
         if (!existingAdmin1) {
-            const hashedPassword1 = await bcrypt.hash('zumarlawfirm@7806', 10);
+            const hashedPassword1 = await bcrypt.hash('Arslan@2000', 10);
             const admin1 = new Admin({
-                email: 'admin@zumarlawfirm.com',
+                email: 'team@zumarlawfirm.com',
                 password: hashedPassword1,
             });
             await admin1.save();
-            console.log('First Admin created: admin@zumarlawfirm.com');
+            console.log('First Admin created: team@zumarlawfirm.com');
         } else {
             console.log('First Admin already exists');
         }
