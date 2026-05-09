@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import { getLeadTabs, isFollowUpLeadStatus } from '../../utils/leadTabs';
 import api from '../../utils/api';
+import { exportRecordsToCsv } from '../../utils/exportCsv';
 
 const FollowupLeads = () => {
   const navigate = useNavigate();
@@ -304,6 +305,7 @@ const FollowupLeads = () => {
       selectedRows={selectedRows}
       convertFindLeads={followupLeads}
       toast={window.toast && window.toast.error ? window.toast : { error: (msg) => hotToast.error(msg) }}
+      onExport={() => exportRecordsToCsv('followup-leads.csv', filteredLeads)}
     />
 
       {/* Search Bar & Tabs */}

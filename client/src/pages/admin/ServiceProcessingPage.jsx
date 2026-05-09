@@ -13,6 +13,7 @@ import { toast } from 'react-hot-toast';
 import ZumarLogo from '../../assets/ZumarLogo.png';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { exportRecordsToCsv } from '../../utils/exportCsv';
 
 // Dropdown for assigning employees
 function AssignedToDropdown({ employees, assignedTo, onAssign }) {
@@ -69,6 +70,7 @@ const isAssignedToEmployeeName = (assignedTo, employeeName) => {
   const employee = normalizeAssignedName(employeeName);
   return Boolean(assigned && employee && (assigned === employee || assigned.startsWith(`${employee} `)));
 };
+const isCompletedService = (row) => String(row?.status || '').toLowerCase() === 'completed';
 
 // Map progress values to badge classes (colors requested by user)
 const getProgressClass = (status) => {
@@ -388,6 +390,10 @@ const ServiceProcessingPage = () => {
       toast.error('Please select a file first');
       return;
     }
+    if (isEmployee && !isCompletedService(selectedRow)) {
+      toast.error('Employees can upload certificates only for completed services');
+      return;
+    }
 
     try {
       const formData = new FormData();
@@ -650,12 +656,14 @@ const ServiceProcessingPage = () => {
 
           <button
             onClick={() => {
-              if (isEmployee) return toast.error('Employees cannot upload certificates');
               if (!selectedRow) return toast.error("No row selected");
+              if (isEmployee && !isCompletedService(selectedRow)) {
+                return toast.error('Employees can upload certificates only for completed services');
+              }
               setShowUploadModal(true);
             }}
-            disabled={isEmployee}
-            title={isEmployee ? "Employees cannot upload certificates" : ""}
+            disabled={isEmployee && selectedRow && !isCompletedService(selectedRow)}
+            title={isEmployee ? "Employees can upload certificates only for completed services" : ""}
             className="flex items-center gap-2 bg-[#57123f] text-white px-4 py-2 rounded-full text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FaIdCard /> Upload Certificate
@@ -679,6 +687,13 @@ const ServiceProcessingPage = () => {
             disabled={selectedRows.length === 0 || isEmployee}
           >
             🗑️ Delete Selected
+          </button>
+          <button
+            type="button"
+            onClick={() => exportRecordsToCsv('processing-services.csv', filteredData)}
+            className="flex items-center gap-2 bg-[#57123f] text-white px-4 py-2 rounded-full text-sm"
+          >
+            <FaDownload /> Export Services
           </button>
         </div>
         <div className="overflow-x-auto rounded-lg shadow-sm border border-gray-200 max-h-[400px]">

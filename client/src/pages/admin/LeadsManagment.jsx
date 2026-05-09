@@ -10,6 +10,7 @@ import Breadcrumbs from "../../components/Breadcrumbs";
 import ConvertLeadModal from "../../components/leads/ConvertLeadModal";
 import { getLeadTabs, isNewLeadStatus } from "../../utils/leadTabs";
 import api from "../../utils/api";
+import { exportRecordsToCsv } from "../../utils/exportCsv";
 
 
 export default function LeadsManagment() {
@@ -272,6 +273,7 @@ export default function LeadsManagment() {
         selectedRows={selectedRows}
         convertFindLeads={NewLeads}
         toast={window.toast && window.toast.error ? window.toast : { error: (msg) => hotToast.error(msg) }}
+        onExport={() => exportRecordsToCsv('new-leads.csv', filteredLeads)}
       />
       {/* Search Bar */}
       <LeadsSearchBar

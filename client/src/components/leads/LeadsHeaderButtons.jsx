@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaUserPlus, FaFileImport, FaArrowRight } from 'react-icons/fa';
+import { FaUserPlus, FaFileImport, FaArrowRight, FaDownload } from 'react-icons/fa';
 import {toast} from 'react-hot-toast';
 const LeadsHeaderButtons = ({
   title = '',
@@ -13,6 +13,7 @@ const LeadsHeaderButtons = ({
   setConvertModal,
   convertLabel = 'Convert into Client',
   convertFindLeads = [],
+  onExport,
 }) => {
   return (
     <div className="flex justify-between items-center mb-6">
@@ -30,6 +31,14 @@ const LeadsHeaderButtons = ({
         >
           <FaFileImport /> Import Leads (.csv)
         </button>
+        {onExport && (
+          <button
+            className="flex items-center gap-2 bg-[#57123f] text-white px-4 py-2 rounded-lg text-sm"
+            onClick={onExport}
+          >
+            <FaDownload /> Export Leads
+          </button>
+        )}
         <button
           className="flex items-center gap-2 bg-[#57123f] text-white px-4 py-2 rounded-lg text-sm"
           onClick={() => {

@@ -48,6 +48,8 @@ import fs from 'fs';
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // Resolve __dirname in ES module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

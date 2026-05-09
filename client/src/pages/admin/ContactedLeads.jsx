@@ -10,6 +10,7 @@ import Breadcrumbs from '../../components/Breadcrumbs';
 import ConvertLeadModal from '../../components/leads/ConvertLeadModal';
 import { getLeadTabs } from '../../utils/leadTabs';
 import api from '../../utils/api';
+import { exportRecordsToCsv } from '../../utils/exportCsv';
 
 const ContactedLeads = () => {
   const navigate = useNavigate();
@@ -251,6 +252,7 @@ const ContactedLeads = () => {
         selectedRows={selectedRows}
         convertFindLeads={contactedLeads}
         toast={window.toast && window.toast.error ? window.toast : { error: (msg) => hotToast.error(msg) }}
+        onExport={() => exportRecordsToCsv('contacted-leads.csv', filteredLeads)}
 
       />
 

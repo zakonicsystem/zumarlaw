@@ -7,6 +7,7 @@ import LeadsSearchBar from '../../components/leads/LeadsSearchBar';
 import LeadsTable from '../../components/leads/LeadsTable';
 import { getLeadTabs, isRefusalLeadStatus } from '../../utils/leadTabs';
 import api from '../../utils/api';
+import { exportRecordsToCsv } from '../../utils/exportCsv';
 
 const RefusalLeads = () => {
   const navigate = useNavigate();
@@ -89,6 +90,7 @@ const RefusalLeads = () => {
         selectedRows={selectedRows}
         convertFindLeads={refusalLeads}
         toast={{ error: (msg) => toast.error(msg) }}
+        onExport={() => exportRecordsToCsv('refusal-leads.csv', filteredLeads)}
       />
 
       <LeadsSearchBar

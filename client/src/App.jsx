@@ -136,10 +136,19 @@ const App = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
+    const user = urlParams.get('user');
     const message = urlParams.get('message');
 
     if (token) {
       localStorage.setItem('token', token);
+      if (user) {
+        try {
+          const parsedUser = JSON.parse(decodeURIComponent(user));
+          localStorage.setItem('user', JSON.stringify(parsedUser));
+        } catch (error) {
+          console.error('Could not store Google user data:', error);
+        }
+      }
       window.history.replaceState({}, document.title, '/');
       toast.success(message || 'Login Successful!');
     }

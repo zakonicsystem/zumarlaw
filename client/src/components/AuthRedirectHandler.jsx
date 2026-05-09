@@ -12,8 +12,13 @@ const AuthRedirectHandler = () => {
 
     if (token && user) {
       localStorage.setItem('token', token);
-      localStorage.setItem('user', user);
-      navigate('/home', { replace: true });
+      try {
+        const parsedUser = JSON.parse(decodeURIComponent(user));
+        localStorage.setItem('user', JSON.stringify(parsedUser));
+      } catch (error) {
+        console.error('Could not store Google user data:', error);
+      }
+      navigate('/', { replace: true });
     }
   }, [location, navigate]);
 

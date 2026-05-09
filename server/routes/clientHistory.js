@@ -118,17 +118,17 @@ router.get('/', verifyJWT, async (req, res) => {
     const contactQuery = buildContactQuery({ email, phone });
     const baseQuery = contactQuery || {};
 
-    const personalDetails = await PersonalDetail.find(baseQuery).sort({ createdAt: -1 }).limit(300).lean();
+    const personalDetails = await PersonalDetail.find(baseQuery).sort({ createdAt: -1 }).lean();
     const personalIds = personalDetails.map((item) => item._id);
 
     const [leads, convertedServices, manualServices, processingServices] = await Promise.all([
-      Lead.find(baseQuery).sort({ createdAt: -1 }).limit(300).lean(),
-      ConvertedLead.find(baseQuery).sort({ createdAt: -1 }).limit(300).lean(),
-      ManualServiceSubmission.find(baseQuery).sort({ createdAt: -1 }).limit(300).lean(),
+      Lead.find(baseQuery).sort({ createdAt: -1 }).lean(),
+      ConvertedLead.find(baseQuery).sort({ createdAt: -1 }).lean(),
+      ManualServiceSubmission.find(baseQuery).sort({ createdAt: -1 }).lean(),
       ServiceDetail.find(contactQuery ? (personalIds.length ? { personalId: { $in: personalIds } } : { _id: { $exists: false } }) : {})
         .populate('personalId')
         .sort({ createdAt: -1 })
-        .limit(300)
+        .lean()
     ]);
 
     const personalById = new Map(personalDetails.map((item) => [String(item._id), item]));

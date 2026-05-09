@@ -188,6 +188,7 @@ import axios from 'axios';
 import api from '../../utils/api';
 import { FaSearch, FaEye, FaDownload } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
+import { exportRecordsToCsv } from '../../utils/exportCsv';
 
 const PAGE_SIZE = 10;
 
@@ -197,6 +198,7 @@ const MANUAL_STATUS_CARDS = [
   { value: 'completed', label: 'Completed', classes: 'bg-green-50 border-green-200 text-green-700' },
   { value: 'rejected', label: 'Rejected', classes: 'bg-red-50 border-red-200 text-red-700' },
 ];
+const isCompletedService = (row) => String(row?.status || '').toLowerCase() === 'completed';
 
 const ManualService = () => {
   const [services, setServices] = useState([]);
@@ -411,6 +413,7 @@ const ManualService = () => {
   // Pagination
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
   const currentData = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const selectedCertificateRows = services.filter((row) => selectedRows.includes(row._id));
 
   // Invoice modal state
   const [showInvoice, setShowInvoice] = useState(false);
@@ -540,6 +543,13 @@ const ManualService = () => {
           >
             Generate Invoice
           </button>
+          <button
+            type="button"
+            className="bg-[#57123f] text-sm text-white px-6 py-2 rounded-full hover:bg-[#4a0f35] font-semibold inline-flex items-center gap-2"
+            onClick={() => exportRecordsToCsv('manual-services.csv', filtered)}
+          >
+            <FaDownload /> Export Services
+          </button>
           <input
             type="file"
             id="certificate-upload"
@@ -550,6 +560,11 @@ const ManualService = () => {
               if (!file) return;
               if (selectedRows.length === 0) {
                 toast.error('Please select at least one row.');
+                return;
+              }
+              if (isEmployee && selectedCertificateRows.some((row) => !isCompletedService(row))) {
+                e.target.value = '';
+                toast.error('Employees can upload certificates only for completed services');
                 return;
               }
               try {
@@ -603,15 +618,15 @@ const ManualService = () => {
           />
           <button
             className="bg-[#57123f] text-sm text-white px-6 py-2 rounded-full hover:bg-[#57123f] font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isEmployee}
-            title={isEmployee ? "Employees cannot upload certificates" : ""}
+            disabled={isEmployee && selectedCertificateRows.length > 0 && selectedCertificateRows.some((row) => !isCompletedService(row))}
+            title={isEmployee ? "Employees can upload certificates only for completed services" : ""}
             onClick={() => {
-              if (isEmployee) {
-                toast.error('Employees cannot upload certificates');
-                return;
-              }
               if (selectedRows.length === 0) {
                 toast.error('Please select at least one row.');
+                return;
+              }
+              if (isEmployee && selectedCertificateRows.some((row) => !isCompletedService(row))) {
+                toast.error('Employees can upload certificates only for completed services');
                 return;
               }
               document.getElementById('certificate-upload').click();

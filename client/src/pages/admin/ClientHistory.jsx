@@ -23,6 +23,7 @@ const money = (value) => {
 
 const mainStatuses = ['All', 'New', 'Contacted', 'Follow-up', 'Mature', 'Converted', 'Processing', 'Completed', 'Rejected'];
 
+
 const TimelineList = ({ title, items, empty }) => (
   <div>
     <h4 className="text-sm font-semibold text-gray-900 mb-2">{title}</h4>
@@ -203,7 +204,6 @@ const ClientHistory = () => {
     const matchesStatus = statusFilter === 'All' || statusValue === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   });
-
   return (
     <div className="max-w-7xl mx-auto p-4">
       <div className="flex items-center justify-between gap-3 mb-5">
@@ -239,7 +239,6 @@ const ClientHistory = () => {
           ))}
         </div>
 
-        
       </div>
 
       {history && (

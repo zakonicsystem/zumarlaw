@@ -63,6 +63,7 @@ const Login = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     const userParam = urlParams.get('user');
+    const error = urlParams.get('error');
 
     if (token && userParam) {
       try {
@@ -84,6 +85,9 @@ const Login = () => {
         toast.error('Error logging in with Google');
         navigate('/login');
       }
+    } else if (error === 'google_auth_failed') {
+      toast.error('Google login failed. Please try again.');
+      window.history.replaceState({}, '', '/login');
     }
   }, [location.search, navigate]);
 

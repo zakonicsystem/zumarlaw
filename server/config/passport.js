@@ -6,12 +6,24 @@ import User from '../models/User.js';
 import dotenv from 'dotenv';
 dotenv.config(); // must come before accessing process.env
 
+const resolveGoogleCallbackUrl = () => {
+  const configuredCallback = process.env.GOOGLE_CALLBACK_URL?.trim();
 
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL) {
+  if (configuredCallback && !configuredCallback.includes('localhost')) {
+    return configuredCallback;
+  }
+
+  // A relative callback lets Passport build the correct host/protocol from the
+  // incoming request, which is important behind nginx/HTTPS on the VPS.
+  return '/api/auth/google/callback';
+};
+
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL,
+    callbackURL: resolveGoogleCallbackUrl(),
+    proxy: true,
   },
 async (accessToken, refreshToken, profile, done) => {
   try {
@@ -57,6 +69,7 @@ async (accessToken, refreshToken, profile, done) => {
     
     // Create a clean user object with only the necessary fields
     const cleanUserObject = {
+      id: userObject._id.toString(),
       _id: userObject._id.toString(), // Ensure _id is a string
       firstName: userObject.firstName,
       lastName: userObject.lastName,
@@ -65,9 +78,6 @@ async (accessToken, refreshToken, profile, done) => {
       CNIC: userObject.CNIC,
       services: userObject.services || []
     };
-
-    // Log the user data for debugging
-    console.log('Clean user object:', cleanUserObject);
 
     const token = jwt.sign(cleanUserObject, process.env.JWT_SECRET, { expiresIn: '1d' });
 
@@ -79,5 +89,5 @@ async (accessToken, refreshToken, profile, done) => {
   }
   }));
 } else {
-  console.warn('Google OAuth environment variables not set. Skipping GoogleStrategy registration.');
+  console.warn('Google OAuth client ID/secret not set. Skipping GoogleStrategy registration.');
 }

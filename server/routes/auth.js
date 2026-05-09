@@ -8,6 +8,22 @@ import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js'; // ✅ I
 
 const router = express.Router();
 
+const getClientUrl = (req) => {
+  const configuredUrl = process.env.CLIENT_URL?.replace(/\/$/, '');
+  const requestHost = req?.get('host') || '';
+  const isLocalRequest = requestHost.includes('localhost') || requestHost.includes('127.0.0.1');
+
+  if (configuredUrl && (!configuredUrl.includes('localhost') || isLocalRequest)) {
+    return configuredUrl;
+  }
+
+  if (requestHost) {
+    return `${req.protocol}://${requestHost}`;
+  }
+
+  return 'http://localhost:5173';
+};
+
 // ✅ Centralized Token Generator
 function generateToken(user) {
   const payload = {
@@ -29,7 +45,17 @@ router.get('/google', passport.authenticate('google', {
 }));
 
 router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login', session: false }),
+  (req, res, next) => {
+    passport.authenticate('google', { session: false }, (err, authResult) => {
+      if (err || !authResult) {
+        console.error('Google authentication failed:', err?.message || 'No auth result');
+        return res.redirect(`${getClientUrl(req)}/login?error=google_auth_failed`);
+      }
+
+      req.user = authResult;
+      return next();
+    })(req, res, next);
+  },
   (req, res) => {
     const { user, token } = req.user;
     
@@ -47,7 +73,7 @@ router.get('/google/callback',
     // Create a new token with all necessary user data
     const newToken = jwt.sign(userData, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    const redirectUrl = `${process.env.CLIENT_URL}/home?token=${newToken}&user=${encodeURIComponent(JSON.stringify(userData))}`;
+    const redirectUrl = `${getClientUrl(req)}/?token=${encodeURIComponent(newToken)}&user=${encodeURIComponent(JSON.stringify(userData))}`;
     res.redirect(redirectUrl);
   }
 );

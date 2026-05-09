@@ -4,6 +4,7 @@ import api from '../../utils/api';
 import { FaSearch, FaEye, FaDownload } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import ZumarLogo from '../../assets/ZumarLogo.png';
+import { exportRecordsToCsv } from '../../utils/exportCsv';
 
 
 // InvoiceContent component for both modal and print area
@@ -155,6 +156,7 @@ const CONVERTED_STATUS_CARDS = [
   { value: 'completed', label: 'Completed', classes: 'bg-green-50 border-green-200 text-green-700' },
   { value: 'rejected', label: 'Rejected', classes: 'bg-red-50 border-red-200 text-red-700' },
 ];
+const isCompletedService = (row) => String(row?.status || '').toLowerCase() === 'completed';
 
 
 
@@ -253,6 +255,7 @@ const ConvertedService = () => {
 
   // Pagination
   const currentData = filtered;
+  const selectedCertificateRow = selectedRows.length === 1 ? leads.find(l => l._id === selectedRows[0]) : null;
 
   // Select logic
   const handleSelectAll = () => {
@@ -374,12 +377,21 @@ const ConvertedService = () => {
             Generate Invoice
           </button>
           <button
+            type="button"
+            className="bg-[#57123f] text-sm text-white px-6 py-2 rounded-full hover:bg-[#4a0f35] font-semibold inline-flex items-center gap-2"
+            onClick={() => exportRecordsToCsv('converted-services.csv', filtered)}
+          >
+            <FaDownload /> Export Services
+          </button>
+          <button
             className="bg-[#57123f] text-white px-5 py-2 rounded-full font-semibold hover:bg-[#57123f] transition disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isEmployee}
-            title={isEmployee ? "Employees cannot upload certificates" : ""}
+            disabled={isEmployee && selectedRows.length === 1 && !isCompletedService(selectedCertificateRow)}
+            title={isEmployee ? "Employees can upload certificates only for completed services" : ""}
             onClick={() => {
-              if (isEmployee) return toast.error('Employees cannot upload certificates');
               if (selectedRows.length !== 1) return toast.error('Select exactly one lead to upload certificate');
+              if (isEmployee && !isCompletedService(selectedCertificateRow)) {
+                return toast.error('Employees can upload certificates only for completed services');
+              }
               document.getElementById('certificate-upload-input').click();
             }}
           >
@@ -394,6 +406,11 @@ const ConvertedService = () => {
               const file = e.target.files[0];
               if (!file) return;
               if (selectedRows.length !== 1) return toast.error('Select exactly one lead');
+              const selectedRow = leads.find(l => l._id === selectedRows[0]);
+              if (isEmployee && !isCompletedService(selectedRow)) {
+                e.target.value = '';
+                return toast.error('Employees can upload certificates only for completed services');
+              }
               const formData = new FormData();
               formData.append('certificate', file);
               try {
@@ -404,7 +421,6 @@ const ConvertedService = () => {
                 await axios.post(`${apiUrl}/api/convertedService/${selectedRows[0]}/certificate`, formData);
 
                 // Send SMS notification about certificate upload
-                const selectedRow = leads.find(l => l._id === selectedRows[0]);
                 if (selectedRow && selectedRow.phone && selectedRow._id) {
                   try {
                     const smsMessage = `Your certificate is ready! Service: ${selectedRow.service || 'N/A'}. Reference: ${selectedRow._id?.slice(-6).toUpperCase() || 'N/A'}. You can access it from your account. Thank you for choosing Zumar Law Firm.`;
