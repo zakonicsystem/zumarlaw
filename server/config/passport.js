@@ -7,15 +7,16 @@ import dotenv from 'dotenv';
 dotenv.config(); // must come before accessing process.env
 
 const resolveGoogleCallbackUrl = () => {
+  const callbackPath = '/api/auth/google/callback';
   const configuredCallback = process.env.GOOGLE_CALLBACK_URL?.trim();
 
   if (configuredCallback && !configuredCallback.includes('localhost')) {
-    return configuredCallback;
+    return configuredCallback.replace('/auth/google/callback', callbackPath);
   }
 
   // A relative callback lets Passport build the correct host/protocol from the
   // incoming request, which is important behind nginx/HTTPS on the VPS.
-  return '/api/auth/google/callback';
+  return callbackPath;
 };
 
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
