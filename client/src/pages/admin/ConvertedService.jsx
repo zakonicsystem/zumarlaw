@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import api from '../../utils/api';
 import { FaSearch, FaEye, FaDownload } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import ZumarLogo from '../../assets/ZumarLogo.png';
@@ -147,6 +148,14 @@ function InvoiceContent({ invoiceData, isEmployee }) {
 
 const PAGE_SIZE = 10;
 
+const CONVERTED_STATUS_CARDS = [
+  { value: 'converted', label: 'Converted', classes: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
+  { value: 'pending', label: 'Pending', classes: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+  { value: 'processing', label: 'Processing', classes: 'bg-purple-50 border-purple-200 text-purple-700' },
+  { value: 'completed', label: 'Completed', classes: 'bg-green-50 border-green-200 text-green-700' },
+  { value: 'rejected', label: 'Rejected', classes: 'bg-red-50 border-red-200 text-red-700' },
+];
+
 
 
 const ConvertedService = () => {
@@ -202,8 +211,7 @@ const ConvertedService = () => {
     const fetchLeads = async () => {
       setLoading(true);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const res = await axios.get(`${apiUrl}/api/convertedService`);
+        const res = await api.get('/api/convertedService');
         setLeads(res.data);
       } catch (err) {
         toast.error('Failed to fetch converted leads');
@@ -230,8 +238,9 @@ const ConvertedService = () => {
 
   // Filter/search logic
   const safeLeads = Array.isArray(leads) ? leads : [];
+  const getStatusCount = (status) => safeLeads.filter((row) => (row.status || 'converted').toLowerCase() === status).length;
   const filtered = safeLeads.filter(row => {
-    const matchesStatus = filterStatus ? (row.status === filterStatus) : true;
+    const matchesStatus = filterStatus ? ((row.status || '').toLowerCase() === filterStatus) : true;
     const matchesProgress = filterProgress ? (row.progressStatus === filterProgress) : true;
     const matchesSearch = searchQuery
       ? (
@@ -308,6 +317,22 @@ const ConvertedService = () => {
             />
           </div>
         </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          {CONVERTED_STATUS_CARDS.map((card) => (
+            <button
+              key={card.value}
+              type="button"
+              onClick={() => {
+                setFilterStatus(card.value);
+                setCurrentPage(1);
+              }}
+              className={`text-left rounded-lg border p-4 transition hover:shadow-sm ${card.classes} ${filterStatus === card.value ? 'ring-2 ring-[#57123f]' : ''}`}
+            >
+              <p className="font-semibold text-lg">{card.label}</p>
+              <p className="text-3xl font-bold mt-1">{getStatusCount(card.value)}</p>
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-4 mb-6 items-center">
           <select
             value={filterProgress}
@@ -336,7 +361,7 @@ const ConvertedService = () => {
             className="bg-gray-100 text-gray-700 rounded-full px-4 py-2 text-sm focus:outline-none"
           >
             <option value="">All Statuses</option>
-            <option value="Converted">Converted</option>
+            <option value="converted">Converted</option>
             <option value="pending">Pending</option>
             <option value="processing">Processing</option>
             <option value="completed">Completed</option>
@@ -377,7 +402,7 @@ const ConvertedService = () => {
                 // correct multipart boundary so multer can parse the file correctly.
                 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                 await axios.post(`${apiUrl}/api/convertedService/${selectedRows[0]}/certificate`, formData);
-                
+
                 // Send SMS notification about certificate upload
                 const selectedRow = leads.find(l => l._id === selectedRows[0]);
                 if (selectedRow && selectedRow.phone && selectedRow._id) {
@@ -398,7 +423,7 @@ const ConvertedService = () => {
                     console.warn('Failed to send certificate SMS:', smsErr);
                   }
                 }
-                
+
                 toast.success('Certificate uploaded');
                 // Optionally refresh leads
                 setLeads(prev => prev.map(l => l._id === selectedRows[0] ? { ...l, certificate: true } : l));
@@ -432,7 +457,7 @@ const ConvertedService = () => {
                 }
                 // Refresh leads from server after deletion
                 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                const res = await axios.get(`${apiUrl}/api/convertedService`);
+                const res = await api.get('/api/convertedService');
                 setLeads(res.data);
                 setSelectedRows([]);
                 setSelectAll(false);
@@ -537,7 +562,7 @@ const ConvertedService = () => {
                           const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                           await axios.put(`${apiUrl}/api/convertedService/${row._id}/status`, { status: newStatus });
                           setLeads(prev => prev.map(l => l._id === row._id ? { ...l, status: newStatus } : l));
-                          
+
                           // Send SMS notification about status change
                           if (row.phone && row._id) {
                             try {
@@ -558,7 +583,7 @@ const ConvertedService = () => {
                               console.warn('Failed to send status SMS:', smsErr);
                             }
                           }
-                          
+
                           toast.success('Status updated and notification sent');
                         } catch (err) {
                           toast.error('Failed to update status');

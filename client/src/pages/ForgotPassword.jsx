@@ -6,6 +6,7 @@ const ForgetPassword = () => {
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [emailVerified, setEmailVerified] = useState(false);
+  const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [message, setMessage] = useState('');
 
@@ -18,11 +19,11 @@ const ForgetPassword = () => {
   const handleCheckEmail = async () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await axios.post(`${apiUrl}/api/auth/forgot-password`, { email });
+      await axios.post(`${apiUrl}/api/auth/forgot-password`, { email });
       setEmailVerified(true);
-      setMessage('✅ Email verified. Enter your new password.');
+      setMessage('OTP sent to your email. Enter OTP and new password.');
     } catch (error) {
-      setMessage(error.response?.data?.message || '❌ Email not found.');
+      setMessage(error.response?.data?.message || 'Email not found.');
     }
   };
 
@@ -31,12 +32,13 @@ const ForgetPassword = () => {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       await axios.post(`${apiUrl}/api/auth/reset-password`, {
         email,
+        otp,
         newPassword,
       });
-      setMessage('✅ Password reset successful. Redirecting...');
+      setMessage('Password reset successful. Redirecting...');
       setTimeout(() => (window.location.href = '/login'), 2000);
     } catch (error) {
-      setMessage(error.response?.data?.message || '❌ Error resetting password.');
+      setMessage(error.response?.data?.message || 'Error resetting password.');
     }
   };
 
@@ -57,11 +59,18 @@ const ForgetPassword = () => {
             onClick={handleCheckEmail}
             className="w-full bg-[#57123f] text-white py-2 rounded-md hover:opacity-90 transition duration-300"
           >
-            Verify Email
+            Send OTP
           </button>
         </>
       ) : (
         <>
+          <input
+            type="text"
+            placeholder="Enter OTP from email"
+            value={otp}
+            onChange={e => setOtp(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-[#57123f]"
+          />
           <input
             type="password"
             placeholder="Enter new password"
@@ -86,4 +95,3 @@ const ForgetPassword = () => {
 };
 
 export default ForgetPassword;
-

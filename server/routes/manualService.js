@@ -11,6 +11,8 @@ import ManualServiceSubmission from '../models/ManualServiceSubmission.js';
 import Service from '../models/Service.js';
 import ConvertedLead from '../models/ConvertedLead.js';
 import { deleteManyManualServices } from '../controllers/manualServiceController.js';
+import { tryVerify, verifyJWT } from '../middleware/authMiddleware.js';
+import { notifyPaymentReceived } from '../utils/paymentNotification.js';
 
 
 // Multer config for file uploads (store in /uploads)
@@ -26,6 +28,25 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 const router = express.Router();
+
+const isEmployeeRequest = (req) => {
+  return req.user && !['admin', 'user'].includes(req.user.role);
+};
+
+const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
+  const values = [req.user?.id, req.user?.name, req.user?.email]
+    .filter(Boolean)
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  if (values.length === 0) return { [field]: '__NO_ASSIGNED_EMPLOYEE__' };
+
+  return {
+    $or: values.map((value) => ({
+      [field]: { $regex: `^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
+    }))
+  };
+};
 
 // Debug endpoint to verify merge route is loaded
 router.get('/debug/merge-route-test', (req, res) => {
@@ -535,6 +556,17 @@ router.post('/', upload.any(), async (req, res) => {
       ...fields
     });
     await submission.save();
+    if (initialPaid > 0) {
+      await notifyPaymentReceived({
+        doc: submission,
+        amount: initialPaid,
+        previousPaid: 0,
+        serviceName: submission.serviceType || submission.service,
+        phone: submission.phone,
+        userId: submission._id,
+        serviceId: submission._id,
+      });
+    }
     res.status(201).json({ message: 'Submission saved successfully' });
   } catch (err) {
     console.error(err);
@@ -544,9 +576,10 @@ router.post('/', upload.any(), async (req, res) => {
 router.get('/:id/payments', manualServiceController.getPaymentsForManualService);
 router.post('/:id/payments', manualServiceController.addPaymentToManualService);
 // Get all manual service submissions (DirectService.jsx)
-router.get('/', async (req, res) => {
+router.get('/', verifyJWT, async (req, res) => {
   try {
-    const submissions = await ManualServiceSubmission.find().sort({ createdAt: -1 });
+    const query = isEmployeeRequest(req) ? assignedToCurrentEmployeeQuery(req, 'assignedTo') : {};
+    const submissions = await ManualServiceSubmission.find(query).sort({ createdAt: -1 });
     res.json(submissions);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch submissions' });

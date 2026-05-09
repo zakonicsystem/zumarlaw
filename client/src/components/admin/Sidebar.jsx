@@ -6,7 +6,7 @@ import logo from '../../assets/ZumarLogo.png';
 import {
     FaTachometerAlt, FaUsers, FaTasks, FaSignOutAlt, FaBars, FaMoneyCheckAlt,
     FaUserShield, FaUserFriends, FaUserCog, FaChevronDown, FaPlus,
-    FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck, FaComments
+    FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck, FaComments, FaBan
 } from 'react-icons/fa';
 import { jwtDecode } from 'jwt-decode';
 
@@ -100,11 +100,13 @@ const Sidebar = () => {
         {
             name: 'Lead Management', icon: <FaUserFriends />, path: '/admin/leads',
             children: [
+                { name: 'New Leads', path: '/admin/leads/new', icon: <FaUserFriends /> },
                 { name: 'Add Lead', path: '/admin/leads/add', icon: <FaPlus /> },
                 { name: 'Import Lead', path: '/admin/leads/import', icon: <FaFileImport /> },
                 { name: 'Followup Leads', path: '/admin/leads/followup', icon: <FaClipboardCheck /> },
                 { name: 'Mature Leads', path: '/admin/leads/mature', icon: <FaStar /> },
                 { name: 'Contacted Leads', path: '/admin/leads/contacted', icon: <FaPhoneVolume /> },
+                { name: 'Refusal Leads', path: '/admin/leads/refusal', icon: <FaBan /> },
             ]
         },
         {

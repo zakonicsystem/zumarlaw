@@ -15,6 +15,13 @@ function getMonthDates(year, month) {
   return dates;
 }
 
+function employeeCountsForSalaryMonth(employee, year, month) {
+  if (employee.employmentStatus !== 'terminated' || !employee.terminatedAt) return true;
+
+  const monthEnd = new Date(Number(year), Number(month), 0);
+  return new Date(employee.terminatedAt) > monthEnd;
+}
+
 // POST /autoSalary/calculate
 // { year, month }
 router.post('/calculate', async (req, res) => {
@@ -22,8 +29,7 @@ router.post('/calculate', async (req, res) => {
   if (!year || !month) return res.status(400).json({ message: 'Missing year or month' });
 
   try {
-  // Include all roles so calculation runs for any user with a salary record
-  const employees = await Roles.find();
+  const employees = (await Roles.find()).filter((employee) => employeeCountsForSalaryMonth(employee, year, month));
   console.log('[autoSalary] employees found:', employees.length);
     const results = [];
     if (employees.length === 0) {
@@ -76,7 +82,6 @@ router.post('/calculate', async (req, res) => {
         }
       }
       const baseSalary = parseFloat(emp.salary || '0') || 0;
-    // Sundays and holidays are paid; workingDays = full month days
     const workingDays = daysInMonth;
     const perDaySalary = baseSalary / (workingDays || 1);
     const extraLeaves = Math.max(0, leave - 2);
@@ -109,8 +114,7 @@ router.post('/', async (req, res) => {
   const { month, year, paidBy, paymentDate, paymentMethod } = req.body;
   if (!month || !year) return res.status(400).json({ error: 'Month and year required' });
   try {
-    // Get all employees
-    const employees = await Roles.find();
+    const employees = (await Roles.find()).filter((employee) => employeeCountsForSalaryMonth(employee, year, month));
     const payrolls = [];
     for (const emp of employees) {
       // Get all attendance for this employee in the month/year

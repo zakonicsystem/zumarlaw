@@ -12,23 +12,24 @@ const LeadsSearchBar = ({
     { name: 'Mature Leads', count: 0, link: '/admin/leads/mature' },
     { name: 'Follow-up Leads', count: 0, link: '/admin/leads/followup' },
     { name: 'Contacted Leads', count: 0, link: '/admin/leads/contacted' },
+    { name: 'Refusal Leads', count: 0, link: '/admin/leads/refusal' },
   ],
 }) => {
   return (
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+    <div className="flex flex-col items-start max-w-full justify-start gap-4 mb-4 overflow-x-auto">
       {/* Search Bar */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 max-w-full ">
         <input
           type="text"
           placeholder="Search by name, phone, CNIC, email"
-          className="border px-4 py-2 rounded w-64"
+          className="border px-4 py-2 rounded w-[900px]"
           value={searchTerm}
           onChange={e => onSearchChange(e.target.value)}
         />
       </div>
       {/* Lead Page Buttons */}
       {/* Filters */}
-        <div className="flex gap-3 flex-wrap">
+        <div className="flex flex-row gap-3 flex-nowrap shrink-0">
             {tabs.map((tab) => (
               <Link
                 key={tab.name}

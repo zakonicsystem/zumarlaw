@@ -41,6 +41,7 @@ import MergeService from './pages/admin/Mergeservices';
 import FollowUpLeads from './pages/admin/FollowupLeads';
 import MatureLeads from './pages/admin/MatureLeads';
 import ContactedLeads from './pages/admin/ContactedLeads';
+import RefusalLeads from './pages/admin/RefusalLeads';
 import Attendance from './pages/admin/Attendance';
 import RefundManagement from './pages/admin/RefundManagement';
 import AdminChat from './pages/admin/AdminChat';
@@ -94,6 +95,7 @@ const AppContent = () => {
           <Route path='/admin/salary' element={<Salary />} />
           <Route path='/admin/announcment' element={<EmployeeProtectedRoute><AnnouncementForm /></EmployeeProtectedRoute>} />
           <Route path="leads" element={<EmployeeProtectedRoute><LeadsManagment /></EmployeeProtectedRoute>} />
+          <Route path="/admin/leads/new" element={<EmployeeProtectedRoute><LeadsManagment /></EmployeeProtectedRoute>} />
           <Route path="services" element={<EmployeeProtectedRoute><ServiceProcessingPage /></EmployeeProtectedRoute>} />
           <Route path="roles" element={<EmployeeProtectedRoute><Roles /></EmployeeProtectedRoute>} />
           <Route path="/admin/payroll" element={<EmployeeProtectedRoute><Payroll /></EmployeeProtectedRoute>} />
@@ -110,6 +112,7 @@ const AppContent = () => {
           <Route path='/admin/leads/followup' element={<EmployeeProtectedRoute><FollowUpLeads /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/mature' element={<EmployeeProtectedRoute><MatureLeads /></EmployeeProtectedRoute>} />
           <Route path='/admin/leads/contacted' element={<EmployeeProtectedRoute><ContactedLeads /></EmployeeProtectedRoute>} />
+          <Route path='/admin/leads/refusal' element={<EmployeeProtectedRoute><RefusalLeads /></EmployeeProtectedRoute>} />
           <Route path='/admin/services/manual' element={<EmployeeProtectedRoute><ManualService /></EmployeeProtectedRoute>} />
           <Route path='/admin/services/merged' element={<EmployeeProtectedRoute><MergeService /></EmployeeProtectedRoute>} />
 

@@ -30,6 +30,10 @@ router.get('/employee/me', verifyJWT, async (req, res) => {
     console.error('[ROUTE] /employee/me: Employee not found for id', req.user.id);
     return res.status(404).json({ error: 'Employee not found' });
   }
-  res.json({ assignedPages: employee.assignedPages });
+  res.json({
+    name: employee.name,
+    email: employee.login?.email,
+    assignedPages: employee.assignedPages
+  });
 });
 export default router;

@@ -15,7 +15,8 @@ const EmployeeLogin = () => {
     const [resetEmail, setResetEmail] = useState("");
     const [resetToken, setResetToken] = useState("");
     const [newPassword, setNewPassword] = useState("");
-    const [resetStep, setResetStep] = useState(1); // 1: email, 2: token+newpass
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [resetStep, setResetStep] = useState(1); // 1: email, 2: otp+newpass
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -29,10 +30,15 @@ const EmployeeLogin = () => {
             });
 
             console.log('EmployeeLogin: login response', res.data);
-            const { token, assignedPages } = res.data;
+            const { token, assignedPages, employeeName } = res.data;
 
             if (token) {
+                localStorage.removeItem("adminToken");
+                localStorage.removeItem("token");
                 localStorage.setItem("employeeToken", token);
+                if (employeeName) {
+                    localStorage.setItem("employeeName", employeeName);
+                }
                 if (assignedPages) {
                     localStorage.setItem("assignedPages", JSON.stringify(assignedPages));
                     console.log('EmployeeLogin: assignedPages saved to localStorage', assignedPages);
@@ -110,7 +116,7 @@ const EmployeeLogin = () => {
             {showResetModal && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
                     <div className="bg-white p-6 rounded shadow-lg min-w-[320px] relative">
-                        <button onClick={() => { setShowResetModal(false); setResetStep(1); setResetEmail(""); setResetToken(""); setNewPassword(""); }} className="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
+                        <button type="button" onClick={() => { setShowResetModal(false); setResetStep(1); setResetEmail(""); setResetToken(""); setNewPassword(""); setShowNewPassword(false); }} className="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
                         <h3 className="text-lg font-bold mb-2">Reset Password</h3>
                         {resetStep === 1 && (
                             <>
@@ -123,15 +129,15 @@ const EmployeeLogin = () => {
                                     placeholder="you@example.com"
                                 />
                                 <button
+                                    type="button"
                                     className="bg-[#57123f] text-white px-4 py-2 rounded w-full"
                                     onClick={async () => {
                                         if (!resetEmail) return toast.error('Enter your email');
                                         try {
                                             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                                            const res = await axios.post(`${apiUrl}/api/employee-forgot-password`, { email: resetEmail });
-                                            setResetToken(res.data.resetToken);
+                                            await axios.post(`${apiUrl}/api/employee-forgot-password`, { email: resetEmail });
                                             setResetStep(2);
-                                            toast.success('Reset token generated. Check your email or paste below.');
+                                            toast.success('OTP sent to your email.');
                                         } catch (err) {
                                             toast.error(err.response?.data?.message || 'Failed to request reset');
                                         }
@@ -141,35 +147,47 @@ const EmployeeLogin = () => {
                         )}
                         {resetStep === 2 && (
                             <>
-                                <label className="block mb-2 text-sm">Enter reset token (from email)</label>
+                                <label className="block mb-2 text-sm">Enter OTP from email</label>
                                 <input
                                     type="text"
                                     className="border px-3 py-2 rounded w-full mb-3"
                                     value={resetToken}
                                     onChange={e => setResetToken(e.target.value)}
-                                    placeholder="Paste reset token"
+                                    placeholder="Enter OTP"
                                 />
                                 <label className="block mb-2 text-sm">New Password</label>
-                                <input
-                                    type="password"
-                                    className="border px-3 py-2 rounded w-full mb-3"
-                                    value={newPassword}
-                                    onChange={e => setNewPassword(e.target.value)}
-                                    placeholder="Enter new password"
-                                />
+                                <div className="relative mb-3">
+                                    <input
+                                        type={showNewPassword ? "text" : "password"}
+                                        className="border px-3 py-2 pr-10 rounded w-full"
+                                        value={newPassword}
+                                        onChange={e => setNewPassword(e.target.value)}
+                                        placeholder="Enter new password"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600"
+                                        onClick={() => setShowNewPassword((prev) => !prev)}
+                                        aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                                    >
+                                        {showNewPassword ? <FaEyeSlash /> : <FaEye />}
+                                    </button>
+                                </div>
                                 <button
+                                    type="button"
                                     className="bg-[#57123f] text-white px-4 py-2 rounded w-full"
                                     onClick={async () => {
-                                        if (!resetToken || !newPassword) return toast.error('Fill all fields');
+                                        if (!resetEmail || !resetToken || !newPassword) return toast.error('Fill all fields');
                                         try {
                                             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                                            await axios.post(`${apiUrl}/api/employee-reset-password`, { resetToken, newPassword });
+                                            await axios.post(`${apiUrl}/api/employee-reset-password`, { email: resetEmail, otp: resetToken, newPassword });
                                             toast.success('Password reset! You can now log in.');
                                             setShowResetModal(false);
                                             setResetStep(1);
                                             setResetEmail("");
                                             setResetToken("");
                                             setNewPassword("");
+                                            setShowNewPassword(false);
                                         } catch (err) {
                                             toast.error(err.response?.data?.message || 'Failed to reset');
                                         }

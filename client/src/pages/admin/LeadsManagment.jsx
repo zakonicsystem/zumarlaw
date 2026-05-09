@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { serviceData } from '../../data/serviceSchemas';
 import { Link, useNavigate } from "react-router-dom";
 import LeadsTable from "../../components/leads/LeadsTable";
@@ -9,12 +8,14 @@ import LeadsHeaderButtons from "../../components/leads/LeadsHeaderButtons";
 import { toast as hotToast } from 'react-hot-toast';
 import Breadcrumbs from "../../components/Breadcrumbs";
 import ConvertLeadModal from "../../components/leads/ConvertLeadModal";
+import { getLeadTabs, isNewLeadStatus } from "../../utils/leadTabs";
+import api from "../../utils/api";
 
 
 export default function LeadsManagment() {
   const navigate = useNavigate();
   const [editModal, setEditModal] = useState({ open: false, lead: null });
-  const [activeTab, setActiveTab] = useState("All Leads");
+  const [activeTab, setActiveTab] = useState("New Leads");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -26,21 +27,9 @@ export default function LeadsManagment() {
     .map(lead => `${lead._id}`);
   const isAllSelected = selectedRows.length === allRowIds.length && allRowIds.length > 0;
 
-  // Dynamic tab counts
-  const tabCounts = {
-    "All Leads": leads.filter(l => l.status === "New").length,
-    "Mature Leads": leads.filter(l => l.status === "Mature").length,
-    "Follow-up Leads": leads.filter(l => l.status === "Follow-ups" || l.status === "Follow-up").length,
-    "Contacted Leads": leads.filter(l => l.status === "Contacted").length,
-  };
-  const tabs = [
-    { name: "All Leads", count: tabCounts["All Leads"], link: "/admin/leads" },
-    { name: "Mature Leads", count: tabCounts["Mature Leads"], link: "/admin/leads/mature" },
-    { name: "Follow-up Leads", count: tabCounts["Follow-up Leads"], link: "/admin/leads/followup" },
-    { name: "Contacted Leads", count: tabCounts["Contacted Leads"], link: "/admin/leads/contacted" },
-  ];
+  const tabs = getLeadTabs(leads);
   // Only show leads with status 'New'
-  const NewLeads = leads.filter(lead => lead.status === 'New');
+  const NewLeads = leads.filter(lead => isNewLeadStatus(lead.status));
 
   const statusColor = {
     "New Lead": "bg-purple-100 text-[#57123f]",
@@ -54,23 +43,23 @@ export default function LeadsManagment() {
 
   const fetchLeads = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await axios.get(`${apiUrl}/api/leads`);
+      const res = await api.get('/api/leads');
       setLeads(res.data);
     } catch (err) {
       setLeads([]);
     }
   };
   const handleStatusChange = async (leadId, value) => {
+    let updatedLead = null;
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.put(`${apiUrl}/api/leads/${leadId}/status`, { status: value });
+      const res = await api.put(`/api/leads/${leadId}/status`, { status: value });
+      updatedLead = res.data?.lead;
     } catch (err) { }
     setLeads(prev => {
       // Update status and remove from current page if status changes
-      let updated = prev.map(lead => lead._id === leadId ? { ...lead, status: value } : lead);
-      // Only keep leads with status 'Mature' in the current page
-      updated = updated.filter(lead => lead.status === 'Mature');
+      let updated = prev.map(lead => lead._id === leadId ? { ...lead, ...(updatedLead || {}), status: value } : lead);
+      // Only keep new leads in the current page
+      updated = updated.filter(lead => isNewLeadStatus(lead.status));
       return updated;
     });
   };
@@ -95,7 +84,7 @@ export default function LeadsManagment() {
       ? (lead.createdAt && new Date(lead.createdAt).toISOString().slice(0, 10) === filterDate)
       : true;
 
-    const isNewStatus = (lead.status === 'New' || lead.status === 'New Lead');
+    const isNewStatus = isNewLeadStatus(lead.status);
 
     return matchesSearch && matchesDate && isNewStatus;
   });
@@ -129,8 +118,7 @@ export default function LeadsManagment() {
 
   const handleEditSave = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.put(`${apiUrl}/api/leads/${editModal.lead._id}`, editModal.lead);
+      await api.put(`/api/leads/${editModal.lead._id}`, editModal.lead);
       setLeads(prev => prev.map(l => l._id === editModal.lead._id ? { ...editModal.lead } : l));
       setEditModal({ open: false, lead: null });
     } catch (err) {
@@ -141,8 +129,7 @@ export default function LeadsManagment() {
   const handleDelete = async (leadId) => {
     if (window.confirm("Are you sure you want to delete this lead?")) {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        await axios.delete(`${apiUrl}/api/leads/${leadId}`);
+        await api.delete(`/api/leads/${leadId}`);
         setLeads(prev => prev.filter(l => l._id !== leadId));
       } catch (err) {
         alert("Failed to delete lead.");

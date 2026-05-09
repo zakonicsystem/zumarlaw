@@ -17,7 +17,7 @@ const Attendance = () => {
     axios.get(`${apiUrl}/api/admin/roles`)
       .then(res => {
         if (!mounted) return;
-        setEmployees(res.data);
+        setEmployees(Array.isArray(res.data) ? res.data : []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -68,6 +68,36 @@ const Attendance = () => {
     return new Date(y, m - 1, day).getDay() !== 0;
   });
 
+  const selectedMonthEnd = new Date(year, month, 0);
+
+  const isTerminated = (emp) => emp?.employmentStatus === 'terminated' && emp?.terminatedAt;
+
+  const isAfterTermination = (emp, date) => {
+    if (!isTerminated(emp)) return false;
+    return date > new Date(emp.terminatedAt).toISOString().slice(0, 10);
+  };
+
+  const employeeHasHistoryInMonth = (emp) => {
+    return attendanceHistory.some((record) =>
+      record.employeeName === emp.name &&
+      record.date?.startsWith(`${year}-${String(month).padStart(2, '0')}`)
+    );
+  };
+
+  const visibleEmployees = employees.filter((emp) => {
+    if (!isTerminated(emp)) return true;
+    if (employeeHasHistoryInMonth(emp)) return true;
+    return new Date(emp.terminatedAt) > selectedMonthEnd;
+  });
+
+  const selectedEmployee = visibleEmployees[activeTab];
+
+  useEffect(() => {
+    if (activeTab >= visibleEmployees.length) {
+      setActiveTab(0);
+    }
+  }, [activeTab, visibleEmployees.length]);
+
   // Helper to get status for employee on a date
   const getStatus = (emp, date) => {
     const record = attendanceHistory.find(r => r.employeeName === emp.name && r.date === date);
@@ -96,7 +126,7 @@ const Attendance = () => {
         leaveRelief: status === 'leaveRelief',
         absent: status === 'absent'
       });
-      fetchAttendanceHistory();
+      fetchAttendanceHistory({ year, month });
     } catch (err) { }
     setMarking(false);
   };
@@ -144,24 +174,33 @@ const Attendance = () => {
           <div>
             <div className="mb-4">
               <div className="grid grid-cols-3 gap-2">
-                {employees.map((emp, idx) => (
+                {visibleEmployees.map((emp, idx) => (
                   <button
                     key={emp._id}
                     onClick={() => setActiveTab(idx)}
                     className={`w-full box-border px-3 py-2 text-left rounded ${activeTab === idx ? 'bg-[#57123f] text-white' : 'bg-gray-100 text-gray-700'}`}
                   >
-                    <div className="font-semibold truncate">{emp.name}</div>
+                    <div className="font-semibold truncate">
+                      {emp.name}
+                      {isTerminated(emp) && <span className="ml-2 text-[10px]">(Terminated)</span>}
+                    </div>
                     <div className="text-xs text-gray-500 truncate">{emp.email}</div>
                   </button>
                 ))}
               </div>
             </div>
-            {employees[activeTab] && (
+            {selectedEmployee && (
               <div className="border rounded p-3 shadow-sm bg-white">
                 <div className="flex justify-between items-center mb-2">
                   <div>
-                    <div className="font-semibold text-sm">{employees[activeTab].name}</div>
-                    <div className="text-xs text-gray-500">{employees[activeTab].email}</div>
+                    <div className="font-semibold text-sm">
+                      {selectedEmployee.name}
+                      {isTerminated(selectedEmployee) && <span className="ml-2 text-[10px] px-2 py-0.5 rounded bg-red-100 text-red-700">Terminated</span>}
+                    </div>
+                    <div className="text-xs text-gray-500">{selectedEmployee.email}</div>
+                    {isTerminated(selectedEmployee) && (
+                      <div className="text-xs text-red-600">Terminated: {new Date(selectedEmployee.terminatedAt).toLocaleDateString()}</div>
+                    )}
                   </div>
                   <div className="text-sm text-gray-600">{new Date(year, month - 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}</div>
                 </div>
@@ -177,8 +216,9 @@ const Attendance = () => {
                     </thead>
                     <tbody>
                       {filteredDates.map((date, idx) => {
-                        const emp = employees[activeTab];
+                        const emp = selectedEmployee;
                         const status = getStatus(emp, date);
+                        const locked = isAfterTermination(emp, date);
                         const [y, m, d] = date.split('-').map(Number);
                         const dayName = new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short' });
                         const dayNumber = d;
@@ -202,14 +242,18 @@ const Attendance = () => {
                               {status === 'leaveRelief' && <span className="text-purple-600">LR</span>}
                             </td>
                             <td className="px-2 py-1 text-center align-top">
-                              <div className="flex gap-1 justify-center flex-wrap">
-                                <button title="Present" className="px-2 py-1 bg-green-200 hover:bg-green-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'present')}>P</button>
-                                <button title="Leave" className="px-2 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'leave')}>L</button>
-                                <button title="Absent" className="px-2 py-1 bg-red-200 hover:bg-red-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'absent')}>A</button>
-                                <button title="Holiday" className="px-2 py-1 bg-blue-200 hover:bg-blue-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'holiday')}>H</button>
-                                <button title="Half Day" className="px-2 py-1 bg-orange-200 hover:bg-orange-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'halfDay')}>HD</button>
-                                <button title="Leave Relief" className="px-2 py-1 bg-purple-200 hover:bg-purple-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'leaveRelief')}>LR</button>
-                              </div>
+                              {locked ? (
+                                <span className="text-xs text-gray-400">Locked</span>
+                              ) : (
+                                <div className="flex gap-1 justify-center flex-wrap">
+                                  <button title="Present" className="px-2 py-1 bg-green-200 hover:bg-green-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'present')}>P</button>
+                                  <button title="Leave" className="px-2 py-1 bg-yellow-200 hover:bg-yellow-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'leave')}>L</button>
+                                  <button title="Absent" className="px-2 py-1 bg-red-200 hover:bg-red-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'absent')}>A</button>
+                                  <button title="Holiday" className="px-2 py-1 bg-blue-200 hover:bg-blue-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'holiday')}>H</button>
+                                  <button title="Half Day" className="px-2 py-1 bg-orange-200 hover:bg-orange-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'halfDay')}>HD</button>
+                                  <button title="Leave Relief" className="px-2 py-1 bg-purple-200 hover:bg-purple-300 rounded text-xs" disabled={marking} onClick={() => handleEditAttendance(emp._id, date, 'leaveRelief')}>LR</button>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         );

@@ -9,6 +9,19 @@ const roleSchema = new mongoose.Schema({
     branch: String,
     assignedPages: [String],
     tasks: [String],
+    employmentStatus: {
+        type: String,
+        enum: ['active', 'terminated'],
+        default: 'active'
+    },
+    terminatedAt: {
+        type: Date,
+        default: null
+    },
+    terminatedReason: {
+        type: String,
+        default: ''
+    },
     login: {
         email: String,
         password: String

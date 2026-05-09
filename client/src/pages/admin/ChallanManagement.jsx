@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import api from '../../utils/api';
 import { FaReceipt, FaUserTie } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 
@@ -107,8 +108,8 @@ const ChallanManagement = () => {
       try {
         const [sRes, mRes, cRes] = await Promise.all([
           axios.get(`${apiUrl}/api/service`).catch(() => ({ data: [] })),
-          axios.get(`${apiUrl}/api/manualService`).catch(() => ({ data: [] })),
-          axios.get(`${apiUrl}/api/convertedService`).catch(() => ({ data: [] })),
+          api.get('/api/manualService').catch(() => ({ data: [] })),
+          api.get('/api/convertedService').catch(() => ({ data: [] })),
         ]);
         setServices(Array.isArray(sRes.data) ? sRes.data : []);
         setManual(Array.isArray(mRes.data) ? mRes.data : []);

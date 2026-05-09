@@ -3,10 +3,10 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import Roles from '../models/Roles.js';
+import { sendPasswordResetOtp, verifyPasswordResetOtp } from '../utils/passwordResetOtp.js';
 
 dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET;
-console.log('[DEBUG] JWT_SECRET from env:', process.env.JWT_SECRET);
 // Employee Login
 export const employeeLogin = async (req, res) => {
   const { email, password } = req.body;
@@ -18,6 +18,9 @@ export const employeeLogin = async (req, res) => {
     if (!employee) {
       console.error('[employeeLogin] Employee not found for email:', email);
       return res.status(400).json({ message: 'Employee not found' });
+    }
+    if (employee.employmentStatus === 'terminated') {
+      return res.status(403).json({ message: 'Employee account is terminated' });
     }
     const isMatch = await bcrypt.compare(password, employee.login.password);
     if (!isMatch) {
@@ -31,12 +34,14 @@ export const employeeLogin = async (req, res) => {
     const token = jwt.sign({
       id: employee._id,
       email: employee.login.email,
+      name: employee.name,
       role: employee.role,
       assignedPages: employee.assignedPages || []
     }, JWT_SECRET, { expiresIn: '1d' });
     return res.status(200).json({
       message: 'Login successful',
       token,
+      employeeName: employee.name,
       assignedPages: employee.assignedPages || []
     });
   } catch (err) {
@@ -52,10 +57,8 @@ export const employeeForgotPassword = async (req, res) => {
   try {
     const employee = await Roles.findOne({ 'login.email': email });
     if (!employee) return res.status(404).json({ message: 'Employee not found' });
-    // For demo: generate a reset token (in production, email this)
-    const resetToken = jwt.sign({ id: employee._id }, JWT_SECRET, { expiresIn: '15m' });
-    // You could store this token in DB or send via email
-    return res.json({ message: 'Reset token generated', resetToken });
+    await sendPasswordResetOtp({ email: employee.login.email, accountType: 'employee' });
+    return res.json({ message: 'OTP sent to your email.' });
   } catch (err) {
     return res.status(500).json({ message: 'Server error' });
   }
@@ -63,17 +66,20 @@ export const employeeForgotPassword = async (req, res) => {
 
 // Employee Reset Password
 export const employeeResetPassword = async (req, res) => {
-  const { resetToken, newPassword } = req.body;
-  if (!resetToken || !newPassword) return res.status(400).json({ message: 'Token and new password required' });
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) return res.status(400).json({ message: 'Email, OTP and new password required' });
   try {
-    const decoded = jwt.verify(resetToken, JWT_SECRET);
-    const employee = await Roles.findById(decoded.id);
+    const employee = await Roles.findOne({ 'login.email': email });
     if (!employee) return res.status(404).json({ message: 'Employee not found' });
+
+    const otpMatches = await verifyPasswordResetOtp({ email: employee.login.email, accountType: 'employee', otp });
+    if (!otpMatches) return res.status(400).json({ message: 'Invalid or expired OTP' });
+
     const hashed = await bcrypt.hash(newPassword, 10);
     employee.login.password = hashed;
     await employee.save();
     return res.json({ message: 'Password reset successful' });
   } catch (err) {
-    return res.status(400).json({ message: 'Invalid or expired token' });
+    return res.status(400).json({ message: 'Password reset failed' });
   }
 };

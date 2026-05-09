@@ -48,8 +48,12 @@ export const verifyJWT = async (req, res, next) => {
     let employee = await Roles.findById(decoded.id);
     console.log('[verifyJWT] Roles model lookup:', employee ? 'Found' : 'Not found');
     if (employee) {
+      if (employee.employmentStatus === 'terminated') {
+        return res.status(403).json({ message: 'Employee account is terminated' });
+      }
       req.user = {
         id: employee._id,
+        name: employee.name,
         email: employee.login?.email,
         role: employee.role || 'employee',
         assignedPages: employee.assignedPages || []
@@ -139,7 +143,10 @@ export const tryVerify = async (req, res, next) => {
     }
     const employee = await Roles.findById(decoded.id);
     if (employee) {
-      req.user = { id: employee._id, email: employee.login?.email, role: employee.role || 'employee' };
+      if (employee.employmentStatus === 'terminated') {
+        return next();
+      }
+      req.user = { id: employee._id, name: employee.name, email: employee.login?.email, role: employee.role || 'employee' };
     }
     return next();
   } catch (err) {

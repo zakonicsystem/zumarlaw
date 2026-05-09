@@ -1,2 +1,6 @@
 ".env" 
 node_modules
+mongo-data/
+mongod.log
+server.log
+server.err

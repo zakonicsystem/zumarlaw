@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import * as convertedLeadController from '../controllers/convertedLeadController.js';
+import { tryVerify, verifyJWT } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 // Multer setup for file uploads
@@ -22,7 +23,7 @@ const anyFiles = upload.any();
 // POST /convertedService - create converted lead
 router.post('/', anyFiles, convertedLeadController.createConvertedLead);
 // GET /convertedService - get all converted leads
-router.get('/', convertedLeadController.getAllConvertedLeads);
+router.get('/', verifyJWT, convertedLeadController.getAllConvertedLeads);
 // GET /convertedService/:id - get one converted lead
 
 // DELETE /convertedService/:id - delete a converted lead

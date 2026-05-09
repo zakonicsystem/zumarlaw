@@ -6,6 +6,7 @@ import ServiceDetail from '../models/Service.js';
 import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js';
 import { sendInvoiceAndCertificate } from '../controllers/serviceController.js';
 import { servicePrices } from '../data/servicePrices.js';
+import { notifyPaymentReceived } from '../utils/paymentNotification.js';
 
 const router = express.Router();
 
@@ -15,6 +16,32 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 const upload = multer({ storage });
+
+const isEmployeeRequest = (req) => {
+  return req.user && !['admin', 'user'].includes(req.user.role);
+};
+
+const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
+  const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const exactValues = [req.user?.id, req.user?.email]
+    .filter(Boolean)
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  const employeeName = req.user?.name ? String(req.user.name).trim() : '';
+
+  if (exactValues.length === 0 && !employeeName) return { [field]: '__NO_ASSIGNED_EMPLOYEE__' };
+
+  return {
+    $or: [
+      ...exactValues.map((value) => ({
+        [field]: { $regex: `^${escapeRegex(value)}$`, $options: 'i' }
+      })),
+      ...(employeeName
+        ? [{ [field]: { $regex: `^${escapeRegex(employeeName)}(\\s|$)`, $options: 'i' } }]
+        : [])
+    ]
+  };
+};
 
 
 // 🟢 POST: Save Invoice Details + Files
@@ -113,9 +140,10 @@ router.post('/invoices/delete-multiple', async (req, res) => {
 
 // 🟢 GET: Admin fetch all services with personal details populated
 // GET: Admin fetch all non-manual services with personal details populated
-router.get('/admin/services', async (req, res) => {
+router.get('/admin/services', verifyJWT, async (req, res) => {
   try {
-    const entries = await ServiceDetail.find()
+    const query = isEmployeeRequest(req) ? assignedToCurrentEmployeeQuery(req, 'assignedTo') : {};
+    const entries = await ServiceDetail.find(query)
       .sort({ createdAt: -1 })
       .populate('personalId');
     res.json(entries);
@@ -134,11 +162,11 @@ router.get('/service', async (req, res) => {
     const entries = await ServiceDetail.find()
       .sort({ createdAt: -1 })
       .populate('personalId');
-    
+
     // Transform data to include personal details and pricing at root level
     const transformedEntries = entries.map((entry) => {
       const obj = entry.toObject ? entry.toObject() : entry;
-      
+
       // Calculate total payment from serviceTitle if not already set
       let totalPayment = obj.pricing?.totalPayment || 0;
       if (!totalPayment && obj.serviceTitle && servicePrices[obj.serviceTitle]) {
@@ -147,7 +175,7 @@ router.get('/service', async (req, res) => {
           totalPayment = totalPayment[0]; // Take first value for ranges
         }
       }
-      
+
       return {
         ...obj,
         name: obj.personalId?.name || 'N/A',
@@ -157,7 +185,7 @@ router.get('/service', async (req, res) => {
         totalPayment: totalPayment,
       };
     });
-    
+
     res.json(transformedEntries);
   } catch (err) {
     console.error('Fetch Error:', err);
@@ -303,6 +331,7 @@ router.post('/processing/:id/payments', async (req, res) => {
     const service = await ServiceDetail.findById(id);
     if (!service) return res.status(404).json({ error: 'Service not found' });
     if (!service.payments) service.payments = [];
+    const previousPaid = service.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     // Add new payment
     service.payments.push({
       amount,
@@ -326,6 +355,16 @@ router.post('/processing/:id/payments', async (req, res) => {
     service.pricing.personName = personName;
     service.pricing.paymentReceivedDate = date;
     await service.save();
+    const populatedService = await ServiceDetail.findById(service._id).populate('personalId');
+    await notifyPaymentReceived({
+      doc: populatedService,
+      amount,
+      previousPaid,
+      serviceName: populatedService?.serviceTitle,
+      phone: populatedService?.personalId?.phone,
+      userId: populatedService?.userId,
+      serviceId: populatedService?._id,
+    });
     res.json({ success: true, payments: service.payments, pricing: service.pricing });
   } catch (err) {
     res.status(500).json({ error: 'Failed to add payment', details: err.message });

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { toast } from 'react-hot-toast';
-import { FaDownload, FaCheck, FaTimes, FaTrash, FaEye, FaPrint } from 'react-icons/fa';
+import { FaDownload, FaCheck, FaTimes, FaTrash, FaEye, FaPrint, FaSearch } from 'react-icons/fa';
 
 export default function RefundManagement() {
     const [refunds, setRefunds] = useState([]);
@@ -10,6 +10,7 @@ export default function RefundManagement() {
     const [selectedRefund, setSelectedRefund] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
     const [statusFilter, setStatusFilter] = useState('all');
+    const [searchTerm, setSearchTerm] = useState('');
     const [statusUpdate, setStatusUpdate] = useState({ status: '', notes: '' });
     const [showRejectionModal, setShowRejectionModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
@@ -42,10 +43,21 @@ export default function RefundManagement() {
         }
     };
 
-    // Filter refunds by status
-    const filteredRefunds = statusFilter === 'all'
-        ? refunds
-        : refunds.filter(r => r.status === statusFilter);
+    // Filter refunds by status, customer name, and phone number
+    const searchQuery = searchTerm.trim().toLowerCase();
+    const searchDigits = searchQuery.replace(/\D/g, '');
+    const filteredRefunds = refunds.filter((refund) => {
+        const matchesStatus = statusFilter === 'all' || refund.status === statusFilter;
+        const customerName = refund.caseClosure?.name || refund.clientDetails?.fullName || '';
+        const phoneNumber = refund.caseClosure?.phone || refund.clientDetails?.phone || '';
+        const phoneDigits = String(phoneNumber).replace(/\D/g, '');
+        const matchesSearch = !searchQuery
+            || String(customerName).toLowerCase().includes(searchQuery)
+            || String(phoneNumber).toLowerCase().includes(searchQuery)
+            || (searchDigits && phoneDigits.includes(searchDigits));
+
+        return matchesStatus && matchesSearch;
+    });
     // Handle status update (supports both inline and modal)
     const handleStatusUpdate = async (refundId, newStatus = null) => {
         const status = newStatus || statusUpdate.status;
@@ -451,19 +463,33 @@ export default function RefundManagement() {
                 </div>
 
                 {/* Filters */}
-                <div className="mb-6 flex gap-2 flex-wrap">
-                    {['all', 'pending', 'under review', 'processing', 'approved', 'refunded', 'rejected'].map(status => (
-                        <button
-                            key={status}
-                            onClick={() => setStatusFilter(status)}
-                            className={`px-4 py-2 rounded-lg font-medium capitalize transition-all ${statusFilter === status
-                                ? 'bg-[#57123f] text-white'
-                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                                }`}
-                        >
-                            {status}
-                        </button>
-                    ))}
+                <div className="mb-6 bg-white rounded-lg shadow p-4">
+                    <div className="flex flex-col  gap-4">
+                        <div className="relative w-full lg:max-w-md">
+                            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Search by name or phone number"
+                                className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#57123f] focus:border-[#57123f]"
+                            />
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                            {['all', 'pending', 'under review', 'processing', 'approved', 'refunded', 'rejected'].map(status => (
+                                <button
+                                    key={status}
+                                    onClick={() => setStatusFilter(status)}
+                                    className={`px-4 py-2 rounded-lg font-medium capitalize transition-all ${statusFilter === status
+                                        ? 'bg-[#57123f] text-white'
+                                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {status}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Stats */}

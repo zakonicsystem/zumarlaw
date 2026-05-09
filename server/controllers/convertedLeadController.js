@@ -1,4 +1,6 @@
 // Edit a specific payment for a converted lead
+import { notifyPaymentReceived } from '../utils/paymentNotification.js';
+
 export const editPaymentForConvertedLead = async (id, paymentIdx, paymentData) => {
   const lead = await ConvertedLead.findById(id);
   if (!lead || !Array.isArray(lead.payments) || lead.payments.length <= paymentIdx) return null;
@@ -56,6 +58,7 @@ export const addPaymentToConvertedLead = async (req, res) => {
     const lead = await ConvertedLead.findById(id);
     if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
     lead.payments = lead.payments || [];
+    const previousPaid = lead.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     // Label logic
     let label = 'Second Payment';
     if (lead.payments.length === 1) label = 'Third Payment';
@@ -68,6 +71,15 @@ export const addPaymentToConvertedLead = async (req, res) => {
       lead.pricing.remainingAmount = Math.max((lead.pricing.totalPayment || 0) - totalPaid, 0);
     }
     await lead.save();
+    await notifyPaymentReceived({
+      doc: lead,
+      amount,
+      previousPaid,
+      serviceName: lead.service || lead.serviceType,
+      phone: lead.phone,
+      userId: lead._id,
+      serviceId: lead._id,
+    });
     res.json({ success: true, payments: lead.payments, pricing: lead.pricing });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -91,6 +103,25 @@ import path from 'path';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
 import PDFDocument from 'pdfkit';
+
+const isEmployeeRequest = (req) => {
+  return req.user && !['admin', 'user'].includes(req.user.role);
+};
+
+const assignedToCurrentEmployeeQuery = (req, field = 'assigned') => {
+  const values = [req.user?.id, req.user?.name, req.user?.email]
+    .filter(Boolean)
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  if (values.length === 0) return { [field]: '__NO_ASSIGNED_EMPLOYEE__' };
+
+  return {
+    $or: values.map((value) => ({
+      [field]: { $regex: `^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
+    }))
+  };
+};
 
 // Delete a converted lead by ID (hard delete)
 export const deleteConvertedLead = async (req, res) => {
@@ -229,6 +260,17 @@ export const createConvertedLead = async (req, res) => {
       files,
     });
     await lead.save();
+    if (initialPayment && Number(initialPayment) > 0) {
+      await notifyPaymentReceived({
+        doc: lead,
+        amount: initialPayment,
+        previousPaid: 0,
+        serviceName: lead.service || lead.serviceType,
+        phone: lead.phone,
+        userId: lead._id,
+        serviceId: lead._id,
+      });
+    }
 
     // Remove the original lead from Lead model if originalLeadId is provided
     if (originalLeadId) {
@@ -243,7 +285,8 @@ export const createConvertedLead = async (req, res) => {
 
 export const getAllConvertedLeads = async (req, res) => {
   try {
-    const leads = await ConvertedLead.find().sort({ createdAt: -1 });
+    const query = isEmployeeRequest(req) ? assignedToCurrentEmployeeQuery(req, 'assigned') : {};
+    const leads = await ConvertedLead.find(query).sort({ createdAt: -1 });
     res.json(leads);
   } catch (err) {
     res.status(500).json({ error: err.message });

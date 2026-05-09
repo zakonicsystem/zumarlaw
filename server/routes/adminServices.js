@@ -16,6 +16,25 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+const isEmployeeRequest = (req) => {
+  return req.user && !['admin', 'user'].includes(req.user.role);
+};
+
+const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
+  const values = [req.user?.id, req.user?.name, req.user?.email]
+    .filter(Boolean)
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  if (values.length === 0) return { [field]: '__NO_ASSIGNED_EMPLOYEE__' };
+
+  return {
+    $or: values.map((value) => ({
+      [field]: { $regex: `^${value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
+    }))
+  };
+};
+
 // Upload certificate (pending logic)
 // Allow certificate upload even if token is missing/expired; tryVerify will attach user if present
 router.post('/services/:id/certificate', tryVerify, upload.single('certificate'), async (req, res) => {
@@ -95,6 +114,9 @@ router.get('/admin/services', verifyJWT, async (req, res) => {
     const query = {};
     if (isManualSubmission !== undefined) {
       query.isManualSubmission = isManualSubmission === 'true';
+    }
+    if (isEmployeeRequest(req)) {
+      Object.assign(query, assignedToCurrentEmployeeQuery(req, 'assignedTo'));
     }
 
     const services = await Service.find(query)

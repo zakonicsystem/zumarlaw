@@ -28,6 +28,7 @@ const NewEmployee = ({ onEmployeeAdded }) => {
         { label: 'Mature Leads', path: '/admin/leads/mature' },
         { label: 'Contacted Leads', path: '/admin/leads/contacted' },
         { label: 'Followup Leads', path: '/admin/leads/followup' },
+        { label: 'Refusal Leads', path: '/admin/leads/refusal' },
         { label: 'Add Lead', path: '/admin/leads/add' },
         { label: 'Import Leads', path: '/admin/leads/import' },
       ]
@@ -66,7 +67,16 @@ const NewEmployee = ({ onEmployeeAdded }) => {
       let updatedPages = [...prev.assignedPages];
 
       if (value === '/admin/leads') {
-        const leadPages = ['/admin/leads', '/admin/leads/add', '/admin/leads/import'];
+        const leadPages = [
+          '/admin/leads',
+          '/admin/leads/new',
+          '/admin/leads/mature',
+          '/admin/leads/contacted',
+          '/admin/leads/followup',
+          '/admin/leads/refusal',
+          '/admin/leads/add',
+          '/admin/leads/import'
+        ];
         if (checked) {
           updatedPages = Array.from(new Set([...updatedPages, ...leadPages]));
         } else {

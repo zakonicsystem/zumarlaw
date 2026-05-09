@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { FaEye, FaEdit, FaTrash, FaInfoCircle } from 'react-icons/fa';
+import { FaEye, FaEdit, FaTrash, FaInfoCircle, FaComments } from 'react-icons/fa';
 import { serviceData } from '../../data/serviceSchemas';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import api from '../../utils/api';
 
 const LeadsTable = ({
   leads = [],
@@ -11,13 +11,29 @@ const LeadsTable = ({
   onSelectRow,
   onStatusChange,
   onAction,
-  statusOptions = ['New', 'Contacted', 'Mature', 'Follow-up'],
+  statusOptions = ['New', 'Contacted', 'Mature', 'Follow-up', 'Refusal'],
   isAllSelected = false,
   tableTitle = '',
+  showFollowUpReportAction = false,
+  onFollowUpReport,
 }) => {
   const [editModal, setEditModal] = useState({ open: false, lead: null });
   const [viewModal, setViewModal] = useState({ open: false, lead: null });
   const isEmployee = !!localStorage.getItem('employeeToken');
+
+  const formatLeadDateTime = (lead) => {
+    const dateValue = lead.statusChangedAt || lead.createdAt || lead.date;
+    if (!dateValue) return '';
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return String(dateValue);
+    return date.toLocaleString([], {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
@@ -29,8 +45,7 @@ const LeadsTable = ({
   const handleEditSave = async () => {
     if (!editModal.lead?._id) return;
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.put(`${apiUrl}/api/leads/${editModal.lead._id}`, editModal.lead);
+      await api.put(`/api/leads/${editModal.lead._id}`, editModal.lead);
       toast.success('Lead updated successfully');
       setEditModal({ open: false, lead: null });
       // Optionally: refresh leads list or update UI here
@@ -79,7 +94,7 @@ const LeadsTable = ({
                   </td>
                   <td className="p-2">
                     <div className="text-xs text-gray-700">Phone: {lead.phone}</div>
-                    <div className="text-xs text-gray-500">Registered: {lead.date || (lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '')}</div>
+                    <div className="text-xs text-gray-500">Registered: {formatLeadDateTime(lead)}</div>
                   </td>
                   <td className="p-2">
                     <select
@@ -97,6 +112,15 @@ const LeadsTable = ({
                   <td className="p-2">{lead.assigned || '-'}</td>
 
                   <td className="p-2 flex gap-2">
+                    {showFollowUpReportAction && (
+                      <button
+                        className="rounded-full hover:bg-gray-100 text-[#57123f]"
+                        title="Add follow-up report"
+                        onClick={() => onFollowUpReport && onFollowUpReport(lead)}
+                      >
+                        <FaComments />
+                      </button>
+                    )}
                     <button
                       className="rounded-full hover:bg-gray-100 text-[#57123f]"
                       title="View"
@@ -234,7 +258,7 @@ const LeadsTable = ({
       )}
       {/* View Modal for Eye Icon */}
       {viewModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+        <div className="fixed inset-0 z-50 overflow-y-scroll flex items-center justify-center bg-black bg-opacity-30">
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
               <FaEye className="text-[#57123f]" /> Lead Details
@@ -251,6 +275,28 @@ const LeadsTable = ({
               <div>
                 <span className="font-semibold">Referral Phone:</span><br />
                 <span className="text-gray-700">{viewModal.lead?.referralPhone || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-semibold">Follow-up Reports:</span><br />
+                {Array.isArray(viewModal.lead?.followUps) && viewModal.lead.followUps.length > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    {viewModal.lead.followUps.slice().reverse().map((followUp, index) => (
+                      <div key={followUp._id || index} className="rounded border border-gray-200 p-2 text-xs">
+                        <div className="font-semibold text-[#57123f]">
+                          {followUp.employeeName || 'Employee'} - {followUp.createdAt ? new Date(followUp.createdAt).toLocaleString() : ''}
+                        </div>
+                        <div className="mt-1 text-gray-700">{followUp.customerReport}</div>
+                        {followUp.nextFollowUpAt && (
+                          <div className="mt-1 text-gray-500">
+                            Next: {new Date(followUp.nextFollowUpAt).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-gray-700">No follow-up reports.</span>
+                )}
               </div>
             </div>
             <div className="flex justify-end mt-6">

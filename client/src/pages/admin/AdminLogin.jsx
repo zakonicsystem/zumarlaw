@@ -16,7 +16,8 @@ const AdminLogin = () => {
   const [resetEmail, setResetEmail] = useState("");
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [resetStep, setResetStep] = useState(1); // 1: email, 2: token+newpass
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resetStep, setResetStep] = useState(1); // 1: email, 2: otp+newpass
 
 
   const handleSubmit = async (e) => {
@@ -34,6 +35,10 @@ const AdminLogin = () => {
       const { token } = res.data;
 
       if (token) {
+        localStorage.removeItem('employeeToken');
+        localStorage.removeItem('employeeName');
+        localStorage.removeItem('assignedPages');
+        localStorage.removeItem('token');
         localStorage.setItem('adminToken', token); // Save admin token
         toast.success("Admin login successful");
         navigate("/admin"); // Redirect to admin
@@ -125,13 +130,15 @@ const AdminLogin = () => {
       {showResetModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
           <div className="bg-white p-6 rounded shadow-lg min-w-[320px] relative">
-            <button 
+            <button
+              type="button"
               onClick={() => { 
                 setShowResetModal(false); 
                 setResetStep(1); 
                 setResetEmail(""); 
                 setResetToken(""); 
                 setNewPassword(""); 
+                setShowNewPassword(false);
               }} 
               className="absolute top-2 right-2 text-gray-500 hover:text-black"
             >
@@ -150,15 +157,15 @@ const AdminLogin = () => {
                   placeholder="admin@example.com"
                 />
                 <button
+                  type="button"
                   className="bg-[#57123f] text-white px-4 py-2 rounded w-full hover:bg-[#ecd4bc] hover:text-black transition"
                   onClick={async () => {
                     if (!resetEmail) return toast.error('Enter your email');
                     try {
                       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                      const res = await axios.post(`${apiUrl}/api/admin/forgot-password`, { email: resetEmail });
-                      setResetToken(res.data.resetToken);
+                      await axios.post(`${apiUrl}/api/admin/forgot-password`, { email: resetEmail });
                       setResetStep(2);
-                      toast.success('Reset token generated. Check your email or paste below.');
+                      toast.success('OTP sent to your email.');
                     } catch (err) {
                       toast.error(err.response?.data?.message || 'Failed to request reset');
                     }
@@ -171,35 +178,47 @@ const AdminLogin = () => {
             
             {resetStep === 2 && (
               <>
-                <label className="block mb-2 text-sm font-medium">Reset Token (from email)</label>
+                <label className="block mb-2 text-sm font-medium">OTP from email</label>
                 <input
                   type="text"
                   className="border px-3 py-2 rounded w-full mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   value={resetToken}
                   onChange={e => setResetToken(e.target.value)}
-                  placeholder="Paste reset token"
+                  placeholder="Enter OTP"
                 />
                 <label className="block mb-2 text-sm font-medium">New Password</label>
-                <input
-                  type="password"
-                  className="border px-3 py-2 rounded w-full mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                />
+                <div className="relative mb-3">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    className="border px-3 py-2 pr-10 rounded w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600"
+                    onClick={() => setShowNewPassword((prev) => !prev)}
+                    aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                  >
+                    {showNewPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
                 <button
+                  type="button"
                   className="bg-[#57123f] text-white px-4 py-2 rounded w-full hover:bg-[#ecd4bc] hover:text-black transition"
                   onClick={async () => {
-                    if (!resetToken || !newPassword) return toast.error('Fill all fields');
+                    if (!resetEmail || !resetToken || !newPassword) return toast.error('Fill all fields');
                     try {
                       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                      await axios.post(`${apiUrl}/api/admin/reset-password`, { resetToken, newPassword });
+                      await axios.post(`${apiUrl}/api/admin/reset-password`, { email: resetEmail, otp: resetToken, newPassword });
                       toast.success('Password reset! You can now log in with your new password.');
                       setShowResetModal(false);
                       setResetStep(1);
                       setResetEmail("");
                       setResetToken("");
                       setNewPassword("");
+                      setShowNewPassword(false);
                     } catch (err) {
                       toast.error(err.response?.data?.message || 'Failed to reset password');
                     }

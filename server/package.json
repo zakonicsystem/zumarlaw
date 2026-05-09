@@ -21,6 +21,7 @@
     "pdfkit": "^0.17.1"
   },
   "scripts": {
+    "mongo": "powershell -ExecutionPolicy Bypass -File ./start-mongo.ps1",
     "start": "node server.js"
   }
 }

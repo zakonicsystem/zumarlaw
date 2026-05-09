@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import api from '../../utils/api';
 import { FaSearch, FaEye, FaUnlink } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 
+const MERGED_STATUS_CARDS = [
+  { value: 'pending', label: 'Pending', classes: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+  { value: 'processing', label: 'Processing', classes: 'bg-purple-50 border-purple-200 text-purple-700' },
+  { value: 'converted', label: 'Converted', classes: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
+  { value: 'completed', label: 'Completed', classes: 'bg-green-50 border-green-200 text-green-700' },
+  { value: 'rejected', label: 'Rejected', classes: 'bg-red-50 border-red-200 text-red-700' },
+];
 
 const MergeServices = () => {
   const [allServices, setAllServices] = useState([]);
@@ -14,6 +22,7 @@ const MergeServices = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [serviceTypeFilter, setServiceTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedServices, setSelectedServices] = useState(new Set());
   const isEmployee = !!localStorage.getItem('employeeToken');
 
@@ -25,9 +34,9 @@ const MergeServices = () => {
 
         // Fetch from all three service types
         const [manualRes, processingRes, convertedRes] = await Promise.all([
-          axios.get(`${apiUrl}/api/manualService`).catch(() => ({ data: [] })),
-          axios.get(`${apiUrl}/api/admin/services`).catch(() => ({ data: [] })),
-          axios.get(`${apiUrl}/api/convertedService`).catch(() => ({ data: [] }))
+          api.get('/api/manualService').catch(() => ({ data: [] })),
+          api.get('/api/admin/services').catch(() => ({ data: [] })),
+          api.get('/api/convertedService').catch(() => ({ data: [] }))
         ]);
 
         // Combine and mark service type
@@ -88,10 +97,17 @@ const MergeServices = () => {
       return false;
     }
 
+    if (statusFilter !== 'all' && (row.status || 'pending').toLowerCase() !== statusFilter) {
+      return false;
+    }
+
     return true;
   });
 
   const filteredMerged = mergedServices.filter(row => {
+    if (statusFilter !== 'all' && (row.status || 'pending').toLowerCase() !== statusFilter) {
+      return false;
+    }
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (row.name && row.name.toLowerCase().includes(q)) ||
@@ -106,6 +122,9 @@ const MergeServices = () => {
       (row.email && row.email.toLowerCase().includes(q)) ||
       (row.personalId?.email && row.personalId.email.toLowerCase().includes(q));
   });
+
+  const statusCountSource = activeTab === 'merged' ? mergedServices : [...allServices, ...mergedServices];
+  const getStatusCount = (status) => statusCountSource.filter((row) => (row.status || 'pending').toLowerCase() === status).length;
 
   const toggleService = (id) => {
     const newSelected = new Set(selectedServices);
@@ -250,9 +269,9 @@ const MergeServices = () => {
 
       // Fetch all services again to update allServices
       const [manualRes, processingRes, convertedRes] = await Promise.all([
-        axios.get(`${apiUrl}/api/manualService`).catch(() => ({ data: [] })),
-        axios.get(`${apiUrl}/api/admin/services`).catch(() => ({ data: [] })),
-        axios.get(`${apiUrl}/api/convertedService`).catch(() => ({ data: [] }))
+        api.get('/api/manualService').catch(() => ({ data: [] })),
+        api.get('/api/admin/services').catch(() => ({ data: [] })),
+        api.get('/api/convertedService').catch(() => ({ data: [] }))
       ]);
 
       const manualServices = Array.isArray(manualRes.data) ? manualRes.data.map(s => ({ ...s, serviceSourceType: 'manual' })) : [];
@@ -296,6 +315,20 @@ const MergeServices = () => {
           </button>
         </div>
 
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          {MERGED_STATUS_CARDS.map((card) => (
+            <button
+              key={card.value}
+              type="button"
+              onClick={() => setStatusFilter(card.value)}
+              className={`text-left rounded-lg border p-4 transition hover:shadow-sm ${card.classes} ${statusFilter === card.value ? 'ring-2 ring-[#57123f]' : ''}`}
+            >
+              <p className="font-semibold text-lg">{card.label}</p>
+              <p className="text-3xl font-bold mt-1">{getStatusCount(card.value)}</p>
+            </button>
+          ))}
+        </div>
+
         {/* Search Bar */}
         <div className="mb-6 flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
@@ -320,6 +353,18 @@ const MergeServices = () => {
               <option value="converted">Converted</option>
             </select>
           )}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 bg-gray-100 rounded-lg text-sm text-gray-700 focus:outline-none border border-gray-200"
+          >
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
+            <option value="converted">Converted</option>
+            <option value="completed">Completed</option>
+            <option value="rejected">Rejected</option>
+          </select>
           {activeTab === 'all' && selectedServices.size > 0 && (
             <button
               onClick={handleMerge}

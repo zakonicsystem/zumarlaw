@@ -3,6 +3,7 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import User from '../models/User.js';
+import { sendPasswordResetOtp, verifyPasswordResetOtp } from '../utils/passwordResetOtp.js';
 import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js'; // ✅ Import JWT middleware
 
 const router = express.Router();
@@ -242,8 +243,8 @@ router.post('/forgot-password', async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'No user found with that email' });
 
-    // Optionally, send email or return a reset token
-    res.status(200).json({ message: 'Email verified. You can reset your password.' });
+    await sendPasswordResetOtp({ email: user.email, accountType: 'user' });
+    res.status(200).json({ message: 'OTP sent to your email.' });
   } catch (err) {
     console.error('Forgot password error:', err);
     res.status(500).json({ message: 'Server error' });
@@ -252,15 +253,18 @@ router.post('/forgot-password', async (req, res) => {
 
 // ✅ Reset Password
 router.post('/reset-password', async (req, res) => {
-  const { email, newPassword } = req.body;
+  const { email, otp, newPassword } = req.body;
 
   try {
-    if (!email || !newPassword) {
-      return res.status(400).json({ message: 'Email and new password are required' });
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: 'Email, OTP and new password are required' });
     }
 
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const otpMatches = await verifyPasswordResetOtp({ email: user.email, accountType: 'user', otp });
+    if (!otpMatches) return res.status(400).json({ message: 'Invalid or expired OTP' });
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;

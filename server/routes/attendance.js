@@ -6,6 +6,16 @@ import Roles from '../models/Roles.js';
 
 const router = express.Router();
 
+const toDateOnly = (value) => {
+  if (!value) return null;
+  return new Date(value).toISOString().slice(0, 10);
+};
+
+const isAfterTermination = (employee, date) => {
+  if (!employee || employee.employmentStatus !== 'terminated' || !employee.terminatedAt) return false;
+  return date > toDateOnly(employee.terminatedAt);
+};
+
 // Mark attendance for an employee
 router.post('/mark', async (req, res) => {
   const { employeeId, present, leave, holiday, halfDay, leaveRelief, absent } = req.body;
@@ -17,6 +27,10 @@ router.post('/mark', async (req, res) => {
   const currentTime = now.toTimeString().slice(0, 8); // HH:mm:ss
   try {
     const employee = await Roles.findById(employeeId);
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+    if (isAfterTermination(employee, today)) {
+      return res.status(400).json({ message: 'Cannot mark attendance after employee termination date' });
+    }
     const email = employee ? employee.email : '';
     const attendance = await Attendance.findOneAndUpdate(
       { employeeId, date: today },
@@ -43,6 +57,11 @@ router.patch('/edit', async (req, res) => {
     return res.status(400).json({ message: 'Missing required fields' });
   }
   try {
+    const employee = await Roles.findById(employeeId);
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+    if (isAfterTermination(employee, date)) {
+      return res.status(400).json({ message: 'Cannot mark attendance after employee termination date' });
+    }
     const attendance = await Attendance.findOneAndUpdate(
       { employeeId, date },
       {
@@ -70,9 +89,9 @@ router.get('/history', async (req, res) => {
       const monthStr = String(month).padStart(2, '0');
       query.date = { $regex: `^${year}-${monthStr}` };
     }
-    const records = await Attendance.find(query).populate('employeeId', 'name email');
+    const records = await Attendance.find(query).populate('employeeId', 'name email employmentStatus terminatedAt');
     // Map to history format
-    const history = records.map(r => ({
+    const history = records.filter((r) => !isAfterTermination(r.employeeId, r.date)).map(r => ({
       date: r.date,
       time: r.time || (r.createdAt ? new Date(r.createdAt).toLocaleTimeString() : '-'),
       employeeName: r.employeeId?.name || 'Unknown',
@@ -94,8 +113,8 @@ router.get('/history', async (req, res) => {
 router.get('/history/:employeeId', async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const records = await Attendance.find({ employeeId }).populate('employeeId', 'name email');
-    const history = records.map(r => ({
+    const records = await Attendance.find({ employeeId }).populate('employeeId', 'name email employmentStatus terminatedAt');
+    const history = records.filter((r) => !isAfterTermination(r.employeeId, r.date)).map(r => ({
       date: r.date,
       time: r.time || (r.createdAt ? new Date(r.createdAt).toLocaleTimeString() : '-'),
       employeeName: r.employeeId?.name || 'Unknown',

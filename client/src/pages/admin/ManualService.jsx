@@ -185,10 +185,18 @@ function InvoiceContent({ invoiceData, isEmployee }) {
   );
 }
 import axios from 'axios';
+import api from '../../utils/api';
 import { FaSearch, FaEye, FaDownload } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 
 const PAGE_SIZE = 10;
+
+const MANUAL_STATUS_CARDS = [
+  { value: 'pending', label: 'Pending', classes: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+  { value: 'processing', label: 'Processing', classes: 'bg-purple-50 border-purple-200 text-purple-700' },
+  { value: 'completed', label: 'Completed', classes: 'bg-green-50 border-green-200 text-green-700' },
+  { value: 'rejected', label: 'Rejected', classes: 'bg-red-50 border-red-200 text-red-700' },
+];
 
 const ManualService = () => {
   const [services, setServices] = useState([]);
@@ -322,7 +330,7 @@ const ManualService = () => {
         { status: nextStatus }
       );
       setServices(prev => prev.map(r => r._id === row._id ? { ...r, status: nextStatus } : r));
-      
+
       // Send SMS notification about status change
       if (row.phone && row._id) {
         try {
@@ -343,7 +351,7 @@ const ManualService = () => {
           console.warn('Failed to send status SMS:', smsErr);
         }
       }
-      
+
       toast.success('Status updated and notification sent');
     } catch (error) {
       toast.error('Failed to update status');
@@ -366,8 +374,7 @@ const ManualService = () => {
     const fetchServices = async () => {
       setLoading(true);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const res = await axios.get(`${apiUrl}/api/manualService`);
+        const res = await api.get('/api/manualService');
         // Ensure status and assignedTo are always present for each row
         const data = Array.isArray(res.data)
           ? res.data.map(row => ({
@@ -388,8 +395,9 @@ const ManualService = () => {
 
   // Filter and search logic (defensive: always use array)
   const safeServices = Array.isArray(services) ? services : [];
+  const getStatusCount = (status) => safeServices.filter((row) => (row.status || 'pending').toLowerCase() === status).length;
   const filtered = safeServices.filter(row => {
-    const matchesStatus = filterStatus ? (row.status === filterStatus) : true;
+    const matchesStatus = filterStatus ? ((row.status || '').toLowerCase() === filterStatus) : true;
     const matchesProgress = filterProgress ? (row.progressStatus === filterProgress) : true;
     const matchesSearch = searchQuery
       ? (
@@ -475,6 +483,22 @@ const ManualService = () => {
             />
           </div>
         </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {MANUAL_STATUS_CARDS.map((card) => (
+            <button
+              key={card.value}
+              type="button"
+              onClick={() => {
+                setFilterStatus(card.value);
+                setCurrentPage(1);
+              }}
+              className={`text-left rounded-lg border p-4 transition hover:shadow-sm ${card.classes} ${filterStatus === card.value ? 'ring-2 ring-[#57123f]' : ''}`}
+            >
+              <p className="font-semibold text-lg">{card.label}</p>
+              <p className="text-3xl font-bold mt-1">{getStatusCount(card.value)}</p>
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-4 mb-6 items-center">
           <select
             value={filterStatus}
@@ -537,7 +561,7 @@ const ManualService = () => {
                   await axios.post(`${apiUrl}/api/manualService/${selectedRows[0]}/certificate`, formData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                   });
-                  
+
                   // Send SMS notification about certificate upload
                   const selectedRow = services.find(s => s._id === selectedRows[0]);
                   if (selectedRow && selectedRow.phone && selectedRow._id) {
@@ -569,7 +593,7 @@ const ManualService = () => {
                 }
                 toast.success('Certificate uploaded successfully!');
                 // Refresh data
-                const res = await axios.get(`${apiUrl}/api/manualService`);
+                const res = await api.get('/api/manualService');
                 setServices(res.data);
               } catch (err) {
                 toast.error('Failed to upload certificate');

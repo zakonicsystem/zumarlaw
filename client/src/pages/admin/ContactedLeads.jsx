@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { serviceData } from '../../data/serviceSchemas';
-import axios from 'axios';
 import LeadsTable from '../../components/leads/LeadsTable';
 import LeadsSearchBar from '../../components/leads/LeadsSearchBar';
 import { toast } from 'react-hot-toast';
 import { toast as hotToast } from 'react-hot-toast';
 import LeadsHeaderButtons from '../../components/leads/LeadsHeaderButtons';
-import { Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import ConvertLeadModal from '../../components/leads/ConvertLeadModal';
+import { getLeadTabs } from '../../utils/leadTabs';
+import api from '../../utils/api';
 
 const ContactedLeads = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('Contacted Leads');
   const [leads, setLeads] = useState([]);
@@ -44,8 +46,7 @@ const ContactedLeads = () => {
 
   const fetchLeads = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await axios.get(`${apiUrl}/api/leads`);
+      const res = await api.get('/api/leads');
       setLeads(res.data);
     } catch (err) {
       setLeads([]);
@@ -68,13 +69,14 @@ const ContactedLeads = () => {
   };
 
   const handleStatusChange = async (leadId, value) => {
+    let updatedLead = null;
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.put(`${apiUrl}/api/leads/${leadId}/status`, { status: value });
+      const res = await api.put(`/api/leads/${leadId}/status`, { status: value });
+      updatedLead = res.data?.lead;
     } catch (err) { }
     setLeads(prev => {
       // Update status and remove from current page if status changes
-      let updated = prev.map(lead => lead._id === leadId ? { ...lead, status: value } : lead);
+      let updated = prev.map(lead => lead._id === leadId ? { ...lead, ...(updatedLead || {}), status: value } : lead);
       // Only keep leads with status 'Contacted' in the current page
       updated = updated.filter(lead => lead.status === 'Contacted');
       return updated;
@@ -88,8 +90,7 @@ const ContactedLeads = () => {
 
   const handleEditSave = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.put(`${apiUrl}/api/leads/${editModal.lead._id}`, editModal.lead);
+      await api.put(`/api/leads/${editModal.lead._id}`, editModal.lead);
       setLeads(prev => prev.map(l => l._id === editModal.lead._id ? { ...editModal.lead } : l));
       setEditModal({ open: false, lead: null });
       toast.success('Lead updated successfully');
@@ -102,8 +103,7 @@ const ContactedLeads = () => {
   const handleDeleteLead = async (leadId) => {
     if (!window.confirm('Are you sure you want to delete this lead?')) return;
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.delete(`${apiUrl}/api/leads/${leadId}`);
+      await api.delete(`/api/leads/${leadId}`);
       setLeads(prev => prev.filter(l => l._id !== leadId));
       setSelectedRows(prev => prev.filter(id => id !== leadId));
       toast.success('Lead deleted successfully');
@@ -122,19 +122,7 @@ const ContactedLeads = () => {
     }
   };
 
-  // Dynamic tab counts and tab definitions
-  const tabCounts = {
-    "New": leads.filter(l => l.status === "New").length,
-    "Mature Leads": leads.filter(l => l.status === "Mature").length,
-    "Follow-up Leads": leads.filter(l => l.status === "Follow-ups" || l.status === "Follow-up").length,
-    "Contacted Leads": leads.filter(l => l.status === "Contacted").length,
-  };
-  const tabs = [
-    { name: "New", count: tabCounts["New"], link: "/admin/leads" },
-    { name: "Mature Leads", count: tabCounts["Mature Leads"], link: "/admin/leads/mature" },
-    { name: "Follow-up Leads", count: tabCounts["Follow-up Leads"], link: "/admin/leads/followup" },
-    { name: "Contacted Leads", count: tabCounts["Contacted Leads"], link: "/admin/leads/contacted" },
-  ];
+  const tabs = getLeadTabs(leads);
 
   // Only show leads with status 'Contacted'
   const contactedLeads = leads.filter(lead => lead.status === 'Contacted');
@@ -229,8 +217,7 @@ const ContactedLeads = () => {
       if (item.phone) formData.append(`memberDetail[${idx}][phone]`, item.phone);
     });
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.post(`${apiUrl}/api/convertedService`, formData, {
+      await api.post('/api/convertedService', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Lead converted and submitted!');
@@ -258,8 +245,8 @@ const ContactedLeads = () => {
 
       <LeadsHeaderButtons
         title='Contacted Leads'
-        onAdd={() => <Navigate to='/admin/leads/add' />}
-        onImport={() => <Navigate to='/admin/leads/import' />}
+        onAdd={() => navigate('/admin/leads/add')}
+        onImport={() => navigate('/admin/leads/import')}
         setConvertModal={setConvertModal}
         selectedRows={selectedRows}
         convertFindLeads={contactedLeads}

@@ -12,6 +12,9 @@ router.post('/employee-login', async (req, res) => {
   try {
     const employee = await Roles.findOne({ 'login.email': email });
     if (!employee) return res.status(404).json({ message: 'User not found' });
+    if (employee.employmentStatus === 'terminated') {
+      return res.status(403).json({ message: 'Employee account is terminated' });
+    }
 
     const isMatch = await bcrypt.compare(password, employee.login.password);
     if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
@@ -20,6 +23,7 @@ router.post('/employee-login', async (req, res) => {
       {
         id: employee._id,
         email: employee.login.email,
+        name: employee.name,
         assignedPages: employee.assignedPages,
         role: 'employee' // ✅ include role
       },
@@ -27,8 +31,7 @@ router.post('/employee-login', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
-    console.log('[DEBUG] JWT_SECRET in employee.routes.js:', process.env.JWT_SECRET);
-    res.json({ token });
+    res.json({ token, employeeName: employee.name, assignedPages: employee.assignedPages });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -37,7 +40,7 @@ router.post('/employee-login', async (req, res) => {
 // Get all employees
 router.get('/employees', async (req, res) => {
   try {
-    const employees = await Roles.find({ role: 'employee' });
+    const employees = await Roles.find({ role: 'employee', employmentStatus: { $ne: 'terminated' } });
     res.json(employees);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

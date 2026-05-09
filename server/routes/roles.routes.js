@@ -68,6 +68,53 @@ router.put('/roles/:id', async (req, res) => {
   }
 });
 
+// Terminate an employee. Terminated employees are kept for history but excluded from future salary/attendance.
+router.patch('/roles/:id/terminate', async (req, res) => {
+  try {
+    const { terminatedAt, reason } = req.body;
+    const terminationDate = terminatedAt ? new Date(terminatedAt) : new Date();
+    if (Number.isNaN(terminationDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid termination date' });
+    }
+
+    const updatedRole = await Roles.findByIdAndUpdate(
+      req.params.id,
+      {
+        employmentStatus: 'terminated',
+        terminatedAt: terminationDate,
+        terminatedReason: reason || '',
+        assignedPages: []
+      },
+      { new: true }
+    );
+
+    if (!updatedRole) return res.status(404).json({ message: 'Employee not found' });
+    res.json({ message: 'Employee terminated successfully', employee: updatedRole });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Re-activate a previously terminated employee.
+router.patch('/roles/:id/unterminate', async (req, res) => {
+  try {
+    const updatedRole = await Roles.findByIdAndUpdate(
+      req.params.id,
+      {
+        employmentStatus: 'active',
+        terminatedAt: null,
+        terminatedReason: ''
+      },
+      { new: true }
+    );
+
+    if (!updatedRole) return res.status(404).json({ message: 'Employee not found' });
+    res.json({ message: 'Employee restored successfully', employee: updatedRole });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 // Delete an employee
 router.delete('/roles/:id', async (req, res) => {
   try {

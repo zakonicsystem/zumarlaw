@@ -49,6 +49,7 @@ export const deletePaymentForManualService = async (id, paymentIdx) => {
   return submission;
 };
 import ManualServiceSubmission from '../models/ManualServiceSubmission.js';
+import { notifyPaymentReceived } from '../utils/paymentNotification.js';
 
 
 
@@ -60,6 +61,7 @@ export const addPaymentToManualService = async (req, res) => {
     const submission = await ManualServiceSubmission.findById(id);
     if (!submission) return res.status(404).json({ success: false, message: 'Submission not found' });
     submission.payments = submission.payments || [];
+    const previousPaid = submission.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     // First payment is from creation (submission.pricing.currentReceivingPayment)
     // Subsequent payments are added here
     let label = 'Second Payment';
@@ -73,6 +75,15 @@ export const addPaymentToManualService = async (req, res) => {
       submission.pricing.remainingAmount = Math.max((submission.pricing.totalPayment || 0) - totalPaid, 0);
     }
     await submission.save();
+    await notifyPaymentReceived({
+      doc: submission,
+      amount,
+      previousPaid,
+      serviceName: submission.serviceType || submission.service,
+      phone: submission.phone,
+      userId: submission._id,
+      serviceId: submission._id,
+    });
     res.json({ success: true, payments: submission.payments, pricing: submission.pricing });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

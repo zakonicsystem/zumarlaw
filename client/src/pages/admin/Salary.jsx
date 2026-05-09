@@ -34,7 +34,14 @@ const Salary = () => {
             axios.get(`${apiUrl}/api/admin/roles`),
             axios.get(`${apiUrl}/api/attendance/history`, { params: { year, month } })
           ]);
-          const employees = rolesRes.data || [];
+          const employeeCountsForSalaryMonth = (emp) => {
+            if (emp.employmentStatus !== 'terminated' || !emp.terminatedAt) return true;
+            const monthEnd = new Date(year, month, 0);
+            return new Date(emp.terminatedAt) > monthEnd;
+          };
+          const employees = Array.isArray(rolesRes.data)
+            ? rolesRes.data.filter(employeeCountsForSalaryMonth)
+            : [];
           const attendance = attRes.data || [];
           // compute per employee (match backend rules)
           const compute = (emp) => {

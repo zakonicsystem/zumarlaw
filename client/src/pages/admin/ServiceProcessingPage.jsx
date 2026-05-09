@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import api from '../../utils/api';
 import {
   FaSearch,
   FaIdCard,
@@ -54,6 +55,20 @@ const PROGRESS_OPTIONS = [
   { value: 'case_rejected', label: 'Case Rejected' },
   { value: 'case_refund', label: 'Case Refund' },
 ];
+const SERVICE_STATUS_CARDS = [
+  { value: 'pending', label: 'Pending', classes: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+  { value: 'processing', label: 'Processing', classes: 'bg-purple-50 border-purple-200 text-purple-700' },
+  { value: 'completed', label: 'Completed', classes: 'bg-green-50 border-green-200 text-green-700' },
+  { value: 'rejected', label: 'Rejected', classes: 'bg-red-50 border-red-200 text-red-700' },
+];
+
+const normalizeAssignedName = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+const isAssignedToEmployeeName = (assignedTo, employeeName) => {
+  const assigned = normalizeAssignedName(assignedTo);
+  const employee = normalizeAssignedName(employeeName);
+  return Boolean(assigned && employee && (assigned === employee || assigned.startsWith(`${employee} `)));
+};
 
 // Map progress values to badge classes (colors requested by user)
 const getProgressClass = (status) => {
@@ -141,6 +156,7 @@ function PaymentStatusButton({ paymentStatus, onClick }) {
 const ServiceProcessingPage = () => {
   // Removed token and role-based access control
   const isEmployee = !!localStorage.getItem('employeeToken');
+  const [employeeName, setEmployeeName] = useState(() => localStorage.getItem('employeeName') || '');
 
   const invoiceRef = useRef();
 
@@ -164,11 +180,9 @@ const ServiceProcessingPage = () => {
   const [messageRow, setMessageRow] = useState(null);
   const itemsPerPage = 6;
 
-
-
   // Get token from localStorage
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('employeeToken') || localStorage.getItem('adminToken') || localStorage.getItem('token');
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
@@ -194,6 +208,22 @@ const ServiceProcessingPage = () => {
 
   // Fetch employees for assignment
   const [employees, setEmployees] = useState([]);
+  useEffect(() => {
+    if (!isEmployee || employeeName) return;
+    const fetchCurrentEmployee = async () => {
+      try {
+        const res = await api.get('/api/employee/me');
+        if (res.data?.name) {
+          setEmployeeName(res.data.name);
+          localStorage.setItem('employeeName', res.data.name);
+        }
+      } catch (err) {
+        setEmployeeName('');
+      }
+    };
+    fetchCurrentEmployee();
+  }, [isEmployee, employeeName]);
+
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
@@ -243,11 +273,6 @@ const ServiceProcessingPage = () => {
       setLoading(false);
     }
   };
-
-  // Removed getAuthHeaders, no longer needed
-
-
-
 
   // Assign employee to service
   const handleAssignEmployee = async (row, employeeName) => {
@@ -330,7 +355,7 @@ const ServiceProcessingPage = () => {
           let paymentStatusLabel = 'Pending';
           if (nextStatus === 'full') paymentStatusLabel = 'Complete';
           else if (nextStatus === 'advance') paymentStatusLabel = 'Advance Received';
-          
+
           const smsMessage = `Payment status for your service has been updated to ${paymentStatusLabel}. Service: ${row.serviceTitle}. Reference: ${row._id?.slice(-6).toUpperCase() || 'N/A'}. Thank you for choosing Zumar Law Firm.`;
           await adminRequest({
             method: 'post',
@@ -546,7 +571,12 @@ const ServiceProcessingPage = () => {
 
 
   // Defensive: always use array
-  const safeServices = Array.isArray(services) ? services : [];
+  const safeServices = (Array.isArray(services) ? services : []).filter((row) => {
+    if (!isEmployee) return true;
+    if (!employeeName) return false;
+    return isAssignedToEmployeeName(row.assignedTo, employeeName);
+  });
+  const getStatusCount = (status) => safeServices.filter((item) => (item.status || 'pending') === status).length;
   const filteredData = safeServices.filter(item =>
     (item.personalId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.personalId?.cnic?.includes(searchQuery)) &&
@@ -575,6 +605,20 @@ const ServiceProcessingPage = () => {
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
             />
           </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {SERVICE_STATUS_CARDS.map((card) => (
+            <button
+              key={card.value}
+              type="button"
+              onClick={() => { setFilterStatus(card.value); setCurrentPage(1); }}
+              className={`text-left rounded-lg border p-4 transition hover:shadow-sm ${card.classes} ${filterStatus === card.value ? 'ring-2 ring-[#57123f]' : ''}`}
+            >
+              <p className="font-semibold text-lg">{card.label}</p>
+              <p className="text-3xl font-bold mt-1">{getStatusCount(card.value)}</p>
+            </button>
+          ))}
         </div>
 
         <div className="flex flex-wrap gap-4 mb-6 items-center">
@@ -828,13 +872,13 @@ const ServiceProcessingPage = () => {
                   try {
                     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                     const phoneNumber = messageRow.personalId?.phone;
-                    
+
                     if (!messageRow.userId) {
                       return toast.error('User ID not found');
                     }
 
                     console.log('Sending message to userId:', messageRow.userId, 'serviceId:', messageRow._id, 'phone:', phoneNumber);
-                    
+
                     const response = await adminRequest({
                       method: 'post',
                       url: `${apiUrl}/api/serviceMessage`,
@@ -846,7 +890,7 @@ const ServiceProcessingPage = () => {
                         phone: phoneNumber || null
                       }
                     });
-                    
+
                     if (response.data.smsSent) {
                       toast.success('Message & SMS sent successfully!');
                     } else if (phoneNumber) {
@@ -854,7 +898,7 @@ const ServiceProcessingPage = () => {
                     } else {
                       toast.success('Message sent (no phone number for SMS)');
                     }
-                    
+
                     setShowMessageModal(false);
                     setMessageText('');
                   } catch (err) {

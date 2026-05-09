@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { serviceData } from '../../data/serviceSchemas';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { sendSms } from '../../utils/sms';
 import LeadsTable from '../../components/leads/LeadsTable';
@@ -8,14 +7,19 @@ import LeadsSearchBar from '../../components/leads/LeadsSearchBar';
 import LeadsHeaderButtons from '../../components/leads/LeadsHeaderButtons';
 import { toast as hotToast } from 'react-hot-toast';
 import ConvertLeadModal from '../../components/leads/ConvertLeadModal';
-import { Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Breadcrumbs from '../../components/Breadcrumbs';
+import { getLeadTabs, isFollowUpLeadStatus } from '../../utils/leadTabs';
+import api from '../../utils/api';
 
 const FollowupLeads = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('Follow-up Leads');
   const [leads, setLeads] = useState([]);
   const [editModal, setEditModal] = useState({ open: false, lead: null });
+  const [followUpModal, setFollowUpModal] = useState({ open: false, lead: null });
+  const [followUpForm, setFollowUpForm] = useState({ employeeName: '', customerReport: '', nextFollowUpAt: '' });
   const [convertModal, setConvertModal] = useState({ open: false, lead: null });
   const [convertFields, setConvertFields] = useState({});
   const [convertFiles, setConvertFiles] = useState({});
@@ -45,8 +49,7 @@ const FollowupLeads = () => {
 
   const fetchLeads = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await axios.get(`${apiUrl}/api/leads`);
+      const res = await api.get('/api/leads');
       setLeads(res.data);
     } catch (err) {
       setLeads([]);
@@ -55,7 +58,7 @@ const FollowupLeads = () => {
 
   const [selectedRows, setSelectedRows] = useState([]);
   const allRowIds = leads
-    .filter(lead => lead.status === 'Followup')
+    .filter(lead => isFollowUpLeadStatus(lead.status))
     .map(lead => `${lead._id}`);
   const isAllSelected = selectedRows.length === allRowIds.length && allRowIds.length > 0;
 
@@ -71,9 +74,10 @@ const FollowupLeads = () => {
   const handleStatusChange = async (leadId, value) => {
     // find the lead for phone number
     const lead = leads.find(l => l._id === leadId);
+    let updatedLead = null;
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.put(`${apiUrl}/api/leads/${leadId}/status`, { status: value });
+      const res = await api.put(`/api/leads/${leadId}/status`, { status: value });
+      updatedLead = res.data?.lead;
 
       // If status changed to Mature, attempt to send SMS to lead phone
       if (String(value).toLowerCase() === 'Mature') {
@@ -99,11 +103,37 @@ const FollowupLeads = () => {
     // Update local state regardless (optimistic)
     setLeads(prev => {
       // Update status and remove from current page if status changes
-      let updated = prev.map(lead => lead._id === leadId ? { ...lead, status: value } : lead);
-      // Only keep leads with status 'Followup' in the current page
-      updated = updated.filter(lead => lead.status === 'Followup');
+      let updated = prev.map(lead => lead._id === leadId ? { ...lead, ...(updatedLead || {}), status: value } : lead);
+      // Only keep follow-up leads in the current page
+      updated = updated.filter(lead => isFollowUpLeadStatus(lead.status));
       return updated;
     });
+  };
+
+  const openFollowUpModal = (lead) => {
+    setFollowUpModal({ open: true, lead });
+    setFollowUpForm({
+      employeeName: localStorage.getItem('employeeName') || '',
+      customerReport: '',
+      nextFollowUpAt: ''
+    });
+  };
+
+  const handleFollowUpSubmit = async (e) => {
+    e.preventDefault();
+    if (!followUpForm.customerReport.trim()) {
+      toast.error('Customer report is required');
+      return;
+    }
+
+    try {
+      const res = await api.post(`/api/leads/${followUpModal.lead._id}/followups`, followUpForm);
+      setLeads((prev) => prev.map((lead) => lead._id === res.data.lead._id ? res.data.lead : lead));
+      setFollowUpModal({ open: false, lead: null });
+      toast.success('Follow-up report added');
+    } catch (err) {
+      toast.error('Failed to add follow-up report');
+    }
   };
 
   const handleEditChange = (e) => {
@@ -113,8 +143,7 @@ const FollowupLeads = () => {
 
   const handleEditSave = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.put(`${apiUrl}/api/leads/${editModal.lead._id}`, editModal.lead);
+      await api.put(`/api/leads/${editModal.lead._id}`, editModal.lead);
       setLeads(prev => prev.map(l => l._id === editModal.lead._id ? { ...editModal.lead } : l));
       setEditModal({ open: false, lead: null });
       toast.success('Lead updated successfully');
@@ -127,8 +156,7 @@ const FollowupLeads = () => {
   const handleDeleteLead = async (leadId) => {
     if (!window.confirm('Are you sure you want to delete this lead?')) return;
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.delete(`${apiUrl}/api/leads/${leadId}`);
+      await api.delete(`/api/leads/${leadId}`);
       setLeads(prev => prev.filter(l => l._id !== leadId));
       setSelectedRows(prev => prev.filter(id => id !== leadId));
       toast.success('Lead deleted successfully');
@@ -147,22 +175,10 @@ const FollowupLeads = () => {
     }  
   };
 
-  // Dynamic tab counts and tab definitions
-  const tabCounts = {
-    "New": leads.filter(l => l.status === "New").length,
-    "Mature Leads": leads.filter(l => l.status === "Mature").length,
-    "Follow-up Leads": leads.filter(l => l.status === "Follow-ups" || l.status === "Follow-up").length,
-    "Contacted Leads": leads.filter(l => l.status === "Contacted").length,
-  };
-  const tabs = [
-    { name: "New", count: tabCounts["New"], link: "/admin/leads" },
-    { name: "Mature Leads", count: tabCounts["Mature Leads"], link: "/admin/leads/mature" },
-    { name: "Follow-up Leads", count: tabCounts["Follow-up Leads"], link: "/admin/leads/followup" },
-    { name: "Contacted Leads", count: tabCounts["Contacted Leads"], link: "/admin/leads/contacted" },
-  ];
+  const tabs = getLeadTabs(leads);
 
   // Only show leads with status 'Follow-up' or 'Follow-ups'
-  const followupLeads = leads.filter(lead => lead.status === 'Follow-up' || lead.status === 'Follow-ups');
+  const followupLeads = leads.filter(lead => isFollowUpLeadStatus(lead.status));
 
   // Filter followupLeads based on searchTerm (name, phone, CNIC, email)
   const filteredLeads = followupLeads.filter(lead => {
@@ -254,8 +270,7 @@ const FollowupLeads = () => {
       if (item.phone) formData.append(`memberDetail[${idx}][phone]`, item.phone);
     });
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.post(`${apiUrl}/api/convertedService`, formData, {
+      await api.post('/api/convertedService', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Lead converted and submitted!');
@@ -283,8 +298,8 @@ const FollowupLeads = () => {
 
     <LeadsHeaderButtons
       title='Followup Leads'
-      onAddClick={() => <Navigate to='/admin/leads/add' />}
-      onImportClick={() => <Navigate to='/admin/leads/import' />}
+      onAdd={() => navigate('/admin/leads/add')}
+      onImport={() => navigate('/admin/leads/import')}
       setConvertModal={setConvertModal}
       selectedRows={selectedRows}
       convertFindLeads={followupLeads}
@@ -309,7 +324,66 @@ const FollowupLeads = () => {
         onStatusChange={handleStatusChange}
         onAction={handleAction}
         isAllSelected={isAllSelected}
+        showFollowUpReportAction
+        onFollowUpReport={openFollowUpModal}
       />
+      {followUpModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+          <form onSubmit={handleFollowUpSubmit} className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg">
+            <h3 className="text-lg font-bold mb-4">Customer Follow-up Report</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block font-semibold mb-1">Lead</label>
+                <div className="rounded border bg-gray-50 px-3 py-2 text-sm">
+                  {followUpModal.lead?.name || 'Lead'} - {followUpModal.lead?.phone || 'No phone'}
+                </div>
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Employee Name</label>
+                <input
+                  type="text"
+                  value={followUpForm.employeeName}
+                  onChange={(e) => setFollowUpForm((prev) => ({ ...prev, employeeName: e.target.value }))}
+                  className="border rounded px-3 py-2 w-full"
+                  placeholder="Employee name"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Customer Report</label>
+                <textarea
+                  value={followUpForm.customerReport}
+                  onChange={(e) => setFollowUpForm((prev) => ({ ...prev, customerReport: e.target.value }))}
+                  className="border rounded px-3 py-2 w-full"
+                  rows={5}
+                  placeholder="Write what the customer said"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Next Follow-up Date</label>
+                <input
+                  type="date"
+                  value={followUpForm.nextFollowUpAt}
+                  onChange={(e) => setFollowUpForm((prev) => ({ ...prev, nextFollowUpAt: e.target.value }))}
+                  className="border rounded px-3 py-2 w-full"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                type="button"
+                className="px-4 py-2 rounded bg-gray-200 text-gray-700"
+                onClick={() => setFollowUpModal({ open: false, lead: null })}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="px-4 py-2 rounded bg-[#57123f] text-white">
+                Save Report
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
    
     
 

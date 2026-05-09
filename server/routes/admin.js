@@ -4,6 +4,7 @@ import Admin from '../models/Admin.js';
 import jwt from 'jsonwebtoken';
 import { authenticateAdmin } from '../middleware/authMiddleware.js'; 
 import User from '../models/User.js'; // Add this import for customer data
+import { sendPasswordResetOtp, verifyPasswordResetOtp } from '../utils/passwordResetOtp.js';
 
 const router = express.Router();
 
@@ -120,10 +121,8 @@ router.post('/forgot-password', async (req, res) => {
     const admin = await Admin.findOne({ email });
     if (!admin) return res.status(404).json({ message: 'Admin not found' });
     
-    // Generate a temporary reset token (in production, email this)
-    const resetToken = jwt.sign({ id: admin._id, email: admin.email }, process.env.JWT_SECRET, { expiresIn: '15m' });
-    
-    return res.json({ message: 'Reset token generated', resetToken });
+    await sendPasswordResetOtp({ email: admin.email, accountType: 'admin' });
+    return res.json({ message: 'OTP sent to your email.' });
   } catch (err) {
     console.error('Admin forgot password error:', err);
     return res.status(500).json({ message: 'Server error' });
@@ -132,13 +131,15 @@ router.post('/forgot-password', async (req, res) => {
 
 // Admin Reset Password
 router.post('/reset-password', async (req, res) => {
-  const { resetToken, newPassword } = req.body;
-  if (!resetToken || !newPassword) return res.status(400).json({ message: 'Token and new password required' });
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) return res.status(400).json({ message: 'Email, OTP and new password required' });
   
   try {
-    const decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
-    const admin = await Admin.findById(decoded.id);
+    const admin = await Admin.findOne({ email });
     if (!admin) return res.status(404).json({ message: 'Admin not found' });
+
+    const otpMatches = await verifyPasswordResetOtp({ email: admin.email, accountType: 'admin', otp });
+    if (!otpMatches) return res.status(400).json({ message: 'Invalid or expired OTP' });
     
     const hashed = await bcrypt.hash(newPassword, 10);
     admin.password = hashed;
@@ -147,7 +148,7 @@ router.post('/reset-password', async (req, res) => {
     return res.json({ message: 'Password reset successful' });
   } catch (err) {
     console.error('Admin reset password error:', err);
-    return res.status(400).json({ message: 'Invalid or expired token' });
+    return res.status(400).json({ message: 'Password reset failed' });
   }
 });
 

@@ -8,6 +8,7 @@ import ConvertedLead from '../models/ConvertedLead.js';
 import Expense from '../models/Expense.js';
 import Challan from '../models/Challan.js';
 import { servicePrices } from '../data/servicePrices.js';
+import { notifyPaymentReceived } from '../utils/paymentNotification.js';
 const router = express.Router();
 
 // CREATE Account
@@ -56,6 +57,7 @@ router.post('/add-payment/:type/:id', async (req, res) => {
       doc = await ConvertedLead.findById(id);
       if (!doc) return res.status(404).json({ error: 'Document not found' });
       if (!doc.payments) doc.payments = [];
+      const previousPaid = doc.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
       doc.payments.push({
         amount: paymentData.amount,
         date: paymentData.date,
@@ -76,11 +78,21 @@ router.post('/add-payment/:type/:id', async (req, res) => {
         doc.pricing.remainingAmount = Math.max((doc.pricing.totalPayment || 0) - totalPaid, 0);
       }
       await doc.save();
+      await notifyPaymentReceived({
+        doc,
+        amount: paymentData.amount,
+        previousPaid,
+        serviceName: doc.service || doc.serviceType,
+        phone: doc.phone,
+        userId: doc._id,
+        serviceId: doc._id,
+      });
       res.json({ success: true, payments: doc.payments, pricing: doc.pricing });
     } else if (type === 'manual') {
       doc = await ManualServiceSubmission.findById(id);
       if (!doc) return res.status(404).json({ error: 'Document not found' });
       if (!doc.payments) doc.payments = [];
+      const previousPaid = doc.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
       doc.payments.push({
         amount: paymentData.amount,
         date: paymentData.date,
@@ -97,6 +109,15 @@ router.post('/add-payment/:type/:id', async (req, res) => {
         doc.pricing.remainingAmount = Math.max((doc.pricing.totalPayment || 0) - totalPaid, 0);
       }
       await doc.save();
+      await notifyPaymentReceived({
+        doc,
+        amount: paymentData.amount,
+        previousPaid,
+        serviceName: doc.serviceType || doc.service,
+        phone: doc.phone,
+        userId: doc._id,
+        serviceId: doc._id,
+      });
       res.json({ success: true, payments: doc.payments, pricing: doc.pricing });
     } else {
       return res.status(400).json({ error: 'Invalid type' });

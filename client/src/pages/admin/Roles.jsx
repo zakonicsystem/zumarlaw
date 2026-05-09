@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Edit, Trash2, Eye } from 'lucide-react';
+import { Edit, Trash2, Eye, UserX, RotateCcw } from 'lucide-react';
 import { FaTasks, FaListAlt } from 'react-icons/fa';
 import NewEmployee from './NewEmployee';
 
@@ -16,6 +16,7 @@ const pages = [
       { label: 'Mature Leads', path: '/admin/leads/mature' },
       { label: 'Contacted Leads', path: '/admin/leads/contacted' },
       { label: 'Followup Leads', path: '/admin/leads/followup' },
+      { label: 'Refusal Leads', path: '/admin/leads/refusal' },
       { label: 'Add Lead', path: '/admin/leads/add' },
       { label: 'Import Leads', path: '/admin/leads/import' },
     ]
@@ -68,6 +69,10 @@ const Roles = () => {
   const [viewEmployee, setViewEmployee] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
   const [viewError, setViewError] = useState(null);
+  const [terminateModal, setTerminateModal] = useState(false);
+  const [terminateEmployee, setTerminateEmployee] = useState(null);
+  const [terminateReason, setTerminateReason] = useState('');
+  const [terminateDate, setTerminateDate] = useState(new Date().toISOString().slice(0, 10));
   // Function to handle Eye button click
   const handleViewCredentials = (emp) => {
     // Only show plain password if available, never show hashed password
@@ -142,6 +147,71 @@ const Roles = () => {
     }
   };
 
+  const openTerminateModal = (employee) => {
+    if (employee.employmentStatus === 'terminated') {
+      toast.error('Employee is already terminated');
+      return;
+    }
+    setTerminateEmployee(employee);
+    setTerminateReason('');
+    setTerminateDate(new Date().toISOString().slice(0, 10));
+    setTerminateModal(true);
+  };
+
+  const closeTerminateModal = () => {
+    setTerminateModal(false);
+    setTerminateEmployee(null);
+    setTerminateReason('');
+    setTerminateDate(new Date().toISOString().slice(0, 10));
+  };
+
+  const handleTerminateSubmit = async (event) => {
+    event.preventDefault();
+    if (!terminateEmployee) return;
+    if (!terminateReason.trim()) {
+      toast.error('Termination reason is required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.patch(`${apiUrl}/api/admin/roles/${terminateEmployee._id}/terminate`, {
+        terminatedAt: terminateDate,
+        reason: terminateReason.trim()
+      }, {
+        withCredentials: true,
+      });
+
+      toast.success('Employee terminated successfully');
+      closeTerminateModal();
+      await fetchEmployees();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to terminate employee');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnterminate = async (employee) => {
+    if (!window.confirm(`Restore ${employee.name} as an active employee?`)) return;
+
+    try {
+      setLoading(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.patch(`${apiUrl}/api/admin/roles/${employee._id}/unterminate`, {}, {
+        withCredentials: true,
+      });
+
+      toast.success('Employee restored successfully');
+      await fetchEmployees();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to restore employee');
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
 
 
@@ -189,6 +259,53 @@ const Roles = () => {
           </div>
         )}
         <h3 className="text-lg font-semibold mb-4">Employee List</h3>
+        {terminateModal && terminateEmployee && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50 p-4">
+            <form onSubmit={handleTerminateSubmit} className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Terminate Employee</h3>
+                  <p className="text-sm text-gray-600">{terminateEmployee.name}</p>
+                </div>
+                <button type="button" onClick={closeTerminateModal} className="text-gray-500 hover:text-gray-800 text-xl leading-none">&times;</button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Termination Date</label>
+                  <input
+                    type="date"
+                    value={terminateDate}
+                    onChange={(e) => setTerminateDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#57123f]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                  <textarea
+                    value={terminateReason}
+                    onChange={(e) => setTerminateReason(e.target.value)}
+                    rows={4}
+                    className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#57123f]"
+                    placeholder="Write termination reason"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6">
+                <button type="button" onClick={closeTerminateModal} className="px-4 py-2 rounded border border-gray-300 text-gray-700">
+                  Cancel
+                </button>
+                <button type="submit" disabled={loading} className="px-4 py-2 rounded bg-red-600 text-white disabled:opacity-50">
+                  {loading ? 'Terminating...' : 'Terminate'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
         {employees.length === 0 ? (
           <p className="text-gray-500">No employees added.</p>
         ) : (
@@ -208,8 +325,19 @@ const Roles = () => {
               {employees.map((emp, index) => (
                 <tr key={index} className="text-left hover:bg-gray-50 border-b">
                   <td className="p-2 text-xs" title={emp.name}>
-                    <div className="font-semibold text-gray-800">{emp.name}</div>
+                    <div className="font-semibold text-gray-800 flex items-center gap-2">
+                      <span>{emp.name}</span>
+                      {emp.employmentStatus === 'terminated' && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700">Terminated</span>
+                      )}
+                    </div>
                     <div className="text-xs text-gray-500">{emp.cnic}</div>
+                    {emp.employmentStatus === 'terminated' && emp.terminatedAt && (
+                      <div className="text-[10px] text-red-600">Terminated: {new Date(emp.terminatedAt).toLocaleDateString()}</div>
+                    )}
+                    {emp.employmentStatus === 'terminated' && emp.terminatedReason && (
+                      <div className="text-[10px] text-gray-500 truncate" title={emp.terminatedReason}>Reason: {emp.terminatedReason}</div>
+                    )}
                   </td>
                   <td className="p-2 text-xs" title={emp.phone}>
                     <div className="text-gray-700">{emp.phone}</div>
@@ -253,6 +381,23 @@ const Roles = () => {
                       <button onClick={() => handleEdit(emp)} className="text-[#57123f] hover:bg-indigo-100 rounded-full p-2" title="Edit">
                         <Edit size={20} />
                       </button>
+                      {emp.employmentStatus === 'terminated' ? (
+                        <button
+                          onClick={() => handleUnterminate(emp)}
+                          className="text-[#57123f] hover:bg-green-100 rounded-full p-2"
+                          title="Un-terminate Employee"
+                        >
+                          <RotateCcw size={20} />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => openTerminateModal(emp)}
+                          className="text-[#57123f] hover:bg-orange-100 rounded-full p-2"
+                          title="Terminate Employee"
+                        >
+                          <UserX size={20} />
+                        </button>
+                      )}
                       <button onClick={() => handleDelete(emp._id)} className="text-[#57123f] hover:bg-red-100 rounded-full p-2" title="Delete">
                         <Trash2 size={20} />
                       </button>
