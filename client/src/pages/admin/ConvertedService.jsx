@@ -156,7 +156,11 @@ const CONVERTED_STATUS_CARDS = [
   { value: 'completed', label: 'Completed', classes: 'bg-green-50 border-green-200 text-green-700' },
   { value: 'rejected', label: 'Rejected', classes: 'bg-red-50 border-red-200 text-red-700' },
 ];
-const isCompletedService = (row) => String(row?.status || '').toLowerCase() === 'completed';
+const isCompletedService = (row) => {
+  const status = String(row?.status || '').toLowerCase();
+  const progressStatus = String(row?.progressStatus || '').toLowerCase();
+  return status === 'completed' || progressStatus === 'completed_in_progress';
+};
 
 
 
@@ -256,6 +260,7 @@ const ConvertedService = () => {
   // Pagination
   const currentData = filtered;
   const selectedCertificateRow = selectedRows.length === 1 ? leads.find(l => l._id === selectedRows[0]) : null;
+  const canUploadCertificate = selectedRows.length === 1 && (!isEmployee || isCompletedService(selectedCertificateRow));
 
   // Select logic
   const handleSelectAll = () => {
@@ -384,8 +389,10 @@ const ConvertedService = () => {
             <FaDownload /> Export Services
           </button>
           <button
-            className="bg-[#57123f] text-white px-5 py-2 rounded-full font-semibold hover:bg-[#57123f] transition disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isEmployee && selectedRows.length === 1 && !isCompletedService(selectedCertificateRow)}
+            className={`px-5 py-2 rounded-full font-semibold transition disabled:cursor-not-allowed ${
+              canUploadCertificate ? 'bg-[#57123f] text-white hover:bg-[#57123f]' : 'bg-gray-300 text-gray-500'
+            }`}
+            disabled={!canUploadCertificate}
             title={isEmployee ? "Employees can upload certificates only for completed services" : ""}
             onClick={() => {
               if (selectedRows.length !== 1) return toast.error('Select exactly one lead to upload certificate');

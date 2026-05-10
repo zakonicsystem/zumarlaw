@@ -198,7 +198,11 @@ const MANUAL_STATUS_CARDS = [
   { value: 'completed', label: 'Completed', classes: 'bg-green-50 border-green-200 text-green-700' },
   { value: 'rejected', label: 'Rejected', classes: 'bg-red-50 border-red-200 text-red-700' },
 ];
-const isCompletedService = (row) => String(row?.status || '').toLowerCase() === 'completed';
+const isCompletedService = (row) => {
+  const status = String(row?.status || '').toLowerCase();
+  const progressStatus = String(row?.progressStatus || '').toLowerCase();
+  return status === 'completed' || progressStatus === 'completed_in_progress';
+};
 
 const ManualService = () => {
   const [services, setServices] = useState([]);
@@ -414,6 +418,7 @@ const ManualService = () => {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
   const currentData = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const selectedCertificateRows = services.filter((row) => selectedRows.includes(row._id));
+  const canUploadCertificate = selectedRows.length > 0 && (!isEmployee || selectedCertificateRows.every(isCompletedService));
 
   // Invoice modal state
   const [showInvoice, setShowInvoice] = useState(false);
@@ -617,8 +622,10 @@ const ManualService = () => {
             }}
           />
           <button
-            className="bg-[#57123f] text-sm text-white px-6 py-2 rounded-full hover:bg-[#57123f] font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={isEmployee && selectedCertificateRows.length > 0 && selectedCertificateRows.some((row) => !isCompletedService(row))}
+            className={`text-sm px-6 py-2 rounded-full font-semibold disabled:cursor-not-allowed ${
+              canUploadCertificate ? 'bg-[#57123f] text-white hover:bg-[#57123f]' : 'bg-gray-300 text-gray-500'
+            }`}
+            disabled={!canUploadCertificate}
             title={isEmployee ? "Employees can upload certificates only for completed services" : ""}
             onClick={() => {
               if (selectedRows.length === 0) {

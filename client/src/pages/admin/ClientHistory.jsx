@@ -22,6 +22,8 @@ const money = (value) => {
 };
 
 const mainStatuses = ['All', 'New', 'Contacted', 'Follow-up', 'Mature', 'Converted', 'Processing', 'Completed', 'Rejected'];
+const isEmployeeUser = () => !!localStorage.getItem('employeeToken');
+const displayPhone = (phone) => (isEmployeeUser() ? '********' : (phone || '-'));
 
 
 const TimelineList = ({ title, items, empty }) => (
@@ -103,7 +105,7 @@ const HistoryModal = ({ record, onClose }) => {
         <div className="flex items-start justify-between p-5 border-b">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">{record.name || 'Client'} History</h3>
-            <p className="text-sm text-gray-600">{record.email || '-'} | {record.phone || '-'}</p>
+            <p className="text-sm text-gray-600">{record.email || '-'} | {displayPhone(record.phone)}</p>
           </div>
           <button onClick={onClose} className="p-2 rounded hover:bg-gray-100" aria-label="Close">
             <X size={20} />
@@ -152,6 +154,7 @@ const HistoryModal = ({ record, onClose }) => {
 };
 
 const ClientHistory = () => {
+  const isEmployee = isEmployeeUser();
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -209,7 +212,7 @@ const ClientHistory = () => {
       <div className="flex items-center justify-between gap-3 mb-5">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Client History</h1>
-          <p className="text-sm text-gray-600">Recent client history loads automatically. Search by email or phone number to filter.</p>
+          <p className="text-sm text-gray-600">Recent client history loads automatically. Search by email{isEmployee ? '' : ' or phone number'} to filter.</p>
         </div>
       </div>
 
@@ -219,7 +222,7 @@ const ClientHistory = () => {
           <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search client, email, phone, service, employee, or status"
+            placeholder={`Search client, email${isEmployee ? '' : ', phone'}, service, employee, or status`}
             className="w-full border rounded px-10 py-2"
           />
         </div>
@@ -269,7 +272,7 @@ const ClientHistory = () => {
               <tr key={`${record.type}-${record.id}`} className="border-t hover:bg-gray-50">
                 <td className="p-3">
                   <div className="font-medium">{record.name || '-'}</div>
-                  <div className="text-xs text-gray-500">{record.email || '-'} | {record.phone || '-'}</div>
+                  <div className="text-xs text-gray-500">{record.email || '-'} | {displayPhone(record.phone)}</div>
                 </td>
                 <td className="p-3">{record.type}</td>
                 <td className="p-3">{record.interestedService || '-'}</td>

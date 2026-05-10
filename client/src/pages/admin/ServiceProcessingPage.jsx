@@ -70,7 +70,11 @@ const isAssignedToEmployeeName = (assignedTo, employeeName) => {
   const employee = normalizeAssignedName(employeeName);
   return Boolean(assigned && employee && (assigned === employee || assigned.startsWith(`${employee} `)));
 };
-const isCompletedService = (row) => String(row?.status || '').toLowerCase() === 'completed';
+const isCompletedService = (row) => {
+  const status = String(row?.status || '').toLowerCase();
+  const progressStatus = String(row?.progressStatus || '').toLowerCase();
+  return status === 'completed' || progressStatus === 'completed_in_progress';
+};
 
 // Map progress values to badge classes (colors requested by user)
 const getProgressClass = (status) => {
@@ -591,6 +595,7 @@ const ServiceProcessingPage = () => {
   );
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
   const currentData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const canUploadCertificate = !!selectedRow && (!isEmployee || isCompletedService(selectedRow));
 
 
   return (
@@ -662,9 +667,11 @@ const ServiceProcessingPage = () => {
               }
               setShowUploadModal(true);
             }}
-            disabled={isEmployee && selectedRow && !isCompletedService(selectedRow)}
+            disabled={!canUploadCertificate}
             title={isEmployee ? "Employees can upload certificates only for completed services" : ""}
-            className="flex items-center gap-2 bg-[#57123f] text-white px-4 py-2 rounded-full text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm disabled:cursor-not-allowed ${
+              canUploadCertificate ? 'bg-[#57123f] text-white' : 'bg-gray-300 text-gray-500'
+            }`}
           >
             <FaIdCard /> Upload Certificate
           </button>

@@ -41,6 +41,26 @@ const buildContactQuery = ({ email, phone }) => {
 };
 
 const toPlain = (doc) => doc?.toObject ? doc.toObject() : doc;
+const maskPhoneNumber = (phone) => (phone ? '********' : phone);
+
+const maskPhoneFields = (value) => {
+  if (Array.isArray(value)) return value.map(maskPhoneFields);
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.fromEntries(Object.entries(value).map(([key, fieldValue]) => {
+    if (/phone|mobile|contact/i.test(key) && typeof fieldValue !== 'object') {
+      return [key, maskPhoneNumber(fieldValue)];
+    }
+    return [key, maskPhoneFields(fieldValue)];
+  }));
+};
+
+const maskRecordPhones = (record) => ({
+  ...record,
+  phone: maskPhoneNumber(record.phone),
+  referralPhone: maskPhoneNumber(record.referralPhone),
+  fields: maskPhoneFields(record.fields)
+});
 
 const paymentSummary = (record = {}) => {
   const payments = Array.isArray(record.payments) ? record.payments : [];
@@ -115,6 +135,7 @@ const mapService = (record, type, personal = {}) => {
 router.get('/', verifyJWT, async (req, res) => {
   try {
     const { email = '', phone = '' } = req.query;
+    const canViewPhone = req.user?.role === 'admin';
     const contactQuery = buildContactQuery({ email, phone });
     const baseQuery = contactQuery || {};
 
@@ -141,12 +162,14 @@ router.get('/', verifyJWT, async (req, res) => {
         return mapService(item, 'Processing Service', personal);
       })
     ].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    const visibleRecords = canViewPhone ? records : records.map(maskRecordPhones);
+    const firstRecord = visibleRecords[0];
 
     res.json({
-      query: { email: clean(email), phone: clean(phone) },
-      client: records[0]
-        ? { name: records[0].name, email: records[0].email, phone: records[0].phone }
-        : { name: '', email: clean(email), phone: clean(phone) },
+      query: { email: clean(email), phone: canViewPhone ? clean(phone) : maskPhoneNumber(clean(phone)) },
+      client: firstRecord
+        ? { name: firstRecord.name, email: firstRecord.email, phone: firstRecord.phone }
+        : { name: '', email: clean(email), phone: canViewPhone ? clean(phone) : maskPhoneNumber(clean(phone)) },
       counts: {
         leads: leads.length,
         convertedServices: convertedServices.length,
@@ -154,7 +177,7 @@ router.get('/', verifyJWT, async (req, res) => {
         processingServices: processingServices.length,
         total: records.length
       },
-      records
+      records: visibleRecords
     });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch client history', error: err.message });

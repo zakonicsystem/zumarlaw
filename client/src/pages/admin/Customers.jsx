@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import api from '../../utils/api.js';
 
 const Customers = () => {
+  const isEmployee = !!localStorage.getItem('employeeToken');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,9 +18,10 @@ const Customers = () => {
 
   // Helper to attach admin token from localStorage (same pattern used elsewhere)
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('employeeToken') || localStorage.getItem('adminToken') || localStorage.getItem('token');
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
+  const displayPhone = (phone) => (isEmployee ? '********' : (phone || '-'));
 
   const fetchCustomerServices = async (customer) => {
     setSelectedCustomer(customer);
@@ -114,7 +116,7 @@ const Customers = () => {
       {/* Search Bar */}
       <input
         type="text"
-        placeholder="Search by name, email, phone or CNIC..."
+        placeholder={`Search by name, email${isEmployee ? ' or CNIC' : ', phone or CNIC'}...`}
         className="w-full max-w-md px-4 py-2 mb-4 border rounded shadow-sm focus:outline-none focus:ring focus:border-blue-300"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
@@ -199,7 +201,7 @@ const Customers = () => {
                       </div>
                     </td>
                     <td className='px-4 py-2' > <div className='text-sm'>
-                      <p className="text-gray-600">{user.phone || '-'}</p> </div></td>
+                      <p className="text-gray-600">{displayPhone(user.phone)}</p> </div></td>
 
                     <td className="py-2 px-4 font-mono text-sm break-all">
                       <button

@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import Admin from '../models/Admin.js';
 import jwt from 'jsonwebtoken';
-import { authenticateAdmin } from '../middleware/authMiddleware.js'; 
+import { authenticateAdmin, verifyJWT } from '../middleware/authMiddleware.js'; 
 import User from '../models/User.js'; // Add this import for customer data
 import { sendPasswordResetOtp, verifyPasswordResetOtp } from '../utils/passwordResetOtp.js';
 
@@ -38,16 +38,22 @@ router.get("/", (req, res) => {
   res.json({ message: "Admin Info Loaded" });
 });
 
-// Add this route to provide customers for admin
-router.get('/customers', async (req, res) => {
+const maskPhoneNumber = (phone) => {
+  if (!phone || phone === 'N/A') return 'N/A';
+  return '********';
+};
+
+// Add this route to provide customers for admin/employee dashboards.
+router.get('/customers', verifyJWT, async (req, res) => {
   try {
+    const canViewPhone = req.user?.role === 'admin';
     const users = await User.find().sort({ createdAt: -1 });
     const transformedUsers = users.map(user => ({
       _id: user._id,
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
       password: user.password,  
-      phone: user.phoneNumber || 'N/A',
+      phone: canViewPhone ? (user.phoneNumber || 'N/A') : maskPhoneNumber(user.phoneNumber),
       createdAt: user.createdAt,
       services: user.services || [],
       isActive: user.isActive !== false // default true
