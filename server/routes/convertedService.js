@@ -1,15 +1,22 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import * as convertedLeadController from '../controllers/convertedLeadController.js';
 import { tryVerify, verifyJWT } from '../middleware/authMiddleware.js';
 const router = express.Router();
 const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 'System';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadsDir = path.resolve(__dirname, '..', 'uploads');
+fs.mkdirSync(uploadsDir, { recursive: true });
+
 // Multer setup for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join(process.cwd(), 'uploads'));
+    cb(null, uploadsDir);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);

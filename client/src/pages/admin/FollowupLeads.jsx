@@ -281,7 +281,7 @@ const FollowupLeads = () => {
       setMemberCnics([]);
       setMemberDetails([]);
     } catch (err) {
-      toast.error('Failed to convert lead');
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Failed to convert lead');
     } finally {
       setSubmittingConvert(false);
     }

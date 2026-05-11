@@ -35,8 +35,8 @@ export const sendPasswordResetOtp = async ({ email, accountType }) => {
     from: process.env.EMAIL_USER,
     to: normalizedEmail,
     subject: 'Password Reset OTP',
-    text: `Your password reset OTP is ${otp}. It expires in ${OTP_TTL_MINUTES} minutes.`,
-    html: `<p>Your password reset OTP is <strong>${otp}</strong>.</p><p>It expires in ${OTP_TTL_MINUTES} minutes.</p>`
+    text: `Your OTP for Password Forget is ${otp}. For Security Purposes.\nNoted : Please do not share your OTP with anyone.`,
+    html: `<p>Your OTP for Password Forget is <strong>${otp}</strong>. For Security Purposes.</p><p>Noted : Please do not share your OTP with anyone.</p>`
   });
 };
 

@@ -239,8 +239,7 @@ export default function LeadsManagment() {
       if (item.phone) formData.append(`memberDetail[${idx}][phone]`, item.phone);
     });
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.post(`${apiUrl}/api/convertedService`, formData, {
+      await api.post('/api/convertedService', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Lead converted and submitted!');
@@ -250,7 +249,7 @@ export default function LeadsManagment() {
       setMemberCnics([]);
       setMemberDetails([]);
     } catch (err) {
-      toast.error('Failed to convert lead');
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Failed to convert lead');
     } finally {
       setSubmittingConvert(false);
     }

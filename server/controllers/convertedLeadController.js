@@ -123,6 +123,18 @@ const assignedToCurrentEmployeeQuery = (req, field = 'assigned') => {
   };
 };
 const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 'System';
+const convertedServiceStatuses = new Set(['pending', 'processing', 'converted', 'completed', 'rejected']);
+
+function normalizeConvertedStatus(status) {
+  const value = Array.isArray(status) ? status[status.length - 1] : status;
+  return convertedServiceStatuses.has(value) ? value : 'converted';
+}
+
+function cleanOptionalEnum(value, allowedValues) {
+  const single = Array.isArray(value) ? value[value.length - 1] : value;
+  if (typeof single === 'undefined' || single === null || single === '') return undefined;
+  return allowedValues.includes(single) ? single : undefined;
+}
 
 // Delete a converted lead by ID (hard delete)
 export const deleteConvertedLead = async (req, res) => {
@@ -190,7 +202,7 @@ export const createConvertedLead = async (req, res) => {
     paymentFields.forEach((field) => {
       // Accept both camelCase and snake_case
       let value = req.body[field] || req.body[`pricing.${field}`] || (req.body.pricing && req.body.pricing[field]);
-      if (typeof value === 'undefined') return;
+      if (typeof value === 'undefined' || value === null || value === '') return;
       // Always use the last value if array (FormData can send arrays)
       if (Array.isArray(value)) value = value[value.length - 1];
       // Convert numbers and dates
@@ -205,6 +217,11 @@ export const createConvertedLead = async (req, res) => {
       }
       if (field === 'paymentReceivedDate') {
         value = new Date(value);
+        if (Number.isNaN(value.getTime())) return;
+      }
+      if (field === 'paymentMethod') {
+        value = cleanOptionalEnum(value, ['Cash', 'Cheque', 'Bank', 'Easypaisa', 'Jazzcash']);
+        if (!value) return;
       }
       // Map currentPayment to currentReceivingPayment if needed
       if (field === 'currentPayment') {
@@ -254,7 +271,7 @@ export const createConvertedLead = async (req, res) => {
       assigned: getSingleValue(assigned),
       service: getSingleValue(service),
       price: price ? Number(getSingleValue(price)) : undefined,
-      status: getSingleValue(status),
+      status: normalizeConvertedStatus(status),
       pricing,
       payments,
       fields,
