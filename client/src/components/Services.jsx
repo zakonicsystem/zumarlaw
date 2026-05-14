@@ -313,6 +313,11 @@ const services = [
     category: "Regulatory & Licensing",
     icon: company
   },
+  {
+    title: "OEP License",
+    category: "Regulatory & Licensing",
+    icon: company
+  },
 
   // Chamber of Commerce Services
   {

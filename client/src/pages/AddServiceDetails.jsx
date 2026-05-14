@@ -643,7 +643,7 @@ const AddServiceDetails = () => {
   // determine decoded service and required fields early so we can
   // open the details form by default for services that need additional input
   const decodedService = decodeURIComponent(serviceTitle);
-  const fields = serviceFields[decodedService] || [];
+  const fields = serviceFields[decodedService] || serviceData.fields[decodedService] || [];
   // Open the manual details form automatically when this service has defined fields
   const [showForm, setShowForm] = useState(() => fields.length > 0);
   const [loading, setLoading] = useState(false);
