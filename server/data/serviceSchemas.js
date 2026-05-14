@@ -62,6 +62,7 @@ export const serviceData = Object.freeze({
     'PEC Firm Registration - AOP/Partnership': 20000,
     'PEC Engineer Registration': 5000,
     'Labour Department Registration': 10000,
+    'OEP License': 300000,
   },
   // Fields
   fields: {
@@ -807,6 +808,22 @@ export const serviceData = Object.freeze({
       { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
       { name: 'business_reg_cert', label: 'Business Registration Certificate', type: 'file' },
       { name: 'num_employees', label: 'Number Of Employees', type: 'text' }
+    ],
+
+    'OEP License': [
+      { name: 'agency_name', label: 'Agency Name', type: 'text' },
+      { name: 'agency_address', label: 'Agency Address', type: 'text' },
+      { name: 'email_id', label: 'Email ID', type: 'email' },
+      { name: 'phone_no', label: 'Phone No', type: 'tel' },
+      { name: 'attachments', label: 'Attachments', type: 'file' },
+      { name: 'owner_cnic_front', label: 'Owner CNIC Front', type: 'file' },
+      { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
+      { name: 'bank_maintenance_certificate', label: 'Bank Maintenance Certificate', type: 'file' },
+      { name: 'qualification_certificate', label: 'Qualification Certificate', type: 'file' },
+      { name: 'owner_ntn', label: 'Owner NTN', type: 'file' },
+      { name: 'business_registration_certificate', label: 'Business Registration Certificate', type: 'file' },
+      { name: 'owner_cv', label: 'Owner CV', type: 'file' },
+      { name: 'character_certificate', label: 'Character Certificate', type: 'file' }
     ]
 
   }

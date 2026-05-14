@@ -61,4 +61,5 @@ export const servicePrices = {
     'PEC Firm Registration - AOP/Partnership': 20000,
     'PEC Engineer Registration': 5000,
     'Labour Department Registration': 10000,
+    'OEP License': 300000,
 };
