@@ -203,8 +203,15 @@ const FollowupLeads = () => {
     );
     return getFollowUpStageNumber(lead) === followUpStage && matchesSearch && matchesFollowUpDateFilter(lead);
   });
+  const sortedFilteredLeads = filteredLeads.slice().sort((a, b) => {
+    const aTime = new Date(getFollowUpDate(a)).getTime();
+    const bTime = new Date(getFollowUpDate(b)).getTime();
+    const safeATime = Number.isNaN(aTime) ? Number.MAX_SAFE_INTEGER : aTime;
+    const safeBTime = Number.isNaN(bTime) ? Number.MAX_SAFE_INTEGER : bTime;
+    return safeATime - safeBTime;
+  });
 
-  const allRowIds = filteredLeads.map(lead => `${lead._id}`);
+  const allRowIds = sortedFilteredLeads.map(lead => `${lead._id}`);
   const isAllSelected = selectedRows.length === allRowIds.length && allRowIds.length > 0;
 
   const handleSelectAll = () => {
@@ -329,7 +336,7 @@ const FollowupLeads = () => {
         selectedRows={selectedRows}
         convertFindLeads={followupLeads}
         toast={window.toast && window.toast.error ? window.toast : { error: (msg) => hotToast.error(msg) }}
-        onExport={() => exportRecordsToCsv('followup-leads.csv', filteredLeads)}
+        onExport={() => exportRecordsToCsv('followup-leads.csv', sortedFilteredLeads)}
       />
 
       {/* Search Bar & Tabs */}
@@ -395,7 +402,7 @@ const FollowupLeads = () => {
 
     
       <LeadsTable
-        leads={filteredLeads}
+        leads={sortedFilteredLeads}
         selectedRows={selectedRows}
         onSelectAll={handleSelectAll}
         onSelectRow={handleSelectRow}

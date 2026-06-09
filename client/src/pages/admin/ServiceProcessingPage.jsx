@@ -7,7 +7,8 @@ import {
   FaFileInvoice,
   FaEye,
   FaDownload,
-  FaEnvelope
+  FaEnvelope,
+  FaInfoCircle
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import ZumarLogo from '../../assets/ZumarLogo.png';
@@ -179,6 +180,7 @@ const ServiceProcessingPage = () => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
+  const [detailsModal, setDetailsModal] = useState({ open: false, row: null });
   const [selectedFile, setSelectedFile] = useState(null);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [messageType, setMessageType] = useState('alert');
@@ -597,6 +599,73 @@ const ServiceProcessingPage = () => {
   const currentData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   const canUploadCertificate = !!selectedRow && (!isEmployee || isCompletedService(selectedRow));
 
+  const formatDetailLabel = (value) => String(value || '')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_\.]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+  const formatDetailValue = (value) => {
+    if (value === null || typeof value === 'undefined' || value === '') return 'N/A';
+    if (value instanceof Date) return value.toLocaleString();
+    if (typeof value === 'string') {
+      const date = new Date(value);
+      if (/^\d{4}-\d{2}-\d{2}T/.test(value) && !Number.isNaN(date.getTime())) {
+        return date.toLocaleString();
+      }
+      return value;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    return JSON.stringify(value);
+  };
+
+  const flattenDetails = (source, prefix = '') => {
+    if (!source || typeof source !== 'object') return [];
+    return Object.entries(source).flatMap(([key, value]) => {
+      const label = prefix ? `${prefix}.${key}` : key;
+      if (value === null || typeof value === 'undefined' || value === '') {
+        return [[label, 'N/A']];
+      }
+      if (Array.isArray(value)) {
+        if (value.length === 0) return [[label, 'N/A']];
+        return value.flatMap((item, index) => {
+          if (item && typeof item === 'object') return flattenDetails(item, `${label} ${index + 1}`);
+          return [[`${label} ${index + 1}`, item]];
+        });
+      }
+      if (typeof value === 'object') {
+        return flattenDetails(value, label);
+      }
+      return [[label, value]];
+    });
+  };
+
+  const getServiceDetailRows = (row = {}) => {
+    const baseRows = [
+      ['Service ID', row._id],
+      ['Service Title', row.serviceTitle],
+      ['Client Name', row.personalId?.name],
+      ['Client Email', row.personalId?.email],
+      ['Client Phone', isEmployee ? '••••••••••' : row.personalId?.phone],
+      ['Client CNIC', row.personalId?.cnic],
+      ['Assigned To', row.assignedTo],
+      ['Status', row.status],
+      ['Progress Status', row.progressStatus],
+      ['Payment Status', row.paymentStatus],
+      ['Certificate', row.certificate],
+      ['Invoice Sent', row.invoiceSent],
+      ['Created At', row.createdAt],
+    ];
+
+    return [
+      ...baseRows,
+      ...flattenDetails(row.pricing || {}, 'pricing'),
+      ...flattenDetails(row.payments || [], 'payment'),
+      ...flattenDetails(row.formFields || {}, 'submitted field'),
+    ].filter(([label]) => label);
+  };
+
 
   return (
     <div className="min-h-screen bg-white">
@@ -791,6 +860,13 @@ const ServiceProcessingPage = () => {
                   <td className="px-3 py-3">
                     <div className="flex gap-2">
                       <button
+                        title="View Complete Details"
+                        className="text-[#57123f] hover:text-[#a8326e]"
+                        onClick={() => setDetailsModal({ open: true, row })}
+                      >
+                        <FaInfoCircle />
+                      </button>
+                      <button
                         disabled={isEmployee}
                         title={isEmployee ? "Employees cannot view certificates" : "View Certificate"}
                         className={`${isEmployee ? 'text-gray-400 cursor-not-allowed' : 'text-[#57123f] hover:text-[#a8326e]'}`}
@@ -849,6 +925,38 @@ const ServiceProcessingPage = () => {
           </table>
         </div>
       </div>
+      {detailsModal.open && detailsModal.row && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-[#57123f]">Complete Service Data</h2>
+              <button
+                className="text-gray-500 hover:text-gray-800 text-2xl leading-none"
+                onClick={() => setDetailsModal({ open: false, row: null })}
+                title="Close"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6">
+              <table className="w-full text-sm border-collapse">
+                <tbody>
+                  {getServiceDetailRows(detailsModal.row).map(([label, value], index) => (
+                    <tr key={`${label}-${index}`} className="border-b last:border-0">
+                      <td className="w-56 py-2 pr-4 font-semibold text-[#57123f] align-top">
+                        {formatDetailLabel(label)}
+                      </td>
+                      <td className="py-2 text-gray-700 whitespace-pre-wrap break-words">
+                        {formatDetailValue(value)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
       {showMessageModal && messageRow && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl w-full max-w-md relative">
@@ -1219,125 +1327,16 @@ const ServiceProcessingPage = () => {
               <div className="mb-8">
                 <table className="w-full border-collapse text-sm">
                   <tbody>
-                    <tr>
-                      <td className="font-semibold text-[#57123f] py-2 px-3 w-32">CNIC</td>
-                      <td className="py-2 px-3">{selectedRow.personalId?.cnic}</td>
-                    </tr>
-                    {selectedRow.formFields && Object.entries(selectedRow.formFields).flatMap(([key, value]) => {
-                      // List of keys to remove (case-insensitive, ignore underscores)
-                      const removeKeys = [
-                        'cnic members front',
-                        'cnic members back',
-                        'qualification',
-                        'certificates',
-                        'executive body list',
-                        'rent agreement',
-                        'cnicgroups'
-                      ];
-                      // Helper to normalize key for comparison
-                      const normalize = s => s.replace(/_/g, ' ').toLowerCase();
-                      // Remove unwanted main keys
-                      if (removeKeys.includes(normalize(key))) {
-                        return null;
-                      }
-                      // Special handling for cnicGroups[0][front/back]
-                      if (normalize(key) === 'cnicgroups' && Array.isArray(value) && value.length > 0) {
-                        // Remove front/back fields from first group
-                        const filteredEntries = Object.entries(value[0]).filter(([k, v]) => {
-                          const nk = k.replace(/_/g, ' ').toLowerCase();
-                          // Remove front/back and any file fields
-                          if (nk === 'front' || nk === 'back') return false;
-                          if (typeof v === 'string' && (v.match(/\.(jpg|jpeg|png)$/i) || v.match(/\.pdf$/i))) return false;
-                          return true;
-                        });
-                        if (filteredEntries.length === 0) return null;
-                        return [
-                          <tr key={key}>
-                            <td className="font-semibold text-[#57123f] py-2 px-3">{key.replace(/_/g, ' ')}</td>
-                            <td className="py-2 px-3">
-                              {filteredEntries.map(([k, v], i) => (
-                                <div key={k} className="text-xs text-gray-700"><span className="font-medium">{k.charAt(0).toUpperCase() + k.slice(1)}:</span> {v}</div>
-                              ))}
-                            </td>
-                          </tr>
-                        ];
-                      }
-                      if (key === 'additionalMembers' && Array.isArray(value)) {
-                        return value.flatMap((member, idx) => {
-                          // Remove unwanted member fields and file fields
-                          const filteredMember = Object.entries(member).filter(([mKey, mVal]) => {
-                            const nmKey = mKey.replace(/_/g, ' ').toLowerCase();
-                            if (removeKeys.includes(nmKey)) return false;
-                            if (typeof mVal === 'string' && (mVal.match(/\.(jpg|jpeg|png)$/i) || mVal.match(/\.pdf$/i))) return false;
-                            return true;
-                          });
-                          if (filteredMember.length === 0) return null;
-                          return [
-                            <tr key={`member-${idx}`}>
-                              <td className="font-semibold text-[#57123f] py-2 px-3" colSpan={2}>
-                                {`Member ${idx + 1} Detail`}
-                              </td>
-                            </tr>,
-                            ...filteredMember.map(([mKey, mVal]) => (
-                              <tr key={`member-${idx}-${mKey}`}>
-                                <td className="font-semibold text-[#57123f] py-2 px-3">{mKey.replace(/_/g, ' ')}</td>
-                                <td className="py-2 px-3">
-                                  <span className="text-gray-600">{typeof mVal === 'string' ? mVal : JSON.stringify(mVal)}</span>
-                                </td>
-                              </tr>
-                            ))
-                          ];
-                        });
-                      } else {
-                        // If the value is a file (image/pdf), skip rendering
-                        if (typeof value === 'string' && (value.match(/\.(jpg|jpeg|png)$/i) || value.match(/\.pdf$/i))) {
-                          return null;
-                        }
-                        // If the value is an array, filter out file fields
-                        if (Array.isArray(value)) {
-                          const filteredItems = value.filter(item => !(typeof item === 'string' && (item.match(/\.(jpg|jpeg|png)$/i) || item.match(/\.pdf$/i))));
-                          if (filteredItems.length === 0) return null;
-                          return filteredItems.map((item, i) => (
-                            <tr key={`${key}-${i}`}>
-                              <td className="font-semibold text-[#57123f] py-2 px-3">{key.replace(/_/g, ' ')}</td>
-                              <td className="py-2 px-3">
-                                {typeof item === 'object' && item !== null ? (
-                                  Object.entries(item).map(([k, v]) => (
-                                    <div key={k} className="text-xs text-gray-700"><span className="font-medium">{k.charAt(0).toUpperCase() + k.slice(1)}:</span> {v}</div>
-                                  ))
-                                ) : (
-                                  <span className="text-gray-600">{String(item)}</span>
-                                )}
-                              </td>
-                            </tr>
-                          ));
-                        }
-                        // If the value is an object, show its entries (skip file fields)
-                        if (typeof value === 'object' && value !== null) {
-                          const filteredObj = Object.entries(value).filter(([k, v]) => !(typeof v === 'string' && (v.match(/\.(jpg|jpeg|png)$/i) || v.match(/\.pdf$/i))));
-                          if (filteredObj.length === 0) return null;
-                          return (
-                            <tr key={key}>
-                              <td className="font-semibold text-[#57123f] py-2 px-3">{key.replace(/_/g, ' ')}</td>
-                              <td className="py-2 px-3">
-                                {filteredObj.map(([k, v]) => (
-                                  <div key={k} className="text-xs text-gray-700"><span className="font-medium">{k.charAt(0).toUpperCase() + k.slice(1)}:</span> {v}</div>
-                                ))}
-                              </td>
-                            </tr>
-                          );
-                        }
-                        // Otherwise, show the text value
-                        return (
-                          <tr key={key}>
-                            <td className="font-semibold text-[#57123f] py-2 px-3">{key.replace(/_/g, ' ')}</td>
-                            <td className="py-2 px-3">
-                              <span className="text-gray-600">{typeof value === 'string' ? value : JSON.stringify(value)}</span>
-                            </td>
-                          </tr>
-                        );
-                      }
-                    })}
+                    {getServiceDetailRows(selectedRow).map(([label, value], index) => (
+                      <tr key={`${label}-${index}`}>
+                        <td className="font-semibold text-[#57123f] py-2 px-3 w-44 align-top">
+                          {formatDetailLabel(label)}
+                        </td>
+                        <td className="py-2 px-3 break-words">
+                          {formatDetailValue(value)}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

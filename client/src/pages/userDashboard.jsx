@@ -196,7 +196,8 @@ const UserDashboard = () => {
     doc.setFillColor(243, 232, 255); // #f3e8ff
     doc.rect(15, y, 180, 8, 'F');
     doc.setTextColor(87, 18, 63);
-    doc.text('Service', 25, y + 6);
+    doc.text('No.', 20, y + 6);
+    doc.text('Service', 35, y + 6);
     doc.text('Price', 170, y + 6);
     y += 12;
     // Table rows
@@ -204,7 +205,8 @@ const UserDashboard = () => {
     selected.forEach((s, i) => {
       const price = serviceData.prices[s.serviceTitle] || s.paymentAmount || 'N/A';
       doc.setTextColor(40, 40, 40);
-      doc.text(`${i + 1}. ${s.serviceTitle || 'Service'}`, 25, y);
+      doc.text(String(i + 1), 20, y);
+      doc.text(s.serviceTitle || 'Service', 35, y);
       doc.text(`${price} PKR`, 170, y);
       y += 8;
     });
@@ -290,6 +292,7 @@ const UserDashboard = () => {
               <table className="w-full text-sm rounded-xl overflow-hidden min-w-[500px] block md:table">
                 <thead>
                   <tr className="text-left text-gray-600 border-b bg-[#faf5ff]">
+                    <th className="py-2 px-2">No.</th>
                     <th className="py-2 px-2">Name</th>
                     <th className="py-2 px-2">Member</th>
                     <th className="py-2 px-2">Status</th>
@@ -312,6 +315,7 @@ const UserDashboard = () => {
                           className={`border-b ${idx % 2 === 0 ? "bg-white" : "bg-[#f9f5fc]"
                             } hover:bg-[#f3e8ff]/40 transition`}
                         >
+                          <td className="py-2 px-2 font-semibold text-gray-500">{idx + 1}</td>
                           <td className="py-2 px-2 font-medium">
                             {service.serviceTitle || "N/A"}
                           </td>
@@ -438,7 +442,7 @@ const UserDashboard = () => {
                         checked={selectedDueRows.includes(s._id || s.serviceTitle)}
                         onChange={() => handleDueSelectRow(s._id || s.serviceTitle)}
                       />
-                      <span>{s.serviceTitle || 'Service'}</span>
+                      <span>{i + 1}. {s.serviceTitle || 'Service'}</span>
                     </div>
                     <span className="ml-2 text-[#57123f] font-semibold">{serviceData.prices[s.serviceTitle] ? `${serviceData.prices[s.serviceTitle]} PKR` : (s.paymentAmount ? `${s.paymentAmount} PKR` : 'N/A')}</span>
                   </div>
@@ -469,7 +473,7 @@ const UserDashboard = () => {
                     <ul className="list-disc list-inside text-sm">
                       {dueServices.filter(s => selectedDueRows.includes(s._id || s.serviceTitle)).map((s, i) => (
                         <li key={s._id || i} className="flex justify-between items-center">
-                          <span>{s.serviceTitle || 'Service'}</span>
+                          <span>{i + 1}. {s.serviceTitle || 'Service'}</span>
                           <span className="ml-2 text-[#57123f] font-semibold">{s.paymentAmount ? `${s.paymentAmount} PKR` : 'N/A'}</span>
                         </li>
                       ))}
@@ -543,6 +547,7 @@ const UserDashboard = () => {
                       onChange={handleSelectAll}
                     />
                   </th>
+                  <th className="p-2 sm:p-3 font-bold uppercase tracking-wider text-xs text-left">No.</th>
                   <th className="p-2 sm:p-3 font-bold uppercase tracking-wider text-xs text-left">Name</th>
                   <th className="p-2 sm:p-3 font-bold uppercase tracking-wider text-xs text-left">Payment Status</th>
                   <th className="p-2 sm:p-3 font-bold uppercase tracking-wider text-xs text-left">Services</th>
@@ -568,6 +573,9 @@ const UserDashboard = () => {
                             checked={selectedRows.includes(rowId)}
                             onChange={() => handleSelectRow(rowId)}
                           />
+                        </td>
+                        <td className="p-2 sm:p-3 font-semibold text-gray-500 align-middle">
+                          {index + 1}
                         </td>
 
                         <td className="p-2 sm:p-3 font-semibold text-[#57123f] align-middle">
