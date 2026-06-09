@@ -9,6 +9,7 @@ const LeadSchema = new mongoose.Schema({
     statusChangedAt: { type: Date, default: Date.now },
     service: { type: String },
     assigned: String,
+    leadSource: String,
     assignmentHistory: [
         {
             from: String,

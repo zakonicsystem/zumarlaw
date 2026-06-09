@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { FaEye, FaEdit, FaTrash, FaInfoCircle, FaComments } from 'react-icons/fa';
+import { FaEye, FaEdit, FaTrash, FaComments, FaHistory } from 'react-icons/fa';
 import { serviceData } from '../../data/serviceSchemas';
 import { toast } from 'react-hot-toast';
 import api from '../../utils/api';
+import { getFollowUpDate, getFollowUpStageLabel } from '../../utils/leadTabs';
 
 const LeadsTable = ({
   leads = [],
@@ -16,10 +17,13 @@ const LeadsTable = ({
   tableTitle = '',
   showFollowUpReportAction = false,
   onFollowUpReport,
+  showFollowUpColumns = false,
 }) => {
   const [editModal, setEditModal] = useState({ open: false, lead: null });
   const [viewModal, setViewModal] = useState({ open: false, lead: null });
+  const [historyModal, setHistoryModal] = useState({ open: false, lead: null });
   const isEmployee = !!localStorage.getItem('employeeToken');
+  const emptyColSpan = showFollowUpColumns ? 9 : 7;
 
   const formatLeadDateTime = (lead) => {
     const dateValue = lead.statusChangedAt || lead.createdAt || lead.date;
@@ -34,6 +38,34 @@ const LeadsTable = ({
       minute: '2-digit'
     });
   };
+
+  const formatDateOnly = (value) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleDateString([], {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit'
+    });
+  };
+
+  const fieldRows = (lead = {}) => [
+    ['Name', lead.name],
+    ['Email', lead.email],
+    ['Phone', lead.phone],
+    ['Status', lead.status],
+    ['Service Interested', lead.service],
+    ['Assigned To', lead.assigned],
+    ['Lead Source', lead.leadSource],
+    ['Registered Date', formatLeadDateTime(lead)],
+    ['Status Changed', formatLeadDateTime({ createdAt: lead.statusChangedAt })],
+    ['Follow-up Stage', getFollowUpStageLabel(lead)],
+    ['Follow-up Date', formatDateOnly(getFollowUpDate(lead))],
+    ['Referral Name', lead.referralName],
+    ['Referral Phone', lead.referralPhone],
+    ['Remarks', lead.remarks],
+  ];
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
@@ -71,6 +103,12 @@ const LeadsTable = ({
               <th className="p-3">Name And Email</th>
               <th className="p-3">Phone & Registered</th>
               <th className="p-3">Status</th>
+              {showFollowUpColumns && (
+                <>
+                  <th className="p-3">Follow-up</th>
+                  <th className="p-3">Follow-up Date</th>
+                </>
+              )}
               <th className="p-3">Service Interested</th>
               <th className="p-3">Assigned To</th>
               <th className="p-3">Action</th>
@@ -108,6 +146,16 @@ const LeadsTable = ({
                       ))}
                     </select>
                   </td>
+                  {showFollowUpColumns && (
+                    <>
+                      <td className="p-2">
+                        <span className="inline-flex rounded-full bg-purple-50 px-2 py-1 text-xs font-semibold text-[#57123f]">
+                          {getFollowUpStageLabel(lead)}
+                        </span>
+                      </td>
+                      <td className="p-2 text-xs text-gray-700">{formatDateOnly(getFollowUpDate(lead))}</td>
+                    </>
+                  )}
                   <td className="p-2">{lead.service}</td>
                   <td className="p-2">{lead.assigned || '-'}</td>
 
@@ -127,6 +175,13 @@ const LeadsTable = ({
                       onClick={() => setViewModal({ open: true, lead })}
                     >
                       <FaEye />
+                    </button>
+                    <button
+                      className="rounded-full hover:bg-gray-100 text-[#57123f]"
+                      title="Lead history"
+                      onClick={() => setHistoryModal({ open: true, lead })}
+                    >
+                      <FaHistory />
                     </button>
                     <button
                       className={`rounded-full hover:bg-gray-100 text-[#57123f] ${isEmployee ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -149,7 +204,7 @@ const LeadsTable = ({
               ))
             ) : (
               <tr>
-                <td colSpan={8} className="p-4 text-center text-gray-500">No leads found.</td>
+                <td colSpan={emptyColSpan} className="p-4 text-center text-gray-500">No leads found.</td>
               </tr>
             )}
           </tbody>
@@ -303,6 +358,64 @@ const LeadsTable = ({
               <button
                 className="px-4 py-2 rounded bg-gray-200 text-gray-700"
                 onClick={() => setViewModal({ open: false, lead: null })}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {historyModal.open && (
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center bg-black bg-opacity-30 p-4">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <FaHistory className="text-[#57123f]" /> Lead History
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              {fieldRows(historyModal.lead).map(([label, value]) => (
+                <div key={label} className="rounded border border-gray-200 p-3">
+                  <div className="text-xs font-semibold uppercase text-gray-500">{label}</div>
+                  <div className="mt-1 text-gray-800 whitespace-pre-wrap">{value || 'N/A'}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5">
+              <h4 className="font-semibold text-[#57123f]">Status History</h4>
+              {Array.isArray(historyModal.lead?.statusHistory) && historyModal.lead.statusHistory.length > 0 ? (
+                <div className="mt-2 space-y-2">
+                  {historyModal.lead.statusHistory.slice().reverse().map((item, index) => (
+                    <div key={item._id || index} className="rounded border border-gray-200 p-2 text-xs">
+                      <span className="font-semibold">{item.from || 'N/A'}</span> to <span className="font-semibold">{item.to || 'N/A'}</span>
+                      <span className="text-gray-500"> by {item.changedBy || 'System'} on {formatDateOnly(item.changedAt)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-gray-600">No status history.</p>
+              )}
+            </div>
+            <div className="mt-5">
+              <h4 className="font-semibold text-[#57123f]">Follow-up Reports</h4>
+              {Array.isArray(historyModal.lead?.followUps) && historyModal.lead.followUps.length > 0 ? (
+                <div className="mt-2 space-y-2">
+                  {historyModal.lead.followUps.slice().reverse().map((followUp, index) => (
+                    <div key={followUp._id || index} className="rounded border border-gray-200 p-3 text-sm">
+                      <div className="font-semibold text-[#57123f]">
+                        {followUp.employeeName || 'Employee'} - {followUp.createdAt ? new Date(followUp.createdAt).toLocaleString() : ''}
+                      </div>
+                      <div className="mt-1 text-gray-700">{followUp.customerReport}</div>
+                      <div className="mt-1 text-xs text-gray-500">Next: {formatDateOnly(followUp.nextFollowUpAt)}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-gray-600">No follow-up reports.</p>
+              )}
+            </div>
+            <div className="flex justify-end mt-6">
+              <button
+                className="px-4 py-2 rounded bg-gray-200 text-gray-700"
+                onClick={() => setHistoryModal({ open: false, lead: null })}
               >
                 Close
               </button>

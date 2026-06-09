@@ -6,12 +6,21 @@ const router = express.Router();
 router.use(tryVerify);
 const NEW_LEAD_FOLLOW_UP_DAYS = 2;
 const NEW_STATUSES = ['New', 'New Lead'];
+const FOLLOW_UP_STATUSES = ['Follow-up', 'Follow-ups', 'Followup'];
 
-const normalizeLead = (lead = {}) => ({
-    ...lead,
-    status: lead.status || 'New',
-    statusChangedAt: lead.statusChangedAt || lead.createdAt || new Date()
-});
+const isFollowUpStatus = (status) => FOLLOW_UP_STATUSES.includes(String(status || ''));
+
+const normalizeLead = (lead = {}) => {
+    const status = lead.status || 'New';
+    const statusChangedAt = lead.statusChangedAt || lead.createdAt || new Date();
+
+    return {
+        ...lead,
+        status,
+        statusChangedAt,
+        autoFollowUpAt: lead.autoFollowUpAt || (isFollowUpStatus(status) ? statusChangedAt : undefined)
+    };
+};
 
 const moveOldNewLeadsToFollowUp = async () => {
     const cutoff = new Date(Date.now() - NEW_LEAD_FOLLOW_UP_DAYS * 24 * 60 * 60 * 1000);
@@ -123,6 +132,9 @@ router.put('/:id/status', async (req, res) => {
         if (!employeeCanAccessLead(req, existing)) {
             return sendForbiddenLead(res);
         }
+        if (isFollowUpStatus(status) && !existing.autoFollowUpAt) {
+            update.autoFollowUpAt = statusChangedAt;
+        }
 
         const mongoUpdate = { $set: update };
         if (String(existing.status || '') !== String(status || '')) {
@@ -194,7 +206,11 @@ router.post('/:id/followups', async (req, res) => {
         const lead = await Lead.findByIdAndUpdate(
             id,
             {
-                $set: { status: 'Follow-up', statusChangedAt: new Date() },
+                $set: {
+                    status: 'Follow-up',
+                    statusChangedAt: new Date(),
+                    autoFollowUpAt: followUp.nextFollowUpAt || existing.autoFollowUpAt || followUp.createdAt
+                },
                 $push: { followUps: followUp }
             },
             { new: true }

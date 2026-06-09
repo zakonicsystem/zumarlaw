@@ -9,7 +9,7 @@ import { toast as hotToast } from 'react-hot-toast';
 import ConvertLeadModal from '../../components/leads/ConvertLeadModal';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumbs from '../../components/Breadcrumbs';
-import { getLeadTabs, isFollowUpLeadStatus } from '../../utils/leadTabs';
+import { getFollowUpDate, getFollowUpStageNumber, getLeadTabs, isFollowUpLeadStatus } from '../../utils/leadTabs';
 import api from '../../utils/api';
 import { exportRecordsToCsv } from '../../utils/exportCsv';
 
@@ -17,6 +17,9 @@ const FollowupLeads = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('Follow-up Leads');
+  const [followUpStage, setFollowUpStage] = useState(1);
+  const [followUpDateFilter, setFollowUpDateFilter] = useState('all');
+  const [followUpDate, setFollowUpDate] = useState('');
   const [leads, setLeads] = useState([]);
   const [editModal, setEditModal] = useState({ open: false, lead: null });
   const [followUpModal, setFollowUpModal] = useState({ open: false, lead: null });
@@ -58,19 +61,6 @@ const FollowupLeads = () => {
   };
 
   const [selectedRows, setSelectedRows] = useState([]);
-  const allRowIds = leads
-    .filter(lead => isFollowUpLeadStatus(lead.status))
-    .map(lead => `${lead._id}`);
-  const isAllSelected = selectedRows.length === allRowIds.length && allRowIds.length > 0;
-
-  const handleSelectAll = () => {
-    if (isAllSelected) setSelectedRows([]);
-    else setSelectedRows(allRowIds);
-  };
-
-  const handleSelectRow = (rowId) => {
-    setSelectedRows(prev => prev.includes(rowId) ? prev.filter(id => id !== rowId) : [...prev, rowId]);
-  };
 
   const handleStatusChange = async (leadId, value) => {
     // find the lead for phone number
@@ -103,11 +93,7 @@ const FollowupLeads = () => {
 
     // Update local state regardless (optimistic)
     setLeads(prev => {
-      // Update status and remove from current page if status changes
-      let updated = prev.map(lead => lead._id === leadId ? { ...lead, ...(updatedLead || {}), status: value } : lead);
-      // Only keep follow-up leads in the current page
-      updated = updated.filter(lead => isFollowUpLeadStatus(lead.status));
-      return updated;
+      return prev.map(lead => lead._id === leadId ? { ...lead, ...(updatedLead || {}), status: value } : lead);
     });
   };
 
@@ -173,7 +159,7 @@ const FollowupLeads = () => {
       handleDeleteLead(lead._id);
     } else {
       toast.success(`${type} action triggered for ${lead.name}`);
-    }  
+    }
   };
 
   const tabs = getLeadTabs(leads);
@@ -181,16 +167,54 @@ const FollowupLeads = () => {
   // Only show leads with status 'Follow-up' or 'Follow-ups'
   const followupLeads = leads.filter(lead => isFollowUpLeadStatus(lead.status));
 
+  const followUpStageTabs = [
+    { label: 'First Follow-up', value: 1, count: followupLeads.filter((lead) => getFollowUpStageNumber(lead) === 1).length },
+    { label: '2nd Follow-up', value: 2, count: followupLeads.filter((lead) => getFollowUpStageNumber(lead) === 2).length },
+    { label: '3rd Follow-up', value: 3, count: followupLeads.filter((lead) => getFollowUpStageNumber(lead) === 3).length },
+  ];
+
+  const toDateKey = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString().slice(0, 10);
+  };
+
+  const matchesFollowUpDateFilter = (lead) => {
+    const dateKey = toDateKey(getFollowUpDate(lead));
+    if (!dateKey) return followUpDateFilter === 'all' && !followUpDate;
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (followUpDate && dateKey !== followUpDate) return false;
+    if (followUpDateFilter === 'today') return dateKey === today;
+    if (followUpDateFilter === 'overdue') return dateKey < today;
+    if (followUpDateFilter === 'upcoming') return dateKey > today;
+    return true;
+  };
+
   // Filter followupLeads based on searchTerm (name, phone, CNIC, email)
   const filteredLeads = followupLeads.filter(lead => {
     const term = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = (
       (lead.name && lead.name.toLowerCase().includes(term)) ||
       (lead.phone && lead.phone.toLowerCase().includes(term)) ||
       (lead.cnic && lead.cnic.toLowerCase().includes(term)) ||
       (lead.email && lead.email.toLowerCase().includes(term))
     );
+    return getFollowUpStageNumber(lead) === followUpStage && matchesSearch && matchesFollowUpDateFilter(lead);
   });
+
+  const allRowIds = filteredLeads.map(lead => `${lead._id}`);
+  const isAllSelected = selectedRows.length === allRowIds.length && allRowIds.length > 0;
+
+  const handleSelectAll = () => {
+    if (isAllSelected) setSelectedRows([]);
+    else setSelectedRows(allRowIds);
+  };
+
+  const handleSelectRow = (rowId) => {
+    setSelectedRows(prev => prev.includes(rowId) ? prev.filter(id => id !== rowId) : [...prev, rowId]);
+  };
 
   // Get dynamic fields for selected service
   const getServiceFields = (service) => {
@@ -245,17 +269,17 @@ const FollowupLeads = () => {
         formData.append(key, value);
       }
     });
-      // Add dynamic fields
-      Object.entries(convertFields).forEach(([key, value]) => {
-        // For remainingAmount, always recalculate to ensure backend gets correct value
-        if (key === 'remainingAmount') {
-          const total = Number(convertFields.totalPayment) || 0;
-          const current = Number(convertFields.currentReceivingPayment) || 0;
-          formData.append('remainingAmount', Math.max(total - current, 0));
-        } else {
-          formData.append(key, value);
-        }
-      });
+    // Add dynamic fields
+    Object.entries(convertFields).forEach(([key, value]) => {
+      // For remainingAmount, always recalculate to ensure backend gets correct value
+      if (key === 'remainingAmount') {
+        const total = Number(convertFields.totalPayment) || 0;
+        const current = Number(convertFields.currentReceivingPayment) || 0;
+        formData.append('remainingAmount', Math.max(total - current, 0));
+      } else {
+        formData.append(key, value);
+      }
+    });
     // Add files
     Object.entries(convertFiles).forEach(([key, file]) => {
       if (file) formData.append(key, file);
@@ -291,22 +315,22 @@ const FollowupLeads = () => {
     <div className="w-auto space-y-5 py-6 bg-white">
 
       {/* Breadcrumb */}
-     <Breadcrumbs items={[
-       { label: 'Dashboard', link: '/admin' },
-       { label: 'Leads Management', link: '/admin/leads' },
-       { label: 'Followup Leads' }
-     ]} />
+      <Breadcrumbs items={[
+        { label: 'Dashboard', link: '/admin' },
+        { label: 'Leads Management', link: '/admin/leads' },
+        { label: 'Followup Leads' }
+      ]} />
 
-    <LeadsHeaderButtons
-      title='Followup Leads'
-      onAdd={() => navigate('/admin/leads/add')}
-      onImport={() => navigate('/admin/leads/import')}
-      setConvertModal={setConvertModal}
-      selectedRows={selectedRows}
-      convertFindLeads={followupLeads}
-      toast={window.toast && window.toast.error ? window.toast : { error: (msg) => hotToast.error(msg) }}
-      onExport={() => exportRecordsToCsv('followup-leads.csv', filteredLeads)}
-    />
+      <LeadsHeaderButtons
+        title='Followup Leads'
+        onAdd={() => navigate('/admin/leads/add')}
+        onImport={() => navigate('/admin/leads/import')}
+        setConvertModal={setConvertModal}
+        selectedRows={selectedRows}
+        convertFindLeads={followupLeads}
+        toast={window.toast && window.toast.error ? window.toast : { error: (msg) => hotToast.error(msg) }}
+        onExport={() => exportRecordsToCsv('followup-leads.csv', filteredLeads)}
+      />
 
       {/* Search Bar & Tabs */}
       <LeadsSearchBar
@@ -316,6 +340,58 @@ const FollowupLeads = () => {
         currentPage={activeTab}
         onPageClick={setActiveTab}
       />
+
+      <div className="flex flex-col gap-3 border-y border-gray-200 py-4">
+        <div className="flex flex-wrap gap-2">
+          {followUpStageTabs.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => {
+                setFollowUpStage(tab.value);
+                setSelectedRows([]);
+              }}
+              className={`px-4 py-2 text-xs rounded-full border font-semibold ${
+                followUpStage === tab.value
+                  ? 'bg-[#57123f] text-white border-[#57123f]'
+                  : 'bg-gray-100 text-gray-800 border-gray-300'
+              }`}
+            >
+              {tab.label} <span className="ml-1">({tab.count})</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={followUpDateFilter}
+            onChange={(e) => setFollowUpDateFilter(e.target.value)}
+            className="border rounded px-3 py-2 text-sm"
+          >
+            <option value="all">All follow-up dates</option>
+            <option value="today">Today</option>
+            <option value="overdue">Overdue</option>
+            <option value="upcoming">Upcoming</option>
+          </select>
+          <input
+            type="date"
+            value={followUpDate}
+            onChange={(e) => setFollowUpDate(e.target.value)}
+            className="border rounded px-3 py-2 text-sm"
+          />
+          {(followUpDateFilter !== 'all' || followUpDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                setFollowUpDateFilter('all');
+                setFollowUpDate('');
+              }}
+              className="px-3 py-2 rounded bg-gray-100 text-sm text-gray-700"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
 
     
       <LeadsTable
@@ -327,6 +403,7 @@ const FollowupLeads = () => {
         onAction={handleAction}
         isAllSelected={isAllSelected}
         showFollowUpReportAction
+        showFollowUpColumns
         onFollowUpReport={openFollowUpModal}
       />
       {followUpModal.open && (
@@ -386,29 +463,29 @@ const FollowupLeads = () => {
           </form>
         </div>
       )}
-   
-    
 
-       <ConvertLeadModal
-       open={convertModal.open}
-       lead={convertModal.lead}
-       convertFields={convertFields}
-       convertFiles={convertFiles}
-       memberCnics={memberCnics}
-       memberDetails={memberDetails}
-       submittingConvert={submittingConvert}
-       onClose={() => setConvertModal({ open: false, lead: null })}
-       onFieldChange={handleConvertFieldChange}
-       onFileChange={handleConvertFileChange}
-       onMemberCnicFileChange={handleMemberCnicFileChange}
-       onAddMemberCnic={handleAddMemberCnic}
-       onRemoveMemberCnic={handleRemoveMemberCnic}
-       onAddMemberDetail={handleAddMemberDetail}
-       onRemoveMemberDetail={handleRemoveMemberDetail}
-       onMemberDetailChange={handleMemberDetailChange}
-       onSubmit={handleConvertSubmit}
-       getServiceFields={getServiceFields}
-     />
+
+
+      <ConvertLeadModal
+        open={convertModal.open}
+        lead={convertModal.lead}
+        convertFields={convertFields}
+        convertFiles={convertFiles}
+        memberCnics={memberCnics}
+        memberDetails={memberDetails}
+        submittingConvert={submittingConvert}
+        onClose={() => setConvertModal({ open: false, lead: null })}
+        onFieldChange={handleConvertFieldChange}
+        onFileChange={handleConvertFileChange}
+        onMemberCnicFileChange={handleMemberCnicFileChange}
+        onAddMemberCnic={handleAddMemberCnic}
+        onRemoveMemberCnic={handleRemoveMemberCnic}
+        onAddMemberDetail={handleAddMemberDetail}
+        onRemoveMemberDetail={handleRemoveMemberDetail}
+        onMemberDetailChange={handleMemberDetailChange}
+        onSubmit={handleConvertSubmit}
+        getServiceFields={getServiceFields}
+      />
     </div>
   );
 };
