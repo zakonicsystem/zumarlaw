@@ -5,7 +5,10 @@ import PersonalDetail from '../models/PersonalDetail.js';
 import ServiceDetail from '../models/Service.js';
 import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js';
 import { sendInvoiceAndCertificate } from '../controllers/serviceController.js';
-import { servicePrices } from '../data/servicePrices.js';
+import {
+  getConfiguredServicePrice,
+  getServicePriceSnapshot,
+} from '../data/servicePrices.js';
 import { notifyPaymentReceived } from '../utils/paymentNotification.js';
 
 const router = express.Router();
@@ -99,6 +102,7 @@ router.post('/invoices', verifyJWT, upload.any(), async (req, res) => {
     // 🔽 Save main service entry
 
     // For direct service (AddServiceDetails.jsx), set isManualSubmission: false
+    const configuredPrice = getConfiguredServicePrice(serviceTitle);
     const service = new ServiceDetail({
       serviceTitle,
       formFields: dynamicFields,
@@ -106,7 +110,12 @@ router.post('/invoices', verifyJWT, upload.any(), async (req, res) => {
       userId: userId, // ✅ FIXED FIELD NAME
       status: 'pending',
       paymentStatus: 'pending',
-      assignedTo: ''
+      assignedTo: '',
+      pricing: {
+        totalPayment: configuredPrice,
+        currentReceivingPayment: 0,
+        remainingAmount: configuredPrice,
+      },
     });
 
     await service.save();
@@ -168,14 +177,7 @@ router.get('/service', async (req, res) => {
     const transformedEntries = entries.map((entry) => {
       const obj = entry.toObject ? entry.toObject() : entry;
 
-      // Calculate total payment from serviceTitle if not already set
-      let totalPayment = obj.pricing?.totalPayment || 0;
-      if (!totalPayment && obj.serviceTitle && servicePrices[obj.serviceTitle]) {
-        totalPayment = servicePrices[obj.serviceTitle];
-        if (Array.isArray(totalPayment)) {
-          totalPayment = totalPayment[0]; // Take first value for ranges
-        }
-      }
+      const totalPayment = getServicePriceSnapshot(obj);
 
       return {
         ...obj,
@@ -279,9 +281,7 @@ router.get('/processing/:id/payments', async (req, res) => {
         label: 'First Payment',
       });
     }
-    // Calculate totalPayment from servicePrices
-    const serviceTitle = service.serviceTitle || '';
-    const totalPayment = servicePrices[serviceTitle] || 0;
+    const totalPayment = getServicePriceSnapshot(service);
     // Calculate totalPaid and remaining
     const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     const remainingAmount = Math.max(totalPayment - totalPaid, 0);
@@ -365,8 +365,7 @@ router.post('/processing/:id/payments', async (req, res) => {
       label: service.payments.length === 0 ? 'First Payment' : service.payments.length === 1 ? 'Second Payment' : `Payment ${service.payments.length + 1}`
     });
     // Update pricing summary
-    const serviceTitle = service.serviceTitle || '';
-    const totalPayment = servicePrices[serviceTitle] || 0;
+    const totalPayment = getServicePriceSnapshot(service);
     const totalPaid = service.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     if (!service.pricing) service.pricing = {};
     service.pricing.currentReceivingPayment = totalPaid;
@@ -386,10 +385,6 @@ router.post('/processing/:id/payments', async (req, res) => {
       phone: populatedService?.personalId?.phone,
       userId: populatedService?.userId,
       serviceId: populatedService?._id,
-    });
-    Object.entries(historyPush).forEach(([key, value]) => {
-      service[key] = service[key] || [];
-      service[key].push(value);
     });
     res.json({ success: true, payments: service.payments, pricing: service.pricing });
   } catch (err) {
@@ -412,8 +407,7 @@ router.delete('/processing/:id/payments/:paymentIdx', async (req, res) => {
       p.label = idx === 0 ? 'First Payment' : idx === 1 ? 'Second Payment' : `Payment ${idx + 1}`;
     });
     // Update pricing summary
-    const serviceTitle = service.serviceTitle || '';
-    const totalPayment = servicePrices[serviceTitle] || 0;
+    const totalPayment = getServicePriceSnapshot(service);
     const totalPaid = service.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     if (!service.pricing) service.pricing = {};
     // Use last payment for method/person/date if exists
@@ -452,8 +446,7 @@ router.patch('/processing/:id/payments/:paymentIdx', async (req, res) => {
     // Update label if needed
     payment.label = payment.label || (paymentIdx == 0 ? 'First Payment' : paymentIdx == 1 ? 'Second Payment' : `Payment ${Number(paymentIdx) + 1}`);
     // Update pricing summary
-    const serviceTitle = service.serviceTitle || '';
-    const totalPayment = servicePrices[serviceTitle] || 0;
+    const totalPayment = getServicePriceSnapshot(service);
     const totalPaid = service.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
     if (!service.pricing) service.pricing = {};
     service.pricing.currentReceivingPayment = totalPaid;

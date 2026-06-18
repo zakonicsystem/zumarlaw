@@ -145,7 +145,22 @@ const UserDashboard = () => {
   // Calculate due payments
   const dueServices = userServices.filter(s => s.paymentStatus !== 'submit');
   const [selectedDueRows, setSelectedDueRows] = useState([]);
-  const totalDue = dueServices.reduce((sum, s) => sum + (parseFloat(s.paymentAmount) || 0), 0);
+  const getServiceAmount = (service) => {
+    const storedAmount = Number(
+      service?.pricing?.remainingAmount ?? service?.pricing?.totalPayment
+    );
+    if (Number.isFinite(storedAmount) && storedAmount >= 0) {
+      return storedAmount;
+    }
+
+    if (service?.serviceTitle === 'Arms License - All Pakistan (Non-Prohibited Bore)') {
+      return 135000;
+    }
+
+    const configuredAmount = serviceData.prices[service?.serviceTitle];
+    return Array.isArray(configuredAmount) ? configuredAmount[0] : Number(configuredAmount || 0);
+  };
+  const totalDue = dueServices.reduce((sum, service) => sum + getServiceAmount(service), 0);
 
   // Handler for due payment checkboxes
   const handleDueSelectRow = (id) => {
@@ -203,7 +218,7 @@ const UserDashboard = () => {
     // Table rows
     const selected = dueServices.filter(s => selectedDueRows.includes(s._id || s.serviceTitle));
     selected.forEach((s, i) => {
-      const price = serviceData.prices[s.serviceTitle] || s.paymentAmount || 'N/A';
+      const price = getServiceAmount(s) || 'N/A';
       doc.setTextColor(40, 40, 40);
       doc.text(String(i + 1), 20, y);
       doc.text(s.serviceTitle || 'Service', 35, y);
@@ -444,7 +459,7 @@ const UserDashboard = () => {
                       />
                       <span>{i + 1}. {s.serviceTitle || 'Service'}</span>
                     </div>
-                    <span className="ml-2 text-[#57123f] font-semibold">{serviceData.prices[s.serviceTitle] ? `${serviceData.prices[s.serviceTitle]} PKR` : (s.paymentAmount ? `${s.paymentAmount} PKR` : 'N/A')}</span>
+                    <span className="ml-2 text-[#57123f] font-semibold">{getServiceAmount(s) ? `${getServiceAmount(s)} PKR` : 'N/A'}</span>
                   </div>
                 ))
               ))
@@ -474,7 +489,7 @@ const UserDashboard = () => {
                       {dueServices.filter(s => selectedDueRows.includes(s._id || s.serviceTitle)).map((s, i) => (
                         <li key={s._id || i} className="flex justify-between items-center">
                           <span>{i + 1}. {s.serviceTitle || 'Service'}</span>
-                          <span className="ml-2 text-[#57123f] font-semibold">{s.paymentAmount ? `${s.paymentAmount} PKR` : 'N/A'}</span>
+                          <span className="ml-2 text-[#57123f] font-semibold">{getServiceAmount(s) ? `${getServiceAmount(s)} PKR` : 'N/A'}</span>
                         </li>
                       ))}
                     </ul>

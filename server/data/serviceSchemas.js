@@ -28,7 +28,7 @@ export const serviceData = Object.freeze({
     'NGO/NPO Registration': 200000,
     'Registration of NGOs/ Charities/ Trusts with Sindh Charity Commission': 200000,
     'Arms License - Punjab (Non-Prohibited Bore)': 80000,
-    'Arms License - All Pakistan (Non-Prohibited Bore)': 135000,
+    'Arms License - All Pakistan (Non-Prohibited Bore)': 220000,
     'ICT Arms License (Punjab/Islamabad)': 50000,
     'Company Renewal Registration': [30000, 70000],
     'Company Registration PSEB': 25000,
@@ -306,8 +306,8 @@ export const serviceData = Object.freeze({
       { name: 'cnic_copy_front', label: 'CNIC Copy Front', type: 'file' },
       { name: 'cnic_copy_back', label: 'CNIC Copy Back', type: 'file' },
       { name: 'photo', label: 'Photo', type: 'file' },
-      { name: 'medical_certificate', label: 'Medical Certificate (Proposed Arms License)', type: 'file' },
-      { name: 'character_certificate', label: 'Character Certificate (Proposed Arms License)', type: 'file' },
+      { name: 'medical_certificate', label: 'Medical Certificate (Optional)', type: 'file' },
+      { name: 'character_certificate', label: 'Character Certificate (Optional)', type: 'file' },
       { name: 'affidavit', label: 'Affidavit', type: 'file' }
     ],
 
@@ -315,8 +315,8 @@ export const serviceData = Object.freeze({
       { name: 'cnic_copy_front', label: 'CNIC Copy Front', type: 'file' },
       { name: 'cnic_copy_back', label: 'CNIC Copy Back', type: 'file' },
       { name: 'photo', label: 'Photo', type: 'file' },
-      { name: 'medical_certificate', label: 'Medical Certificate (Proposed Arms License)', type: 'file' },
-      { name: 'character_certificate', label: 'Character Certificate (Proposed Arms License)', type: 'file' },
+      { name: 'medical_certificate', label: 'Medical Certificate (Optional)', type: 'file' },
+      { name: 'character_certificate', label: 'Character Certificate (Optional)', type: 'file' },
       { name: 'affidavit', label: 'Affidavit', type: 'file' }
     ],
 
@@ -324,8 +324,8 @@ export const serviceData = Object.freeze({
       { name: 'cnic_copy_front', label: 'CNIC Copy Front', type: 'file' },
       { name: 'cnic_copy_back', label: 'CNIC Copy Back', type: 'file' },
       { name: 'photo', label: 'Photo', type: 'file' },
-      { name: 'medical_certificate', label: 'Medical Certificate (Proposed Arms License)', type: 'file' },
-      { name: 'character_certificate', label: 'Character Certificate (Proposed Arms License)', type: 'file' },
+      { name: 'medical_certificate', label: 'Medical Certificate (Optional)', type: 'file' },
+      { name: 'character_certificate', label: 'Character Certificate (Optional)', type: 'file' },
       { name: 'proof_residence', label: 'Proof of Residence in Islamabad', type: 'file' }
     ],
     'Company Renewal Registration': [

@@ -244,8 +244,8 @@ const serviceFields = {
     { name: 'cnic_copy_front', label: 'CNIC Copy Front', type: 'file' },
     { name: 'cnic_copy_back', label: 'CNIC Copy Back', type: 'file' },
     { name: 'photo', label: 'Photo', type: 'file' },
-    { name: 'medical_certificate', label: 'Medical Certificate (Proposed Arms License)', type: 'file' },
-    { name: 'character_certificate', label: 'Character Certificate (Proposed Arms License)', type: 'file' },
+    { name: 'medical_certificate', label: 'Medical Certificate (Optional)', type: 'file' },
+    { name: 'character_certificate', label: 'Character Certificate (Optional)', type: 'file' },
     { name: 'affidavit', label: 'Affidavit', type: 'file' }
   ],
 
@@ -253,8 +253,8 @@ const serviceFields = {
     { name: 'cnic_copy_front', label: 'CNIC Copy Front', type: 'file' },
     { name: 'cnic_copy_back', label: 'CNIC Copy Back', type: 'file' },
     { name: 'photo', label: 'Photo', type: 'file' },
-    { name: 'medical_certificate', label: 'Medical Certificate (Proposed Arms License)', type: 'file' },
-    { name: 'character_certificate', label: 'Character Certificate (Proposed Arms License)', type: 'file' },
+    { name: 'medical_certificate', label: 'Medical Certificate (Optional)', type: 'file' },
+    { name: 'character_certificate', label: 'Character Certificate (Optional)', type: 'file' },
     { name: 'affidavit', label: 'Affidavit', type: 'file' }
   ],
 
@@ -262,8 +262,8 @@ const serviceFields = {
     { name: 'cnic_copy_front', label: 'CNIC Copy Front', type: 'file' },
     { name: 'cnic_copy_back', label: 'CNIC Copy Back', type: 'file' },
     { name: 'photo', label: 'Photo', type: 'file' },
-    { name: 'medical_certificate', label: 'Medical Certificate (Proposed Arms License)', type: 'file' },
-    { name: 'character_certificate', label: 'Character Certificate (Proposed Arms License)', type: 'file' },
+    { name: 'medical_certificate', label: 'Medical Certificate (Optional)', type: 'file' },
+    { name: 'character_certificate', label: 'Character Certificate (Optional)', type: 'file' },
     { name: 'proof_residence', label: 'Proof of Residence in Islamabad', type: 'file' }
   ],
   'Company Renewal Registration': [

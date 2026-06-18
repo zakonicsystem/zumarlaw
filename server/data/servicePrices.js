@@ -27,7 +27,7 @@ export const servicePrices = {
     'NGO/NPO Registration': 200000,
     'Registration of NGOs/ Charities/ Trusts with Sindh Charity Commission': 200000,
     'Arms License - Punjab (Non-Prohibited Bore)': 80000,
-    'Arms License - All Pakistan (Non-Prohibited Bore)': 135000,
+    'Arms License - All Pakistan (Non-Prohibited Bore)': 220000,
     'ICT Arms License (Punjab/Islamabad)': 50000,
     'Company Renewal Registration': [30000, 70000],
     'Company Registration PSEB': 25000,
@@ -62,4 +62,31 @@ export const servicePrices = {
     'PEC Engineer Registration': 5000,
     'Labour Department Registration': 10000,
     'OEP License': 300000,
+};
+
+const legacyPriceFallbacks = {
+  'Arms License - All Pakistan (Non-Prohibited Bore)': 135000,
+};
+
+const normalizePrice = (price) => {
+  const value = Array.isArray(price) ? price[0] : price;
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+};
+
+export const getConfiguredServicePrice = (serviceTitle) =>
+  normalizePrice(servicePrices[serviceTitle]);
+
+export const getServicePriceSnapshot = (service) => {
+  const storedPrice = Number(service?.pricing?.totalPayment);
+  if (Number.isFinite(storedPrice) && storedPrice > 0) {
+    return storedPrice;
+  }
+
+  const serviceTitle = service?.serviceTitle || service?.serviceType || service?.service || '';
+  if (Object.prototype.hasOwnProperty.call(legacyPriceFallbacks, serviceTitle)) {
+    return legacyPriceFallbacks[serviceTitle];
+  }
+
+  return getConfiguredServicePrice(serviceTitle);
 };

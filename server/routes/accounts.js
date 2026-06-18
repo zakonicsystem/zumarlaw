@@ -7,7 +7,7 @@ import ManualServiceSubmission from '../models/ManualServiceSubmission.js';
 import ConvertedLead from '../models/ConvertedLead.js';
 import Expense from '../models/Expense.js';
 import Challan from '../models/Challan.js';
-import { servicePrices } from '../data/servicePrices.js';
+import { getServicePriceSnapshot } from '../data/servicePrices.js';
 import { notifyPaymentReceived } from '../utils/paymentNotification.js';
 const router = express.Router();
 
@@ -361,7 +361,7 @@ router.get('/services-stats', async (req, res) => {
       }
       if (type === 'processing') {
         const serviceTitle = row.serviceTitle || '';
-        const fixedPrice = servicePrices[serviceTitle] || 0;
+        const fixedPrice = getServicePriceSnapshot(row);
         const formFields = row.formFields || {};
         const personal = row.personalId || {};
         // Use payments/pricing if available

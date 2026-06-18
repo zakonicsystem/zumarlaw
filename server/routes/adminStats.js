@@ -4,7 +4,7 @@ import Lead from '../models/Lead.js';
 import Service from '../models/Service.js';
 import ManualService from '../models/ManualServiceSubmission.js';
 import ConvertedLead from '../models/ConvertedLead.js';
-import { servicePrices } from '../data/servicePrices.js';
+import { getServicePriceSnapshot, servicePrices } from '../data/servicePrices.js';
 const router = express.Router();
 
 // GET /admin/leads/count
@@ -62,10 +62,11 @@ router.get('/services/completed/paymentsum', async (req, res) => {
       if (s.paymentAmount && !isNaN(parseFloat(s.paymentAmount))) {
         return parseFloat(s.paymentAmount);
       }
-      let key = '';
       if (type === 'main') {
-        key = s.serviceTitle;
-      } else if (type === 'manual') {
+        return getServicePriceSnapshot(s);
+      }
+      let key = '';
+      if (type === 'manual') {
         key = s.serviceType;
       } else if (type === 'converted') {
         key = s.service;
@@ -162,10 +163,7 @@ router.get('/stats', async (req, res) => {
       if (s.paymentAmount && !isNaN(parseFloat(s.paymentAmount))) {
         return parseFloat(s.paymentAmount);
       }
-      if (s.serviceTitle && servicePrices[s.serviceTitle]) {
-        return servicePrices[s.serviceTitle];
-      }
-      return 0;
+      return getServicePriceSnapshot(s);
     };
     // Helper to get price for manual and converted
     const getModelPrice = (s) => {
