@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { toast } from 'react-hot-toast';
 import { FaEye, FaDownload, FaSync, FaPrint, FaArrowCircleRight } from 'react-icons/fa';
+import {
+  caseClosureUndertaking,
+  downloadAllRefundSlips,
+  generateCaseClosureSlip,
+  generateMainRefundSlip,
+  generateRefundDetailsSlip,
+  refundUndertaking
+} from '../utils/refundSlips';
 
 export default function MyRefundRequests() {
   const [refunds, setRefunds] = useState([]);
@@ -197,6 +205,12 @@ export default function MyRefundRequests() {
                             <span class="label">Undertaking Approved:</span>
                             <span class="value">${selectedRefund.caseClosure?.undertakingApproved ? '✓ YES' : '✗ NO'}</span>
                         </div>
+                        ${selectedRefund.caseClosure?.undertakingApproved ? `
+                        <div style="margin: 8px 0; font-size: 13px; line-height: 1.5;">
+                            <strong>Complete Undertaking:</strong>
+                            <p style="margin: 6px 0 0;">${caseClosureUndertaking}</p>
+                        </div>
+                        ` : ''}
                     </div>
 
                     <div class="section">
@@ -233,6 +247,12 @@ export default function MyRefundRequests() {
                             <span class="label">Undertaking Approved:</span>
                             <span class="value">${selectedRefund.refundDetails?.undertakingApproved ? '✓ YES' : '✗ NO'}</span>
                         </div>
+                        ${selectedRefund.refundDetails?.undertakingApproved ? `
+                        <div style="margin: 8px 0; font-size: 13px; line-height: 1.5;">
+                            <strong>Complete Undertaking:</strong>
+                            <p style="margin: 6px 0 0;">${refundUndertaking}</p>
+                        </div>
+                        ` : ''}
                     </div>
 
                     <div class="section">
@@ -443,6 +463,38 @@ export default function MyRefundRequests() {
                             <FaEye size={16} />
 
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => generateCaseClosureSlip(refund)}
+                            className="text-blue-700 font-semibold cursor-pointer flex items-center justify-center"
+                            title="Download Case Closure Slip"
+                          >
+                            <FaDownload size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => generateRefundDetailsSlip(refund, { includeUndertaking: true })}
+                            className="text-green-700 font-semibold cursor-pointer flex items-center justify-center"
+                            title="Download Account Details Slip"
+                          >
+                            <FaDownload size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => generateMainRefundSlip(refund)}
+                            className="text-[#57123f] font-semibold cursor-pointer flex items-center justify-center"
+                            title="Download Main Refund Slip"
+                          >
+                            <FaPrint size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => downloadAllRefundSlips(refund)}
+                            className="text-gray-700 font-semibold cursor-pointer flex items-center justify-center"
+                            title="Download All Three Slips"
+                          >
+                            All
+                          </button>
                           {refund.status === 'approved' && refund.isEligibleForRefundDetails && !(refund.refundDetails && refund.refundDetails.totalCasePayment) && (
                             <button
                               onClick={() => navigate(`/refund?id=${refund._id}`)}
@@ -478,6 +530,38 @@ export default function MyRefundRequests() {
                     title="Print Refund Slip"
                   >
                     <FaPrint size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => generateCaseClosureSlip(selectedRefund)}
+                    className="text-white hover:bg-white hover:text-blue-700 text-lg rounded-full w-8 h-8 flex items-center justify-center transition"
+                    title="Download Case Closure Slip"
+                  >
+                    <FaDownload size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => generateRefundDetailsSlip(selectedRefund, { includeUndertaking: true })}
+                    className="text-white hover:bg-white hover:text-green-700 text-lg rounded-full w-8 h-8 flex items-center justify-center transition"
+                    title="Download Account Details Slip"
+                  >
+                    <FaDownload size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => generateMainRefundSlip(selectedRefund)}
+                    className="text-white hover:bg-white hover:text-[#57123f] text-lg rounded-full w-8 h-8 flex items-center justify-center transition"
+                    title="Download Main Refund Slip"
+                  >
+                    <FaPrint size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadAllRefundSlips(selectedRefund)}
+                    className="text-white hover:bg-white hover:text-gray-800 text-xs rounded-full h-8 px-2 flex items-center justify-center transition font-bold"
+                    title="Download All Three Slips"
+                  >
+                    All
                   </button>
                   <button
                     onClick={() => {

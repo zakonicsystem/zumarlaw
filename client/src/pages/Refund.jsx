@@ -4,6 +4,11 @@ import { toast } from 'react-hot-toast';
 import { serviceData } from '../data/serviceSchemas';
 import api from '../utils/api';
 import { FaArrowRight } from 'react-icons/fa';
+import {
+  generateCaseClosureSlip,
+  generateMainRefundSlip,
+  generateRefundDetailsSlip
+} from '../utils/refundSlips';
 
 const Refund = () => {
   const navigate = useNavigate();
@@ -161,6 +166,7 @@ const Refund = () => {
       };
 
       await api.post('/api/refund', payload);
+      generateCaseClosureSlip(caseClosure);
       toast.success('Case closure submitted. You can track it in My Requests.');
       navigate('/my-refund-requests');
     } catch (err) {
@@ -207,6 +213,8 @@ const Refund = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
+      generateRefundDetailsSlip(refundDetails);
+      generateMainRefundSlip(res.data);
       toast.success('Refund details added successfully!');
       navigate('/my-refund-requests');
     } catch (err) {

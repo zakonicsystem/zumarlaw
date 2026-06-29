@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { toast } from 'react-hot-toast';
 import { FaDownload, FaCheck, FaTimes, FaTrash, FaEye, FaPrint, FaSearch } from 'react-icons/fa';
+import {
+    caseClosureUndertaking,
+    downloadAllRefundSlips,
+    generateCaseClosureSlip,
+    generateMainRefundSlip,
+    generateRefundDetailsSlip,
+    refundUndertaking
+} from '../../utils/refundSlips';
 
 export default function RefundManagement() {
     const [refunds, setRefunds] = useState([]);
@@ -325,6 +333,12 @@ export default function RefundManagement() {
                             <span class="label">Undertaking Approved:</span>
                             <span class="value">${selectedRefund.caseClosure?.undertakingApproved ? '✓ YES' : '✗ NO'}</span>
                         </div>
+                        ${selectedRefund.caseClosure?.undertakingApproved ? `
+                        <div style="margin: 8px 0; font-size: 13px; line-height: 1.5;">
+                            <strong>Complete Undertaking:</strong>
+                            <p style="margin: 6px 0 0;">${caseClosureUndertaking}</p>
+                        </div>
+                        ` : ''}
                     </div>
 
                     <div class="section">
@@ -361,6 +375,12 @@ export default function RefundManagement() {
                             <span class="label">Undertaking Approved:</span>
                             <span class="value">${selectedRefund.refundDetails?.undertakingApproved ? '✓ YES' : '✗ NO'}</span>
                         </div>
+                        ${selectedRefund.refundDetails?.undertakingApproved ? `
+                        <div style="margin: 8px 0; font-size: 13px; line-height: 1.5;">
+                            <strong>Complete Undertaking:</strong>
+                            <p style="margin: 6px 0 0;">${refundUndertaking}</p>
+                        </div>
+                        ` : ''}
                     </div>
 
                     <div class="section">
@@ -584,6 +604,38 @@ export default function RefundManagement() {
                                                         <FaEye size={16} />
                                                     </button>
                                                     <button
+                                                        type="button"
+                                                        onClick={() => generateCaseClosureSlip(refund)}
+                                                        className="text-blue-700 font-medium"
+                                                        title="Download Case Closure Slip"
+                                                    >
+                                                        <FaDownload size={15} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => generateRefundDetailsSlip(refund, { includeUndertaking: true })}
+                                                        className="text-green-700 font-medium"
+                                                        title="Download Account Details Slip"
+                                                    >
+                                                        <FaDownload size={15} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => generateMainRefundSlip(refund)}
+                                                        className="text-[#57123f] font-medium"
+                                                        title="Download Main Refund Slip"
+                                                    >
+                                                        <FaPrint size={15} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => downloadAllRefundSlips(refund)}
+                                                        className="text-gray-700 text-xs font-bold"
+                                                        title="Download All Three Slips"
+                                                    >
+                                                        All
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleDelete(refund._id)}
                                                         className="text-[#57123f] font-medium"
                                                         title="Delete"
@@ -613,6 +665,38 @@ export default function RefundManagement() {
                                         title="Print Refund Slip"
                                     >
                                         <FaPrint size={18} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => generateCaseClosureSlip(selectedRefund)}
+                                        className="text-blue-700 hover:text-blue-900 font-medium"
+                                        title="Download Case Closure Slip"
+                                    >
+                                        <FaDownload size={16} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => generateRefundDetailsSlip(selectedRefund, { includeUndertaking: true })}
+                                        className="text-green-700 hover:text-green-900 font-medium"
+                                        title="Download Account Details Slip"
+                                    >
+                                        <FaDownload size={16} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => generateMainRefundSlip(selectedRefund)}
+                                        className="text-[#57123f] hover:text-[#3d0c2a] font-medium"
+                                        title="Download Main Refund Slip"
+                                    >
+                                        <FaPrint size={16} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => downloadAllRefundSlips(selectedRefund)}
+                                        className="text-gray-700 hover:text-gray-900 text-xs font-bold"
+                                        title="Download All Three Slips"
+                                    >
+                                        All
                                     </button>
                                     <button
                                         onClick={() => {
