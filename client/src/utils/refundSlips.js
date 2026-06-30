@@ -130,44 +130,223 @@ const finishSlip = (ctx, fileName) => {
   pdf.save(fileName);
 };
 
+const createFormSlip = (title) => {
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 18;
+
+  pdf.setFont(undefined, 'bold');
+  pdf.setFontSize(20);
+  pdf.setTextColor(...primary);
+  pdf.text(title, margin, 38);
+
+  return { pdf, y: 78, margin, pageWidth, pageHeight };
+};
+
+const ensureFormPage = (ctx, needed = 40) => {
+  if (ctx.y + needed <= ctx.pageHeight - 24) return;
+  ctx.pdf.addPage();
+  ctx.y = 34;
+};
+
+const addFormSectionTitle = (ctx, number, title) => {
+  ensureFormPage(ctx, 28);
+  const { pdf, margin } = ctx;
+  pdf.setFillColor(...primary);
+  pdf.circle(margin + 8, ctx.y - 5, 8, 'F');
+  pdf.setFont(undefined, 'bold');
+  pdf.setFontSize(9);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(String(number), margin + 8, ctx.y - 2, { align: 'center' });
+  pdf.setFontSize(13);
+  pdf.setTextColor(...primary);
+  pdf.text(title, margin + 22, ctx.y);
+  ctx.y += 28;
+};
+
+const addInputField = (ctx, label, value, col = 0, full = false) => {
+  const { pdf, margin, pageWidth } = ctx;
+  const gap = 12;
+  const fieldWidth = full ? pageWidth - margin * 2 : (pageWidth - margin * 2 - gap) / 2;
+  const x = full ? margin : margin + col * (fieldWidth + gap);
+  const y = ctx.y;
+  const boxHeight = 28;
+
+  pdf.setFont(undefined, 'normal');
+  pdf.setFontSize(9.5);
+  pdf.setTextColor(45, 55, 72);
+  pdf.text(label, x, y);
+
+  pdf.setFillColor(249, 250, 252);
+  pdf.setDrawColor(203, 213, 225);
+  pdf.roundedRect(x, y + 7, fieldWidth, boxHeight, 4, 4, 'FD');
+
+  pdf.setFontSize(10);
+  pdf.setTextColor(31, 41, 55);
+  const lines = pdf.splitTextToSize(String(value || ''), fieldWidth - 16);
+  pdf.text(lines.slice(0, 1), x + 10, y + 25);
+
+  if (full || col === 1) ctx.y += 52;
+};
+
+const addTwoColumnFields = (ctx, fields) => {
+  fields.forEach((field, index) => {
+    ensureFormPage(ctx, 56);
+    addInputField(ctx, field.label, field.value, index % 2, field.full);
+    if (field.full && index % 2 === 0 && fields[index + 1]) {
+      ctx.y += 0;
+    }
+  });
+  if (fields.length % 2 === 1 && !fields[fields.length - 1]?.full) ctx.y += 52;
+};
+
+const addPolicyBox = (ctx, title, items) => {
+  const { pdf, margin, pageWidth } = ctx;
+  const boxWidth = pageWidth - margin * 2;
+  const lineGroups = items.map((item) => pdf.splitTextToSize(item, boxWidth - 42));
+  const height = 34 + lineGroups.reduce((sum, lines) => sum + lines.length * 12 + 4, 0);
+  ensureFormPage(ctx, height + 24);
+
+  const top = ctx.y;
+  pdf.setFillColor(249, 245, 252);
+  pdf.setDrawColor(236, 212, 188);
+  pdf.roundedRect(margin, top, boxWidth, height, 5, 5, 'FD');
+
+  pdf.setFont(undefined, 'bold');
+  pdf.setFontSize(11);
+  pdf.setTextColor(...primary);
+  pdf.text(title, margin + 12, top + 22);
+
+  pdf.setFont(undefined, 'normal');
+  pdf.setFontSize(9);
+  pdf.setTextColor(55, 65, 81);
+  let y = top + 42;
+  lineGroups.forEach((lines, index) => {
+    pdf.text('•', margin + 14, y);
+    if (index === lineGroups.length - 1) pdf.setFont(undefined, 'bold');
+    pdf.text(lines, margin + 28, y);
+    if (index === lineGroups.length - 1) pdf.setFont(undefined, 'normal');
+    y += lines.length * 12 + 4;
+  });
+
+  ctx.y = top + height + 24;
+};
+
+const addFormUndertaking = (ctx, title, text, accepted, label) => {
+  const { pdf, margin, pageWidth } = ctx;
+  const boxWidth = pageWidth - margin * 2;
+  const lines = pdf.splitTextToSize(text, boxWidth - 24);
+  const height = 52 + lines.length * 11 + 22;
+  ensureFormPage(ctx, height + 12);
+
+  const top = ctx.y;
+  pdf.setFillColor(249, 245, 252);
+  pdf.setDrawColor(236, 212, 188);
+  pdf.roundedRect(margin, top, boxWidth, height, 5, 5, 'FD');
+
+  pdf.setFont(undefined, 'bold');
+  pdf.setFontSize(11);
+  pdf.setTextColor(...primary);
+  pdf.text(title, margin + 12, top + 24);
+
+  pdf.setFont(undefined, 'normal');
+  pdf.setFontSize(9);
+  pdf.setTextColor(55, 65, 81);
+  pdf.text(lines, margin + 12, top + 46);
+
+  const checkboxY = top + 46 + lines.length * 11 + 12;
+  pdf.setDrawColor(37, 99, 235);
+  pdf.setFillColor(accepted ? 37 : 255, accepted ? 99 : 255, accepted ? 235 : 255);
+  pdf.rect(margin + 12, checkboxY - 9, 11, 11, 'FD');
+  if (accepted) {
+    pdf.setFont(undefined, 'bold');
+    pdf.setFontSize(8);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text('X', margin + 17.5, checkboxY - 1, { align: 'center' });
+  }
+  pdf.setFont(undefined, 'normal');
+  pdf.setFontSize(9);
+  pdf.setTextColor(55, 65, 81);
+  pdf.text(label, margin + 32, checkboxY);
+
+  ctx.y = top + height + 12;
+};
+
+const saveFormSlip = (ctx, fileName) => {
+  ctx.pdf.save(fileName);
+};
+
 export const generateCaseClosureSlip = (refundOrCaseClosure) => {
   const caseClosure = refundOrCaseClosure?.caseClosure || refundOrCaseClosure || {};
-  const ctx = createSlip('CASE CLOSURE SLIP', `Date: ${formatDate(refundOrCaseClosure?.createdAt || new Date())}`);
+  const ctx = createFormSlip('Case Closure Request');
+  const accepted = Boolean(caseClosure.undertakingApproved || caseClosure.undertakingAccepted);
 
-  addSection(ctx, 'Case Closure Details');
-  addRow(ctx, 'Name', caseClosure.name);
-  addRow(ctx, 'CNIC', caseClosure.cnic);
-  addRow(ctx, 'Phone', caseClosure.phone);
-  addRow(ctx, 'Email', caseClosure.email);
-  addRow(ctx, 'Case Type', caseClosure.caseType);
-  addRow(ctx, 'Case Submit Date', formatDate(caseClosure.caseSubmitDate));
-  addRow(ctx, 'Consultant Name', caseClosure.consultantName);
-  addRow(ctx, 'Case Close Reason', caseClosure.caseCloseReason);
-  addUndertaking(ctx, 'Case Closure Undertaking', caseClosureUndertaking, Boolean(caseClosure.undertakingApproved || caseClosure.undertakingAccepted));
+  addFormSectionTitle(ctx, 1, 'Person Details');
+  addTwoColumnFields(ctx, [
+    { label: 'Name', value: caseClosure.name },
+    { label: 'CNIC', value: caseClosure.cnic },
+    { label: 'Phone', value: caseClosure.phone },
+    { label: 'Email', value: caseClosure.email }
+  ]);
 
-  finishSlip(ctx, `case-closure-${sanitizeFilePart(caseClosure.name)}-${Date.now()}.pdf`);
+  addFormSectionTitle(ctx, 2, 'Case Details');
+  addTwoColumnFields(ctx, [
+    { label: 'Case Type', value: caseClosure.caseType },
+    { label: 'Case Submit Date', value: formatDate(caseClosure.caseSubmitDate) },
+    { label: 'Consultant Name', value: caseClosure.consultantName },
+    { label: 'Case Close Reason', value: caseClosure.caseCloseReason }
+  ]);
+
+  addPolicyBox(ctx, 'Case Closure Policy', [
+    'Both the client and the consultancy agree that the case will not be pursued any further.',
+    'If the client himself admits that he had given false information and now wants to close the case.',
+    'The client has decided to shift from one service to another.',
+    'If a service is banned by the government.',
+    'If the time given to the client by the company expires.',
+    'If the government raises objections to the case that make it impossible to proceed with the case.',
+    'The Case Closure Request will be processed within five (5) working days.'
+  ]);
+
+  addFormUndertaking(ctx, 'Undertaking', caseClosureUndertaking, accepted, 'I accept the Case Closure Policy and Undertaking');
+  saveFormSlip(ctx, `case-closure-${sanitizeFilePart(caseClosure.name)}-${Date.now()}.pdf`);
 };
 
 export const generateRefundDetailsSlip = (refundOrDetails) => {
   const refundDetails = refundOrDetails?.refundDetails || refundOrDetails || {};
   const caseClosure = refundOrDetails?.caseClosure || {};
-  const ctx = createSlip('ACCOUNT DETAILS SLIP', `Date: ${formatDate(refundOrDetails?.createdAt || new Date())}`);
+  const ctx = createFormSlip('Refund Details');
+  const accepted = Boolean(refundDetails.undertakingApproved || refundDetails.undertakingAccepted);
 
-  addSection(ctx, 'Refund Details');
-  addRow(ctx, 'Customer Name', caseClosure.name);
-  addRow(ctx, 'Total Case Payment', formatCurrency(refundDetails.totalCasePayment));
-  addRow(ctx, 'Paid Payment Type', refundDetails.paidPaymentType);
-  addRow(ctx, 'Paid Amount', formatCurrency(refundDetails.paidPayment));
-  addRow(ctx, 'Receiver Account No', refundDetails.receiverAccountNo);
-  addRow(ctx, 'Payment Evidence', refundDetails.paidPaymentAvoidance?.name || refundDetails.paymentEvidence || 'Not attached');
-  addRow(ctx, 'Bank Name', refundDetails.bankName);
-  addRow(ctx, 'Account Title', refundDetails.accountTitle);
-  addRow(ctx, 'Account No', refundDetails.accountNo);
-  addRow(ctx, 'IBAN', refundDetails.ibanNo);
+  addFormSectionTitle(ctx, 1, 'Payment Paid Details');
+  addTwoColumnFields(ctx, [
+    { label: 'Total Case Payment', value: formatCurrency(refundDetails.totalCasePayment) },
+    { label: 'Paid Payment Type', value: refundDetails.paidPaymentType },
+    { label: 'Paid Payment', value: formatCurrency(refundDetails.paidPayment) },
+    { label: 'Receiver Account No', value: refundDetails.receiverAccountNo },
+    { label: 'Attached Paid Payment Avoidance', value: refundDetails.paidPaymentAvoidance?.name || refundDetails.paymentEvidence || 'Not attached', full: true }
+  ]);
 
-  addUndertaking(ctx, 'Refund Undertaking', refundUndertaking, Boolean(refundDetails.undertakingApproved || refundDetails.undertakingAccepted));
+  addFormSectionTitle(ctx, 2, 'Bank Account Details for Refund');
+  addTwoColumnFields(ctx, [
+    { label: 'Bank Name', value: refundDetails.bankName },
+    { label: 'Account Title', value: refundDetails.accountTitle },
+    { label: 'Account No', value: refundDetails.accountNo },
+    { label: 'IBAN No', value: refundDetails.ibanNo }
+  ]);
 
-  finishSlip(ctx, `account-details-${sanitizeFilePart(refundDetails.accountTitle || caseClosure.name)}-${Date.now()}.pdf`);
+  addPolicyBox(ctx, 'Easy Return and Refund Policy', [
+    'A refund request can be submitted after the case completion time given by the institution is over.',
+    'A refund request may be made by the government for dismissal of the case or ground for objection.',
+    'Refund Government fee will be applicable only as per government rules.',
+    'Tax payment of 18% of the total payment amount will be non-refundable.',
+    'The refund application will be processed within 15 working days.',
+    'If the payment is not confirmed in company account. The request will be considered null and void.',
+    'After the refund request has been approved the amount will be transferred to the client provided account no within five (5) working Days.'
+  ]);
+
+  addFormUndertaking(ctx, 'Undertaking', refundUndertaking, accepted, 'I accept the Refund Policy and Undertaking');
+  saveFormSlip(ctx, `account-details-${sanitizeFilePart(refundDetails.accountTitle || caseClosure.name)}-${Date.now()}.pdf`);
 };
 
 export const generateMainRefundSlip = (refund) => {
