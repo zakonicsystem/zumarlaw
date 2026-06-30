@@ -260,10 +260,10 @@ const addFormUndertaking = (ctx, title, text, accepted, label) => {
   pdf.setFillColor(accepted ? 37 : 255, accepted ? 99 : 255, accepted ? 235 : 255);
   pdf.rect(margin + 12, checkboxY - 9, 11, 11, 'FD');
   if (accepted) {
-    pdf.setFont(undefined, 'bold');
-    pdf.setFontSize(8);
-    pdf.setTextColor(255, 255, 255);
-    pdf.text('X', margin + 17.5, checkboxY - 1, { align: 'center' });
+    pdf.setDrawColor(255, 255, 255);
+    pdf.setLineWidth(1.4);
+    pdf.line(margin + 14, checkboxY - 4, margin + 17, checkboxY - 1);
+    pdf.line(margin + 17, checkboxY - 1, margin + 22, checkboxY - 7);
   }
   pdf.setFont(undefined, 'normal');
   pdf.setFontSize(9);
@@ -280,7 +280,7 @@ const saveFormSlip = (ctx, fileName) => {
 export const generateCaseClosureSlip = (refundOrCaseClosure) => {
   const caseClosure = refundOrCaseClosure?.caseClosure || refundOrCaseClosure || {};
   const ctx = createFormSlip('Case Closure Request');
-  const accepted = Boolean(caseClosure.undertakingApproved || caseClosure.undertakingAccepted);
+  const accepted = Boolean(caseClosure.undertakingApproved || caseClosure.undertakingAccepted || caseClosure.tAndCAccepted);
 
   addFormSectionTitle(ctx, 1, 'Person Details');
   addTwoColumnFields(ctx, [
@@ -316,7 +316,7 @@ export const generateRefundDetailsSlip = (refundOrDetails) => {
   const refundDetails = refundOrDetails?.refundDetails || refundOrDetails || {};
   const caseClosure = refundOrDetails?.caseClosure || {};
   const ctx = createFormSlip('Refund Details');
-  const accepted = Boolean(refundDetails.undertakingApproved || refundDetails.undertakingAccepted);
+  const accepted = Boolean(refundDetails.undertakingApproved || refundDetails.undertakingAccepted || refundDetails.refundPolicyAccepted);
 
   addFormSectionTitle(ctx, 1, 'Payment Paid Details');
   addTwoColumnFields(ctx, [
@@ -361,7 +361,7 @@ export const generateMainRefundSlip = (refund) => {
   addRow(ctx, 'Email', caseClosure.email);
   addRow(ctx, 'Case Type', caseClosure.caseType);
   addRow(ctx, 'Case Close Reason', caseClosure.caseCloseReason);
-  addUndertaking(ctx, 'Case Closure Undertaking', caseClosureUndertaking, Boolean(caseClosure.undertakingApproved || caseClosure.undertakingAccepted));
+  addUndertaking(ctx, 'Case Closure Undertaking', caseClosureUndertaking, Boolean(caseClosure.undertakingApproved || caseClosure.undertakingAccepted || caseClosure.tAndCAccepted));
 
   addSection(ctx, 'Refund Details');
   addRow(ctx, 'Total Case Payment', formatCurrency(refundDetails.totalCasePayment));
@@ -373,7 +373,7 @@ export const generateMainRefundSlip = (refund) => {
   addRow(ctx, 'Account No', refundDetails.accountNo);
   addRow(ctx, 'IBAN', refundDetails.ibanNo);
   addRow(ctx, 'Current Status', refund?.status);
-  addUndertaking(ctx, 'Refund Undertaking', refundUndertaking, Boolean(refundDetails.undertakingApproved || refundDetails.undertakingAccepted));
+  addUndertaking(ctx, 'Refund Undertaking', refundUndertaking, Boolean(refundDetails.undertakingApproved || refundDetails.undertakingAccepted || refundDetails.refundPolicyAccepted));
 
   finishSlip(ctx, `refund-slip-${sanitizeFilePart(caseClosure.name)}-${Date.now()}.pdf`);
 };
