@@ -11,12 +11,14 @@ import {
     generateRefundDetailsSlip,
     refundUndertaking
 } from '../../utils/refundSlips';
+import { CaseClosureFormPreview, RefundDetailsFormPreview } from '../../components/RefundFormPreview';
 
 export default function RefundManagement() {
     const [refunds, setRefunds] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedRefund, setSelectedRefund] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
+    const [formPreview, setFormPreview] = useState(null);
     const [statusFilter, setStatusFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusUpdate, setStatusUpdate] = useState({ status: '', notes: '' });
@@ -605,19 +607,19 @@ export default function RefundManagement() {
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        onClick={() => generateCaseClosureSlip(refund)}
-                                                        className="text-blue-700 font-medium"
-                                                        title="Download Case Closure Slip"
+                                                        onClick={() => setFormPreview({ type: 'caseClosure', refund })}
+                                                        className="text-blue-700 font-medium text-xs whitespace-nowrap"
+                                                        title="View Case Closure"
                                                     >
-                                                        <FaDownload size={15} />
+                                                        View Case Closure
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        onClick={() => generateRefundDetailsSlip(refund, { includeUndertaking: true })}
-                                                        className="text-green-700 font-medium"
-                                                        title="Download Account Details Slip"
+                                                        onClick={() => setFormPreview({ type: 'refundDetails', refund })}
+                                                        className="text-green-700 font-medium text-xs whitespace-nowrap"
+                                                        title="View Account Details"
                                                     >
-                                                        <FaDownload size={15} />
+                                                        View Account Details
                                                     </button>
                                                     <button
                                                         type="button"
@@ -668,19 +670,19 @@ export default function RefundManagement() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => generateCaseClosureSlip(selectedRefund)}
-                                        className="text-blue-700 hover:text-blue-900 font-medium"
-                                        title="Download Case Closure Slip"
+                                        onClick={() => setFormPreview({ type: 'caseClosure', refund: selectedRefund })}
+                                        className="text-blue-700 hover:text-blue-900 text-xs font-bold"
+                                        title="View Case Closure"
                                     >
-                                        <FaDownload size={16} />
+                                        Case
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => generateRefundDetailsSlip(selectedRefund, { includeUndertaking: true })}
-                                        className="text-green-700 hover:text-green-900 font-medium"
-                                        title="Download Account Details Slip"
+                                        onClick={() => setFormPreview({ type: 'refundDetails', refund: selectedRefund })}
+                                        className="text-green-700 hover:text-green-900 text-xs font-bold"
+                                        title="View Account Details"
                                     >
-                                        <FaDownload size={16} />
+                                        Account
                                     </button>
                                     <button
                                         type="button"
@@ -1122,7 +1124,45 @@ export default function RefundManagement() {
                             </div>
                         </div>
                     </div>
-                )}            </div>
+                )}
+
+                {formPreview && (
+                    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-[60]">
+                        <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+                            <div className="sticky top-0 bg-white px-6 py-4 border-b flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-[#57123f]">
+                                    {formPreview.type === 'caseClosure' ? 'View Case Closure' : 'View Account Details'}
+                                </h2>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => (
+                                            formPreview.type === 'caseClosure'
+                                                ? generateCaseClosureSlip(formPreview.refund)
+                                                : generateRefundDetailsSlip(formPreview.refund)
+                                        )}
+                                        className="bg-[#57123f] text-white px-3 py-2 rounded-lg text-sm font-semibold hover:opacity-90"
+                                    >
+                                        Download Slip
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormPreview(null)}
+                                        className="text-gray-600 hover:text-gray-800 text-2xl leading-none"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            </div>
+                            {formPreview.type === 'caseClosure' ? (
+                                <CaseClosureFormPreview refund={formPreview.refund} />
+                            ) : (
+                                <RefundDetailsFormPreview refund={formPreview.refund} />
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

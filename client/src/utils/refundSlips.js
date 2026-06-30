@@ -201,6 +201,6 @@ export const generateMainRefundSlip = (refund) => {
 
 export const downloadAllRefundSlips = (refund) => {
   generateCaseClosureSlip(refund);
-  generateRefundDetailsSlip(refund, { includeUndertaking: true });
+  generateRefundDetailsSlip(refund);
   generateMainRefundSlip(refund);
 };
