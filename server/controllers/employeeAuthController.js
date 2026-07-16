@@ -36,13 +36,15 @@ export const employeeLogin = async (req, res) => {
       email: employee.login.email,
       name: employee.name,
       role: employee.role,
-      assignedPages: employee.assignedPages || []
+      assignedPages: employee.assignedPages || [],
+      canViewAllLeadsAndServices: employee.canViewAllLeadsAndServices === true
     }, JWT_SECRET, { expiresIn: '1d' });
     return res.status(200).json({
       message: 'Login successful',
       token,
       employeeName: employee.name,
-      assignedPages: employee.assignedPages || []
+      assignedPages: employee.assignedPages || [],
+      canViewAllLeadsAndServices: employee.canViewAllLeadsAndServices === true
     });
   } catch (err) {
     console.error('[employeeLogin] Server error:', err);

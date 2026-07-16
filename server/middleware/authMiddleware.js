@@ -56,7 +56,8 @@ export const verifyJWT = async (req, res, next) => {
         name: employee.name,
         email: employee.login?.email,
         role: employee.role || 'employee',
-        assignedPages: employee.assignedPages || []
+        assignedPages: employee.assignedPages || [],
+        canViewAllLeadsAndServices: employee.canViewAllLeadsAndServices === true
       };
       console.log('[verifyJWT] Authenticated as employee:', req.user);
       return next();
@@ -146,7 +147,13 @@ export const tryVerify = async (req, res, next) => {
       if (employee.employmentStatus === 'terminated') {
         return next();
       }
-      req.user = { id: employee._id, name: employee.name, email: employee.login?.email, role: employee.role || 'employee' };
+      req.user = {
+        id: employee._id,
+        name: employee.name,
+        email: employee.login?.email,
+        role: employee.role || 'employee',
+        canViewAllLeadsAndServices: employee.canViewAllLeadsAndServices === true
+      };
     }
     return next();
   } catch (err) {

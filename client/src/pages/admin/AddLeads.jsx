@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
+import api from '../../utils/api';
 import { FiUser, FiCreditCard, FiPhone, FiCalendar, FiCheckCircle, FiChevronDown } from 'react-icons/fi';
 
 const AddLeads = () => {
@@ -45,8 +46,7 @@ const AddLeads = () => {
             lead.referralPhone = data.referralPhone || '';
         }
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            await axios.post(`${apiUrl}/api/leads`, lead);
+            await api.post('/api/leads', lead);
             toast.success('Lead added successfully!');
             reset();
         } catch (err) {

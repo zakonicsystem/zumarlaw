@@ -24,6 +24,10 @@ const isEmployeeRequest = (req) => {
   return req.user && !['admin', 'user'].includes(req.user.role);
 };
 
+const isRestrictedEmployeeRequest = (req) => (
+  isEmployeeRequest(req) && req.user?.canViewAllLeadsAndServices !== true
+);
+
 const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
   const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const exactValues = [req.user?.id, req.user?.email]
@@ -152,7 +156,7 @@ router.post('/invoices/delete-multiple', async (req, res) => {
 // GET: Admin fetch all non-manual services with personal details populated
 router.get('/admin/services', verifyJWT, async (req, res) => {
   try {
-    const query = isEmployeeRequest(req) ? assignedToCurrentEmployeeQuery(req, 'assignedTo') : {};
+    const query = isRestrictedEmployeeRequest(req) ? assignedToCurrentEmployeeQuery(req, 'assignedTo') : {};
     const entries = await ServiceDetail.find(query)
       .sort({ createdAt: -1 })
       .populate('personalId');

@@ -101,12 +101,16 @@ import ConvertedLead from '../models/ConvertedLead.js';
 import Lead from '../models/Lead.js';
 import path from 'path';
 import fs from 'fs';
-import nodemailer from 'nodemailer';
+import { createEmailTransporter, getEmailFrom } from '../utils/emailTransporter.js';
 import PDFDocument from 'pdfkit';
 
 const isEmployeeRequest = (req) => {
   return req.user && !['admin', 'user'].includes(req.user.role);
 };
+
+const isRestrictedEmployeeRequest = (req) => (
+  isEmployeeRequest(req) && req.user?.canViewAllLeadsAndServices !== true
+);
 
 const assignedToCurrentEmployeeQuery = (req, field = 'assigned') => {
   const values = [req.user?.id, req.user?.name, req.user?.email]
@@ -173,6 +177,7 @@ export const createConvertedLead = async (req, res) => {
     // Basic fields
     const {
       name, phone, email, assigned, service, price, status, originalLeadId,
+      hasEmail, hasPhone,
       totalPayment, advancePayment,
       currentReceivingPayment, remainingAmount, paymentMethod, accountNumber, personName,
       paymentReceivedDate,
@@ -253,8 +258,35 @@ export const createConvertedLead = async (req, res) => {
       });
     }
 
-    // normalize phone before saving
-    let savedPhone = getSingleValue(phone);
+    const sourceLeadId = getSingleValue(originalLeadId);
+    let originalLead = null;
+    if (sourceLeadId) {
+      originalLead = await Lead.findById(sourceLeadId);
+      if (!originalLead) {
+        return res.status(404).json({ success: false, error: 'Original lead not found' });
+      }
+
+      if (isRestrictedEmployeeRequest(req)) {
+        const assignedValues = [req.user?.id, req.user?.name, req.user?.email]
+          .filter(Boolean)
+          .map((value) => String(value).trim().toLowerCase());
+        const assigned = String(originalLead.assigned || '').trim().toLowerCase();
+        if (!assignedValues.includes(assigned)) {
+          return res.status(403).json({ success: false, error: 'You can only convert leads assigned to you' });
+        }
+      }
+    }
+
+    const sourceEmail = String(originalLead?.email || getSingleValue(email) || '').trim().toLowerCase();
+    if (!sourceEmail) {
+      return res.status(400).json({ success: false, error: 'Lead email is required before conversion' });
+    }
+    if (!/^\S+@\S+\.\S+$/.test(sourceEmail)) {
+      return res.status(400).json({ success: false, error: 'Lead must have a valid email before conversion' });
+    }
+
+    // Use the original lead's private contact data when converting from the lead workflow.
+    let savedPhone = getSingleValue(originalLead?.phone || phone);
     try {
       const cp = await import('../services/cpaasService.js');
       if (cp.default && typeof cp.default.normalizeNumber === 'function') {
@@ -265,11 +297,11 @@ export const createConvertedLead = async (req, res) => {
     }
 
     const lead = new ConvertedLead({
-      name: getSingleValue(name),
+      name: getSingleValue(originalLead?.name || name),
       phone: savedPhone,
-      email: getSingleValue(email),
-      assigned: getSingleValue(assigned),
-      service: getSingleValue(service),
+      email: sourceEmail,
+      assigned: getSingleValue(originalLead?.assigned || assigned),
+      service: getSingleValue(originalLead?.service || service),
       price: price ? Number(getSingleValue(price)) : undefined,
       status: normalizeConvertedStatus(status),
       pricing,
@@ -291,8 +323,8 @@ export const createConvertedLead = async (req, res) => {
     }
 
     // Remove the original lead from Lead model if originalLeadId is provided
-    if (originalLeadId) {
-      await Lead.findByIdAndDelete(getSingleValue(originalLeadId));
+    if (sourceLeadId) {
+      await Lead.findByIdAndDelete(sourceLeadId);
     }
     res.status(201).json({ success: true, lead });
   } catch (err) {
@@ -303,7 +335,7 @@ export const createConvertedLead = async (req, res) => {
 
 export const getAllConvertedLeads = async (req, res) => {
   try {
-    const query = isEmployeeRequest(req) ? assignedToCurrentEmployeeQuery(req, 'assigned') : {};
+    const query = isRestrictedEmployeeRequest(req) ? assignedToCurrentEmployeeQuery(req, 'assigned') : {};
     const leads = await ConvertedLead.find(query).sort({ createdAt: -1 });
     res.json(leads);
   } catch (err) {
@@ -344,15 +376,9 @@ export const sendInvoice = async (req, res) => {
       }
     }
     // Send email
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    const transporter = createEmailTransporter();
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: getEmailFrom(),
       to: recipientEmail,
       subject: `Your Certificate for ${lead.service || 'Service'}`,
       text: `Dear ${lead.name || 'User'},\n\nPlease find attached your certificate for the service: ${lead.service || 'Service'}.\n\nThank you for choosing Zumar Law Firm.`,

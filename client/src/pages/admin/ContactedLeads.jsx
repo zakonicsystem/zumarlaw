@@ -274,6 +274,7 @@ const ContactedLeads = () => {
         onStatusChange={handleStatusChange}
         onAction={handleAction}
         isAllSelected={isAllSelected}
+        onLeadUpdated={updated => setLeads(prev => prev.map(lead => lead._id === updated._id ? { ...lead, ...updated } : lead))}
       />
 
 

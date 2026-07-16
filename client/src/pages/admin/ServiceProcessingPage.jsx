@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import api from '../../utils/api';
 import {
   FaSearch,
   FaIdCard,
@@ -64,13 +63,6 @@ const SERVICE_STATUS_CARDS = [
   { value: 'rejected', label: 'Rejected', classes: 'bg-red-50 border-red-200 text-red-700' },
 ];
 
-const normalizeAssignedName = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
-
-const isAssignedToEmployeeName = (assignedTo, employeeName) => {
-  const assigned = normalizeAssignedName(assignedTo);
-  const employee = normalizeAssignedName(employeeName);
-  return Boolean(assigned && employee && (assigned === employee || assigned.startsWith(`${employee} `)));
-};
 const isCompletedService = (row) => {
   const status = String(row?.status || '').toLowerCase();
   const progressStatus = String(row?.progressStatus || '').toLowerCase();
@@ -163,7 +155,6 @@ function PaymentStatusButton({ paymentStatus, onClick }) {
 const ServiceProcessingPage = () => {
   // Removed token and role-based access control
   const isEmployee = !!localStorage.getItem('employeeToken');
-  const [employeeName, setEmployeeName] = useState(() => localStorage.getItem('employeeName') || '');
 
   const invoiceRef = useRef();
 
@@ -216,22 +207,6 @@ const ServiceProcessingPage = () => {
 
   // Fetch employees for assignment
   const [employees, setEmployees] = useState([]);
-  useEffect(() => {
-    if (!isEmployee || employeeName) return;
-    const fetchCurrentEmployee = async () => {
-      try {
-        const res = await api.get('/api/employee/me');
-        if (res.data?.name) {
-          setEmployeeName(res.data.name);
-          localStorage.setItem('employeeName', res.data.name);
-        }
-      } catch (err) {
-        setEmployeeName('');
-      }
-    };
-    fetchCurrentEmployee();
-  }, [isEmployee, employeeName]);
-
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
@@ -583,11 +558,8 @@ const ServiceProcessingPage = () => {
 
 
   // Defensive: always use array
-  const safeServices = (Array.isArray(services) ? services : []).filter((row) => {
-    if (!isEmployee) return true;
-    if (!employeeName) return false;
-    return isAssignedToEmployeeName(row.assignedTo, employeeName);
-  });
+  // The API applies the employee's assigned-only or view-all permission.
+  const safeServices = Array.isArray(services) ? services : [];
   const getStatusCount = (status) => safeServices.filter((item) => (item.status || 'pending') === status).length;
   const filteredData = safeServices.filter(item =>
     (item.personalId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||

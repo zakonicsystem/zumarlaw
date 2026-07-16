@@ -18,6 +18,7 @@ const LeadsTable = ({
   showFollowUpReportAction = false,
   onFollowUpReport,
   showFollowUpColumns = false,
+  onLeadUpdated,
 }) => {
   const [editModal, setEditModal] = useState({ open: false, lead: null });
   const [viewModal, setViewModal] = useState({ open: false, lead: null });
@@ -52,8 +53,7 @@ const LeadsTable = ({
 
   const fieldRows = (lead = {}) => [
     ['Name', lead.name],
-    ['Email', lead.email],
-    ['Phone', lead.phone],
+    ...(!isEmployee ? [['Email', lead.email], ['Phone', lead.phone]] : []),
     ['Status', lead.status],
     ['Service Interested', lead.service],
     ['Assigned To', lead.assigned],
@@ -63,7 +63,7 @@ const LeadsTable = ({
     ['Follow-up Stage', getFollowUpStageLabel(lead)],
     ['Follow-up Date', formatDateOnly(getFollowUpDate(lead))],
     ['Referral Name', lead.referralName],
-    ['Referral Phone', lead.referralPhone],
+    ...(!isEmployee ? [['Referral Phone', lead.referralPhone]] : []),
     ['Remarks', lead.remarks],
   ];
 
@@ -77,12 +77,14 @@ const LeadsTable = ({
   const handleEditSave = async () => {
     if (!editModal.lead?._id) return;
     try {
-      await api.put(`/api/leads/${editModal.lead._id}`, editModal.lead);
+      const payload = isEmployee ? { email: editModal.lead.email } : editModal.lead;
+      const res = await api.put(`/api/leads/${editModal.lead._id}`, payload);
+      if (onLeadUpdated && res.data?.lead) onLeadUpdated(res.data.lead);
       toast.success('Lead updated successfully');
       setEditModal({ open: false, lead: null });
       // Optionally: refresh leads list or update UI here
     } catch (err) {
-      toast.error('Failed to update lead');
+      toast.error(err.response?.data?.message || 'Failed to update lead');
     }
   };
 
@@ -100,8 +102,8 @@ const LeadsTable = ({
                   style={{ accentColor: '#57123f', width: 18, height: 18 }}
                 />
               </th>
-              <th className="p-3">Name And Email</th>
-              <th className="p-3">Phone & Registered</th>
+              <th className="p-3">{isEmployee ? 'Name' : 'Name And Email'}</th>
+              <th className="p-3">{isEmployee ? 'Registered' : 'Phone & Registered'}</th>
               <th className="p-3">Status</th>
               {showFollowUpColumns && (
                 <>
@@ -128,10 +130,10 @@ const LeadsTable = ({
                   </td>
                   <td className="p-2">
                     <div className="font-semibold">{lead.name}</div>
-                    <div className="text-xs text-gray-700">{lead.email}</div>
+                    {!isEmployee && <div className="text-xs text-gray-700">{lead.email}</div>}
                   </td>
                   <td className="p-2">
-                    <div className="text-xs text-gray-700">Phone: {lead.phone}</div>
+                    {!isEmployee && <div className="text-xs text-gray-700">Phone: {lead.phone}</div>}
                     <div className="text-xs text-gray-500">Registered: {formatLeadDateTime(lead)}</div>
                   </td>
                   <td className="p-2">
@@ -184,10 +186,9 @@ const LeadsTable = ({
                       <FaHistory />
                     </button>
                     <button
-                      className={`rounded-full hover:bg-gray-100 text-[#57123f] ${isEmployee ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      title={isEmployee ? "Employees cannot edit leads" : "Edit"}
-                      disabled={isEmployee}
-                      onClick={() => !isEmployee && setEditModal({ open: true, lead })}
+                      className="rounded-full hover:bg-gray-100 text-[#57123f]"
+                      title={isEmployee ? "Add or update lead email" : "Edit"}
+                      onClick={() => setEditModal({ open: true, lead: isEmployee ? { ...lead, email: '' } : lead })}
                     >
                       <FaEdit />
                     </button>
@@ -218,6 +219,8 @@ const LeadsTable = ({
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 className="text-lg font-bold mb-4">Edit Lead</h3>
             <div className="space-y-3">
+              {!isEmployee && (
+                <>
               <span className="block font-semibold mb-1">Name</span>
               <input
                 type="text"
@@ -227,6 +230,8 @@ const LeadsTable = ({
                 className="border rounded px-3 py-2 w-full"
                 placeholder="Name"
               />
+                </>
+              )}
               <span className="block font-semibold mb-1">Email</span>
               <input
                 type="email"
@@ -234,8 +239,16 @@ const LeadsTable = ({
                 value={editModal.lead?.email || ''}
                 onChange={handleEditChange}
                 className="border rounded px-3 py-2 w-full"
-                placeholder="Email"
+                placeholder={isEmployee ? 'Enter lead email' : 'Email'}
+                required
               />
+              {isEmployee && (
+                <p className="text-xs text-gray-500">
+                  Contact details are private. Enter a valid email to add or replace it.
+                </p>
+              )}
+              {!isEmployee && (
+                <>
               <span className="block font-semibold mb-1">Phone</span>
               <input
                 type="text"
@@ -275,6 +288,10 @@ const LeadsTable = ({
                 placeholder="Remarks"
                 rows={2}
               />
+                </>
+              )}
+              {!isEmployee && (
+                <>
               <span className="block font-semibold mb-1">Referral Name</span>
               <input
                 type="text"
@@ -293,6 +310,8 @@ const LeadsTable = ({
                 className="border rounded px-3 py-2 w-full"
                 placeholder="Referral Phone"
               />
+                </>
+              )}
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <button

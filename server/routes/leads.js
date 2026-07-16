@@ -1,9 +1,15 @@
 import express from 'express';
 import Lead from '../models/Lead.js';
-import { tryVerify } from '../middleware/authMiddleware.js';
+import { verifyJWT } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
-router.use(tryVerify);
+router.use(verifyJWT);
+router.use((req, res, next) => {
+    if (String(req.user?.role || '').toLowerCase() === 'user') {
+        return res.status(403).json({ message: 'Lead access is restricted to administrators and employees' });
+    }
+    return next();
+});
 const NEW_LEAD_FOLLOW_UP_DAYS = 2;
 const NEW_STATUSES = ['New', 'New Lead'];
 const FOLLOW_UP_STATUSES = ['Follow-up', 'Follow-ups', 'Followup'];
@@ -44,10 +50,14 @@ const isEmployeeRequest = (req) => {
     return !!req.user && role !== 'admin' && role !== 'user';
 };
 
+const isRestrictedEmployeeRequest = (req) => (
+    isEmployeeRequest(req) && req.user?.canViewAllLeadsAndServices !== true
+);
+
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const employeeAssignedQuery = (req) => {
-    if (!isEmployeeRequest(req)) return {};
+    if (!isRestrictedEmployeeRequest(req)) return {};
 
     const employeeValues = [
         req.user.id?.toString(),
@@ -63,7 +73,7 @@ const employeeAssignedQuery = (req) => {
 };
 
 const employeeCanAccessLead = (req, lead) => {
-    if (!isEmployeeRequest(req)) return true;
+    if (!isRestrictedEmployeeRequest(req)) return true;
     const assigned = String(lead?.assigned || '').trim().toLowerCase();
     const employeeValues = [
         req.user.id?.toString(),
@@ -76,6 +86,24 @@ const employeeCanAccessLead = (req, lead) => {
 
 const sendForbiddenLead = (res) => res.status(403).json({ message: 'You can only access leads assigned to you' });
 const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 'System';
+
+const sanitizeLeadForRequest = (req, lead) => {
+    if (!lead) return lead;
+    const plain = typeof lead.toObject === 'function' ? lead.toObject() : { ...lead };
+    plain.hasEmail = Boolean(String(plain.email || '').trim());
+    plain.hasPhone = Boolean(String(plain.phone || '').trim());
+
+    if (isEmployeeRequest(req)) {
+        delete plain.email;
+        delete plain.phone;
+        delete plain.referralPhone;
+    }
+
+    return plain;
+};
+
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+const isValidEmail = (value) => /^\S+@\S+\.\S+$/.test(value);
 
 // Bulk import leads
 router.post('/import', async (req, res) => {
@@ -96,7 +124,7 @@ router.get('/', async (req, res) => {
     try {
         await moveOldNewLeadsToFollowUp();
         const leads = await Lead.find(employeeAssignedQuery(req)).sort({ createdAt: -1 });
-        res.json(leads);
+        res.json(leads.map((lead) => sanitizeLeadForRequest(req, lead)));
     } catch (err) {
         res.status(500).json({ message: 'Failed to fetch leads', error: err.message });
     }
@@ -107,7 +135,7 @@ router.post('/', async (req, res) => {
     try {
         const lead = new Lead(normalizeLead(req.body));
         await lead.save();
-        res.status(201).json(lead);
+        res.status(201).json(sanitizeLeadForRequest(req, lead));
     } catch (err) {
         res.status(500).json({ message: 'Failed to add lead', error: err.message });
     }
@@ -151,7 +179,7 @@ router.put('/:id/status', async (req, res) => {
         if (!lead) {
             return res.status(404).json({ message: 'Lead not found' });
         }
-        res.json({ message: 'Status updated', lead });
+        res.json({ message: 'Status updated', lead: sanitizeLeadForRequest(req, lead) });
     } catch (err) {
         res.status(500).json({ message: 'Failed to update status', error: err.message });
     }
@@ -172,7 +200,7 @@ router.delete('/:id', async (req, res) => {
         if (!lead) {
             return res.status(404).json({ message: 'Lead not found' });
         }
-        res.json({ message: 'Lead deleted', lead });
+        res.json({ message: 'Lead deleted', lead: sanitizeLeadForRequest(req, lead) });
     } catch (err) {
         res.status(500).json({ message: 'Failed to delete lead', error: err.message });
     }
@@ -220,7 +248,7 @@ router.post('/:id/followups', async (req, res) => {
             return res.status(404).json({ message: 'Lead not found' });
         }
 
-        res.status(201).json({ message: 'Follow-up report added', lead });
+        res.status(201).json({ message: 'Follow-up report added', lead: sanitizeLeadForRequest(req, lead) });
     } catch (err) {
         res.status(500).json({ message: 'Failed to add follow-up report', error: err.message });
     }
@@ -238,7 +266,7 @@ router.get('/:id', async (req, res) => {
         if (!employeeCanAccessLead(req, lead)) {
             return sendForbiddenLead(res);
         }
-        res.json(lead);
+        res.json(sanitizeLeadForRequest(req, lead));
     } catch (err) {
         res.status(500).json({ message: 'Failed to fetch lead', error: err.message });
     }
@@ -248,13 +276,21 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const update = { ...req.body };
+        let update = { ...req.body };
         const existing = await Lead.findById(id);
         if (!existing) {
             return res.status(404).json({ message: 'Lead not found' });
         }
         if (!employeeCanAccessLead(req, existing)) {
             return sendForbiddenLead(res);
+        }
+
+        if (isEmployeeRequest(req)) {
+            const email = normalizeEmail(update.email);
+            if (!email || !isValidEmail(email)) {
+                return res.status(400).json({ message: 'A valid email address is required' });
+            }
+            update = { email };
         }
 
         const push = {};
@@ -281,7 +317,7 @@ router.put('/:id', async (req, res) => {
         if (!lead) {
             return res.status(404).json({ message: 'Lead not found' });
         }
-        res.json({ message: 'Lead updated', lead });
+        res.json({ message: 'Lead updated', lead: sanitizeLeadForRequest(req, lead) });
     } catch (err) {
         res.status(500).json({ message: 'Failed to update lead', error: err.message });
     }

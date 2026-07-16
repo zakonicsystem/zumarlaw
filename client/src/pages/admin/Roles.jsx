@@ -318,6 +318,7 @@ const Roles = () => {
                 <th className="p-2 text-xs">Roles</th>
                 <th className="p-2 text-xs">Salary</th>
                 <th className="p-2 text-xs">Branch</th>
+                <th className="p-2 text-xs">Data Access</th>
                 <th className="p-2 text-xs">Assign Pages</th>
                 <th className="p-2 text-xs"><span className="sr-only">Actions</span></th>
               </tr>
@@ -347,6 +348,13 @@ const Roles = () => {
                   <td className="p-2 text-xs" title={emp.role}>{emp.role}</td>
                   <td className="p-2 text-xs" title={emp.salary}>{emp.salary}</td>
                   <td className="p-2 text-xs" title={emp.branch}>{emp.branch}</td>
+                  <td className="p-2 text-xs">
+                    {emp.canViewAllLeadsAndServices ? (
+                      <span className="rounded-full bg-purple-100 px-2 py-1 text-purple-700">All leads & services</span>
+                    ) : (
+                      <span className="rounded-full bg-gray-100 px-2 py-1 text-gray-600">Assigned only</span>
+                    )}
+                  </td>
                   <td className="p-2 text-xs">
                     {emp.assignedPages?.length ? (
                       (() => {
@@ -456,6 +464,18 @@ const Roles = () => {
             <input name="salary" value={form.salary || ''} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} placeholder="Salary" className="border px-3 py-2 rounded" />
             <input name="branch" value={form.branch || ''} onChange={e => setForm(f => ({ ...f, branch: e.target.value }))} placeholder="Branch" className="border px-3 py-2 rounded" />
           </div>
+          <label className="mb-4 flex items-start gap-3 rounded border border-purple-200 bg-purple-50 p-3">
+            <input
+              type="checkbox"
+              checked={form.canViewAllLeadsAndServices === true}
+              onChange={e => setForm(f => ({ ...f, canViewAllLeadsAndServices: e.target.checked }))}
+              className="mt-1"
+            />
+            <span>
+              <span className="block font-medium text-[#57123f]">View all leads and services</span>
+              <span className="block text-sm text-gray-600">When disabled, the employee can only access records assigned to them.</span>
+            </span>
+          </label>
           <div className="mb-4">
             <label className="font-medium mb-2 flex items-center gap-2 text-[#57123f] text-base">
               <FaTasks className="inline text-orange-600" /> Assign Pages

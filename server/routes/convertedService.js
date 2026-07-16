@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import * as convertedLeadController from '../controllers/convertedLeadController.js';
-import { tryVerify, verifyJWT } from '../middleware/authMiddleware.js';
+import { verifyJWT } from '../middleware/authMiddleware.js';
 const router = express.Router();
 const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 'System';
 
@@ -29,7 +29,7 @@ const upload = multer({ storage });
 const anyFiles = upload.any();
 
 // POST /convertedService - create converted lead
-router.post('/', anyFiles, convertedLeadController.createConvertedLead);
+router.post('/', verifyJWT, anyFiles, convertedLeadController.createConvertedLead);
 // GET /convertedService - get all converted leads
 router.get('/', verifyJWT, convertedLeadController.getAllConvertedLeads);
 // GET /convertedService/:id - get one converted lead

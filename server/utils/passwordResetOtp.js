@@ -1,25 +1,11 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
 import PasswordResetOtp from '../models/PasswordResetOtp.js';
+import { createEmailTransporter, getEmailFrom } from './emailTransporter.js';
 
 const OTP_TTL_MINUTES = 10;
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
-
-const createTransporter = () => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error('Email credentials are not configured');
-  }
-
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  });
-};
 
 export const sendPasswordResetOtp = async ({ email, accountType }) => {
   const normalizedEmail = normalizeEmail(email);
@@ -30,9 +16,9 @@ export const sendPasswordResetOtp = async ({ email, accountType }) => {
   await PasswordResetOtp.deleteMany({ email: normalizedEmail, accountType, usedAt: null });
   await PasswordResetOtp.create({ email: normalizedEmail, accountType, otpHash, expiresAt });
 
-  const transporter = createTransporter();
+  const transporter = createEmailTransporter();
   await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: getEmailFrom(),
     to: normalizedEmail,
     subject: 'Password Reset OTP',
     text: `Your OTP for Password Forget is ${otp}. For Security Purposes.\nNoted : Please do not share your OTP with anyone.`,

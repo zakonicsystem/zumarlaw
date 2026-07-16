@@ -33,7 +33,8 @@ router.get('/employee/me', verifyJWT, async (req, res) => {
   res.json({
     name: employee.name,
     email: employee.login?.email,
-    assignedPages: employee.assignedPages
+    assignedPages: employee.assignedPages,
+    canViewAllLeadsAndServices: employee.canViewAllLeadsAndServices === true
   });
 });
 export default router;

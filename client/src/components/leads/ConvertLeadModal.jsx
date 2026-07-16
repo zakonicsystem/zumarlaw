@@ -38,7 +38,7 @@ const ConvertLeadModal = ({
          <form onSubmit={onSubmit} encType="multipart/form-data" className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div><span className="font-semibold">Name:</span> {lead.name}</div>
-                <div><span className="font-semibold">Phone:</span> {lead.phone}</div>
+                <div><span className="font-semibold">Phone:</span> {lead.phone || (lead.hasPhone ? 'Hidden' : 'Not provided')}</div>
                 <div><span className="font-semibold">Service:</span> {lead.service}</div>
                 <div>
                   <label className="font-semibold">Total Payment:</label>

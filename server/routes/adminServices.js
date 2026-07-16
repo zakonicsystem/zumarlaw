@@ -20,6 +20,10 @@ const isEmployeeRequest = (req) => {
   return req.user && !['admin', 'user'].includes(req.user.role);
 };
 
+const isRestrictedEmployeeRequest = (req) => (
+  isEmployeeRequest(req) && req.user?.canViewAllLeadsAndServices !== true
+);
+
 const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
   const values = [req.user?.id, req.user?.name, req.user?.email]
     .filter(Boolean)
@@ -54,7 +58,7 @@ router.post('/services/:id/certificate', tryVerify, upload.single('certificate')
 });
 
 // Send invoice and all files to user, and make certificate visible
-import nodemailer from 'nodemailer';
+import { createEmailTransporter, getEmailFrom } from '../utils/emailTransporter.js';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
 // Allow send-invoice to proceed even if token is missing/expired; tryVerify attached earlier in middleware stack if needed
@@ -83,16 +87,10 @@ router.post('/services/:id/send-invoice', tryVerify, async (req, res) => {
     }
 
     // Send email to user (credentials from env)
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
+    const transporter = createEmailTransporter();
 
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: getEmailFrom(),
       to: service.personalId.email,
       subject: `Your Certificate for ${service.serviceTitle}`,
       text: `Dear ${service.personalId?.name},\n\nPlease find attached your certificate for the service: ${service.serviceTitle}.\n\nThank you for choosing Zumar Law Firm.`,
@@ -116,7 +114,7 @@ router.get('/admin/services', verifyJWT, async (req, res) => {
     if (isManualSubmission !== undefined) {
       query.isManualSubmission = isManualSubmission === 'true';
     }
-    if (isEmployeeRequest(req)) {
+    if (isRestrictedEmployeeRequest(req)) {
       Object.assign(query, assignedToCurrentEmployeeQuery(req, 'assignedTo'));
     }
 

@@ -8,6 +8,10 @@ const roleSchema = new mongoose.Schema({
     salary: String,
     branch: String,
     assignedPages: [String],
+    canViewAllLeadsAndServices: {
+        type: Boolean,
+        default: false
+    },
     tasks: [String],
     employmentStatus: {
         type: String,

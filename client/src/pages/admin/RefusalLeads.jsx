@@ -109,6 +109,7 @@ const RefusalLeads = () => {
         onStatusChange={handleStatusChange}
         onAction={(type, lead) => type === 'Delete' && handleDeleteLead(lead._id)}
         isAllSelected={isAllSelected}
+        onLeadUpdated={updated => setLeads(prev => prev.map(lead => lead._id === updated._id ? { ...lead, ...updated } : lead))}
       />
     </div>
   );

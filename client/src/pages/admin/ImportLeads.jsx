@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 import { Link } from "react-router-dom";
 import { ChevronRightIcon, HomeIcon } from "@heroicons/react/20/solid";
 import toast, { Toaster } from "react-hot-toast";
-import axios from "axios";
+import api from "../../utils/api";
 
 const ImportLeads = () => {
     const [filename, setFilename] = useState("");
@@ -92,8 +92,7 @@ const ImportLeads = () => {
     const handleImport = async () => {
         if (!leads.length) return toast.error("No leads to import");
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            await axios.post(`${apiUrl}/api/leads/import`, { leads });
+            await api.post('/api/leads/import', { leads });
             toast.success("Leads imported successfully!");
             setLeads([]);
             setFilename("");

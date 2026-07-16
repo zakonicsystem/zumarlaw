@@ -1,6 +1,6 @@
 import ServiceDetail from '../models/Service.js';
 import PersonalDetail from '../models/PersonalDetail.js';
-import nodemailer from 'nodemailer';
+import { createEmailTransporter, getEmailFrom } from '../utils/emailTransporter.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -9,15 +9,6 @@ import { dirname } from 'path';
 // Helper to get __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Email transporter setup (use your .env for credentials)
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
 
 export const sendInvoiceAndCertificate = async (req, res) => {
   try {
@@ -38,8 +29,9 @@ export const sendInvoiceAndCertificate = async (req, res) => {
     }
 
     // Send email
+    const transporter = createEmailTransporter();
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: getEmailFrom(),
       to: user.email,
       subject: `Your Certificate for ${service.serviceTitle}`,
       text: `Dear ${user.name},\n\nPlease find attached your certificate for the service: ${service.serviceTitle}.\n\nThank you for choosing Zumar Law Firm.`,
@@ -63,7 +55,7 @@ export const updateServiceDetail = async (req, res) => {
     const update = req.body;
     const service = await ServiceDetail.findById(id);
     if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
-    
+
     // Handle nested field updates (e.g., 'pricing.totalPayment')
     Object.keys(update).forEach(key => {
       if (key.includes('.')) {
@@ -80,7 +72,7 @@ export const updateServiceDetail = async (req, res) => {
         service[key] = update[key];
       }
     });
-    
+
     await service.save();
     res.json({ success: true, service });
   } catch (err) {

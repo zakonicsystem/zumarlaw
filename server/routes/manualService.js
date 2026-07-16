@@ -1,7 +1,7 @@
 
 // Payments API for manual service submission
 import * as manualServiceController from '../controllers/manualServiceController.js';
-import nodemailer from 'nodemailer';
+import { createEmailTransporter, getEmailFrom } from '../utils/emailTransporter.js';
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
@@ -32,6 +32,10 @@ const router = express.Router();
 const isEmployeeRequest = (req) => {
   return req.user && !['admin', 'user'].includes(req.user.role);
 };
+
+const isRestrictedEmployeeRequest = (req) => (
+  isEmployeeRequest(req) && req.user?.canViewAllLeadsAndServices !== true
+);
 
 const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
   const values = [req.user?.id, req.user?.name, req.user?.email]
@@ -345,18 +349,12 @@ router.post('/:id/send-invoice', async (req, res) => {
       }
     }
 
-    // Send email to user (Gmail, not SMTP)
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
+    // Send email to user through the configured SMTP provider.
+    const transporter = createEmailTransporter();
 
     try {
       await transporter.sendMail({
-        from: process.env.EMAIL_USER,
+        from: getEmailFrom(),
         to: submission.email,
         subject: `Your Certificate for ${submission.serviceType || submission.service || ''}`,
         text: `Dear ${submission.name},\n\nPlease find attached your certificate for the service: ${submission.serviceType || submission.service || ''}.\n\nThank you for choosing Zumar Law Firm.`,
@@ -582,7 +580,7 @@ router.post('/:id/payments', manualServiceController.addPaymentToManualService);
 // Get all manual service submissions (DirectService.jsx)
 router.get('/', verifyJWT, async (req, res) => {
   try {
-    const query = isEmployeeRequest(req) ? assignedToCurrentEmployeeQuery(req, 'assignedTo') : {};
+    const query = isRestrictedEmployeeRequest(req) ? assignedToCurrentEmployeeQuery(req, 'assignedTo') : {};
     const submissions = await ManualServiceSubmission.find(query).sort({ createdAt: -1 });
     res.json(submissions);
   } catch (err) {

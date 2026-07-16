@@ -52,6 +52,10 @@ const LeadsHeaderButtons = ({
               if (toast && toast.error) toast.error('Selected lead not found.');
               return;
             }
+            if (!lead.email && !lead.hasEmail) {
+              if (toast && toast.error) toast.error('Add a valid email to the lead before conversion.');
+              return;
+            }
             if (setConvertModal) setConvertModal({ open: true, lead });
           }}
         >

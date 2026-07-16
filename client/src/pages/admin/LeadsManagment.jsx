@@ -292,6 +292,7 @@ export default function LeadsManagment() {
         onStatusChange={handleStatusChange}
         onAction={handleAction}
         isAllSelected={isAllSelected}
+        onLeadUpdated={updated => setLeads(prev => prev.map(lead => lead._id === updated._id ? { ...lead, ...updated } : lead))}
       />
       <ConvertLeadModal
         open={convertModal.open}
