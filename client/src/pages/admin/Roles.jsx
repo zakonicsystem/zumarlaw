@@ -113,7 +113,13 @@ const Roles = () => {
 
   // Edit handler: set form state and editing mode
   const handleEdit = (employee) => {
-    setForm({ ...employee });
+    const legacyFullAccess = employee.canViewAllLeadsAndServices === true;
+    setForm({
+      ...employee,
+      canViewAllLeads: employee.canViewAllLeads === true || legacyFullAccess,
+      canViewAllServices: employee.canViewAllServices === true || legacyFullAccess,
+      canViewAllLeadsAndServices: false,
+    });
     setIsEditing(true);
     setEditId(employee._id);
   };
@@ -234,7 +240,7 @@ const Roles = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6">
       <div className="mb-6">
         {/* Modal for viewing credentials */}
         {viewModal && (
@@ -259,7 +265,13 @@ const Roles = () => {
             </div>
           </div>
         )}
-        <h3 className="text-lg font-semibold mb-4">Employee List</h3>
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">Employee Roles</h3>
+            <p className="text-sm text-gray-500">Manage employee details, data permissions, assigned pages, and account status.</p>
+          </div>
+          <span className="text-sm font-medium text-[#57123f]">{employees.length} employee{employees.length === 1 ? '' : 's'}</span>
+        </div>
         {terminateModal && terminateEmployee && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50 p-4">
             <form onSubmit={handleTerminateSubmit} className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
@@ -307,55 +319,53 @@ const Roles = () => {
             </form>
           </div>
         )}
-        {employees.length === 0 ? (
+        {loading && employees.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-500">Loading employees...</div>
+        ) : employees.length === 0 ? (
           <p className="text-gray-500">No employees added.</p>
         ) : (
-          <table className="w-full rounded border text-sm ">
-            <thead>
-              <tr className="bg-gray-100 text-left">
-                <th className="p-2 text-xs">Name & CNIC</th>
-                <th className="p-2 text-xs">Phone & Email</th>
-                <th className="p-2 text-xs">Roles</th>
-                <th className="p-2 text-xs">Salary</th>
-                <th className="p-2 text-xs">Branch</th>
-                <th className="p-2 text-xs">Data Access</th>
-                <th className="p-2 text-xs">Assign Pages</th>
-                <th className="p-2 text-xs"><span className="sr-only">Actions</span></th>
+          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+          <table className="min-w-[1180px] w-full border-collapse text-sm">
+            <thead className="bg-[#57123f] text-left text-white">
+              <tr>
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Employee</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Contact</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Role & Branch</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Salary</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Lead Access</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Service Access</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Assigned Pages</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Status</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {employees.map((emp, index) => (
-                <tr key={index} className="text-left hover:bg-gray-50 border-b">
-                  <td className="p-2 text-xs" title={emp.name}>
-                    <div className="font-semibold text-gray-800 flex items-center gap-2">
-                      <span>{emp.name}</span>
-                      {emp.employmentStatus === 'terminated' && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700">Terminated</span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500">{emp.cnic}</div>
-                    {emp.employmentStatus === 'terminated' && emp.terminatedAt && (
-                      <div className="text-[10px] text-red-600">Terminated: {new Date(emp.terminatedAt).toLocaleDateString()}</div>
-                    )}
-                    {emp.employmentStatus === 'terminated' && emp.terminatedReason && (
-                      <div className="text-[10px] text-gray-500 truncate" title={emp.terminatedReason}>Reason: {emp.terminatedReason}</div>
-                    )}
+                <tr key={emp._id || index} className="text-left align-top transition-colors hover:bg-purple-50/40">
+                  <td className="px-4 py-4" title={emp.name}>
+                    <div className="font-semibold text-gray-900">{emp.name || '-'}</div>
+                    <div className="mt-1 text-xs text-gray-500">CNIC: {emp.cnic || '-'}</div>
                   </td>
-                  <td className="p-2 text-xs" title={emp.phone}>
-                    <div className="text-gray-700">{emp.phone}</div>
-                    <div className="text-xs text-gray-500">{emp.email}</div>
+                  <td className="px-4 py-4" title={emp.phone}>
+                    <div className="text-gray-800">{emp.phone || '-'}</div>
+                    <div className="mt-1 max-w-[190px] truncate text-xs text-gray-500" title={emp.email}>{emp.email || '-'}</div>
                   </td>
-                  <td className="p-2 text-xs" title={emp.role}>{emp.role}</td>
-                  <td className="p-2 text-xs" title={emp.salary}>{emp.salary}</td>
-                  <td className="p-2 text-xs" title={emp.branch}>{emp.branch}</td>
-                  <td className="p-2 text-xs">
-                    {emp.canViewAllLeadsAndServices ? (
-                      <span className="rounded-full bg-purple-100 px-2 py-1 text-purple-700">All leads & services</span>
-                    ) : (
-                      <span className="rounded-full bg-gray-100 px-2 py-1 text-gray-600">Assigned only</span>
-                    )}
+                  <td className="px-4 py-4">
+                    <div className="font-medium text-gray-800">{emp.role || '-'}</div>
+                    <div className="mt-1 text-xs text-gray-500">{emp.branch || 'No branch'}</div>
                   </td>
-                  <td className="p-2 text-xs">
+                  <td className="px-4 py-4 font-medium text-gray-800" title={emp.salary}>{emp.salary || '-'}</td>
+                  <td className="px-4 py-4">
+                    {emp.canViewAllLeads === true || emp.canViewAllLeadsAndServices === true
+                      ? <span className="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">All leads</span>
+                      : <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">Assigned only</span>}
+                  </td>
+                  <td className="px-4 py-4">
+                    {emp.canViewAllServices === true || emp.canViewAllLeadsAndServices === true
+                      ? <span className="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">All services</span>
+                      : <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">Assigned only</span>}
+                  </td>
+                  <td className="px-4 py-4 text-xs">
                     {emp.assignedPages?.length ? (
                       (() => {
                         // Map path to label using pages structure
@@ -371,15 +381,25 @@ const Roles = () => {
                         };
                         const names = Array.from(new Set(emp.assignedPages.map(getLabel)));
                         return (
-                          <span title={names.join(', ')}>
-                            {names.join(', ')}
+                          <span className="inline-flex max-w-[220px] rounded bg-purple-50 px-2 py-1 text-[#57123f]" title={names.join(', ')}>
+                            <span className="truncate">{names.join(', ')}</span>
                           </span>
                         );
                       })()
                     ) : '-'}
                   </td>
-                  <td className="p-2 text-xs ">
-                    <div className="flex justify-center gap-2">
+                  <td className="px-4 py-4">
+                    {emp.employmentStatus === 'terminated' ? (
+                      <div>
+                        <span className="inline-flex rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">Terminated</span>
+                        {emp.terminatedAt && <div className="mt-1 text-[11px] text-gray-500">{new Date(emp.terminatedAt).toLocaleDateString()}</div>}
+                      </div>
+                    ) : (
+                      <span className="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">Active</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-1">
                       <button
                         className="text-[#57123f] hover:bg-blue-100 rounded-full p-2"
                         title="View"
@@ -416,24 +436,9 @@ const Roles = () => {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
-
-      {/* Modal for viewing credentials */}
-      {viewModal && viewEmployee && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-          <div className="bg-white p-6 rounded shadow-lg min-w-[300px] relative">
-            <button onClick={() => setViewModal(false)} className="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
-            <h3 className="text-lg font-bold mb-2">Employee Credentials</h3>
-            <div className="mb-2"><b>Email:</b> {viewEmployee.email}</div>
-            <div className="mb-4"><b>Password:</b> {viewEmployee.password}</div>
-            <button
-              className="bg-[#57123f] text-white px-4 py-2 rounded mt-2"
-              onClick={() => setViewModal(false)}
-            >Close</button>
-          </div>
-        </div>
-      )}
 
       {/* Add a form for editing below the table */}
       {isEditing && (
@@ -464,18 +469,32 @@ const Roles = () => {
             <input name="salary" value={form.salary || ''} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} placeholder="Salary" className="border px-3 py-2 rounded" />
             <input name="branch" value={form.branch || ''} onChange={e => setForm(f => ({ ...f, branch: e.target.value }))} placeholder="Branch" className="border px-3 py-2 rounded" />
           </div>
-          <label className="mb-4 flex items-start gap-3 rounded border border-purple-200 bg-purple-50 p-3">
-            <input
-              type="checkbox"
-              checked={form.canViewAllLeadsAndServices === true}
-              onChange={e => setForm(f => ({ ...f, canViewAllLeadsAndServices: e.target.checked }))}
-              className="mt-1"
-            />
-            <span>
-              <span className="block font-medium text-[#57123f]">View all leads and services</span>
-              <span className="block text-sm text-gray-600">When disabled, the employee can only access records assigned to them.</span>
-            </span>
-          </label>
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="flex items-start gap-3 rounded-lg border border-purple-200 bg-purple-50 p-3">
+              <input
+                type="checkbox"
+                checked={form.canViewAllLeads === true}
+                onChange={e => setForm(f => ({ ...f, canViewAllLeads: e.target.checked }))}
+                className="mt-1 accent-[#57123f]"
+              />
+              <span>
+                <span className="block font-medium text-[#57123f]">View all leads</span>
+                <span className="block text-sm text-gray-600">Otherwise, only assigned leads are visible.</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 rounded-lg border border-purple-200 bg-purple-50 p-3">
+              <input
+                type="checkbox"
+                checked={form.canViewAllServices === true}
+                onChange={e => setForm(f => ({ ...f, canViewAllServices: e.target.checked }))}
+                className="mt-1 accent-[#57123f]"
+              />
+              <span>
+                <span className="block font-medium text-[#57123f]">View all services</span>
+                <span className="block text-sm text-gray-600">Otherwise, only assigned services are visible.</span>
+              </span>
+            </label>
+          </div>
           <div className="mb-4">
             <label className="font-medium mb-2 flex items-center gap-2 text-[#57123f] text-base">
               <FaTasks className="inline text-orange-600" /> Assign Pages

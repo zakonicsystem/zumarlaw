@@ -71,6 +71,7 @@ const ConvertedLeadSchema = new mongoose.Schema({
   // New: Document files (pdf, doc, docx, etc.)
   docs: [FileMetaSchema],
   certificate: { type: String },
+  certificateEmailSentAt: { type: Date, default: null },
   pricing: { type: PricingSchema, default: {} },
   payments: [PaymentSchema],
   // Merge tracking

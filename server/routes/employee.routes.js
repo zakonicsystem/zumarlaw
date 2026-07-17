@@ -25,13 +25,21 @@ router.post('/employee-login', async (req, res) => {
         email: employee.login.email,
         name: employee.name,
         assignedPages: employee.assignedPages,
+        canViewAllLeads: employee.canViewAllLeads === true || employee.canViewAllLeadsAndServices === true,
+        canViewAllServices: employee.canViewAllServices === true || employee.canViewAllLeadsAndServices === true,
         role: 'employee' // ✅ include role
       },
 
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
-    res.json({ token, employeeName: employee.name, assignedPages: employee.assignedPages });
+    res.json({
+      token,
+      employeeName: employee.name,
+      assignedPages: employee.assignedPages,
+      canViewAllLeads: employee.canViewAllLeads === true || employee.canViewAllLeadsAndServices === true,
+      canViewAllServices: employee.canViewAllServices === true || employee.canViewAllLeadsAndServices === true
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

@@ -51,7 +51,7 @@ const isEmployeeRequest = (req) => {
 };
 
 const isRestrictedEmployeeRequest = (req) => (
-    isEmployeeRequest(req) && req.user?.canViewAllLeadsAndServices !== true
+    isEmployeeRequest(req) && req.user?.canViewAllLeads !== true
 );
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -94,8 +94,6 @@ const sanitizeLeadForRequest = (req, lead) => {
     plain.hasPhone = Boolean(String(plain.phone || '').trim());
 
     if (isEmployeeRequest(req)) {
-        delete plain.email;
-        delete plain.phone;
         delete plain.referralPhone;
     }
 
@@ -290,7 +288,15 @@ router.put('/:id', async (req, res) => {
             if (!email || !isValidEmail(email)) {
                 return res.status(400).json({ message: 'A valid email address is required' });
             }
-            update = { email };
+            const lead = await Lead.findByIdAndUpdate(
+                id,
+                { $set: { email } },
+                { new: true }
+            );
+            if (!lead) {
+                return res.status(404).json({ message: 'Lead not found' });
+            }
+            return res.json({ message: 'Lead email updated', lead: sanitizeLeadForRequest(req, lead) });
         }
 
         const push = {};

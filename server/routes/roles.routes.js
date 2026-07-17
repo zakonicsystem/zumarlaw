@@ -60,7 +60,15 @@ router.post('/roles', async (req, res) => {
 // Update an employee
 router.put('/roles/:id', async (req, res) => {
   try {
-    const updatedRole = await Roles.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const update = { ...req.body };
+    if (
+      Object.prototype.hasOwnProperty.call(update, 'canViewAllLeads') ||
+      Object.prototype.hasOwnProperty.call(update, 'canViewAllServices')
+    ) {
+      // Retire the legacy combined flag once the independent controls are saved.
+      update.canViewAllLeadsAndServices = false;
+    }
+    const updatedRole = await Roles.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!updatedRole) return res.status(404).json({ message: 'Employee not found' });
     res.json({ message: 'Employee updated successfully', employee: updatedRole });
   } catch (err) {

@@ -53,7 +53,8 @@ const LeadsTable = ({
 
   const fieldRows = (lead = {}) => [
     ['Name', lead.name],
-    ...(!isEmployee ? [['Email', lead.email], ['Phone', lead.phone]] : []),
+    ['Email', lead.email],
+    ['Phone', lead.phone],
     ['Status', lead.status],
     ['Service Interested', lead.service],
     ['Assigned To', lead.assigned],
@@ -102,8 +103,8 @@ const LeadsTable = ({
                   style={{ accentColor: '#57123f', width: 18, height: 18 }}
                 />
               </th>
-              <th className="p-3">{isEmployee ? 'Name' : 'Name And Email'}</th>
-              <th className="p-3">{isEmployee ? 'Registered' : 'Phone & Registered'}</th>
+              <th className="p-3">Name And Email</th>
+              <th className="p-3">Phone & Registered</th>
               <th className="p-3">Status</th>
               {showFollowUpColumns && (
                 <>
@@ -130,10 +131,10 @@ const LeadsTable = ({
                   </td>
                   <td className="p-2">
                     <div className="font-semibold">{lead.name}</div>
-                    {!isEmployee && <div className="text-xs text-gray-700">{lead.email}</div>}
+                    <div className="text-xs text-gray-700">{lead.email || '-'}</div>
                   </td>
                   <td className="p-2">
-                    {!isEmployee && <div className="text-xs text-gray-700">Phone: {lead.phone}</div>}
+                    <div className="text-xs text-gray-700">Phone: {lead.phone || '-'}</div>
                     <div className="text-xs text-gray-500">Registered: {formatLeadDateTime(lead)}</div>
                   </td>
                   <td className="p-2">
@@ -187,8 +188,8 @@ const LeadsTable = ({
                     </button>
                     <button
                       className="rounded-full hover:bg-gray-100 text-[#57123f]"
-                      title={isEmployee ? "Add or update lead email" : "Edit"}
-                      onClick={() => setEditModal({ open: true, lead: isEmployee ? { ...lead, email: '' } : lead })}
+                      title="Edit Lead"
+                      onClick={() => setEditModal({ open: true, lead })}
                     >
                       <FaEdit />
                     </button>
@@ -244,7 +245,7 @@ const LeadsTable = ({
               />
               {isEmployee && (
                 <p className="text-xs text-gray-500">
-                  Contact details are private. Enter a valid email to add or replace it.
+                  Employees can update the lead email whenever a correction is required.
                 </p>
               )}
               {!isEmployee && (

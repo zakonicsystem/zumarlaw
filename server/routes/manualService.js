@@ -13,6 +13,8 @@ import ConvertedLead from '../models/ConvertedLead.js';
 import { deleteManyManualServices } from '../controllers/manualServiceController.js';
 import { tryVerify, verifyJWT } from '../middleware/authMiddleware.js';
 import { notifyPaymentReceived } from '../utils/paymentNotification.js';
+import { buildCertificateEmail, getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
+import { autoSendCompletedServiceCertificate } from '../utils/serviceCertificateEmail.js';
 
 
 // Multer config for file uploads (store in /uploads)
@@ -34,7 +36,7 @@ const isEmployeeRequest = (req) => {
 };
 
 const isRestrictedEmployeeRequest = (req) => (
-  isEmployeeRequest(req) && req.user?.canViewAllLeadsAndServices !== true
+  isEmployeeRequest(req) && req.user?.canViewAllServices !== true
 );
 
 const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
@@ -74,17 +76,17 @@ router.post('/merge', async (req, res) => {
 
     // Fetch services from appropriate models
     let services = [];
-    
+
     if (isMixed || serviceTypes.includes('converted') || serviceTypes.includes('processing')) {
       // Handle mixed or different types by fetching from all relevant models
       console.log('Fetching services from multiple models due to mixed types...');
-      
+
       const [manualServices, processingServices, convertedServices] = await Promise.all([
         ManualServiceSubmission.find({ _id: { $in: serviceIds } }),
         Service.find({ _id: { $in: serviceIds } }),
         ConvertedLead.find({ _id: { $in: serviceIds } })
       ]);
-      
+
       services = [...manualServices, ...processingServices, ...convertedServices];
       console.log(`Found ${services.length} services (Manual: ${manualServices.length}, Processing: ${processingServices.length}, Converted: ${convertedServices.length})`);
     } else {
@@ -105,7 +107,7 @@ router.post('/merge', async (req, res) => {
     // Use first service as primary/template - find which is manual type if possible
     let primary = services[0];
     let primaryIndex = 0;
-    
+
     // Prefer manual service as primary if available
     for (let i = 0; i < services.length; i++) {
       if (services[i].constructor.modelName === 'ManualServiceSubmission') {
@@ -114,7 +116,7 @@ router.post('/merge', async (req, res) => {
         break;
       }
     }
-    
+
     const secondaryIds = serviceIds.filter(id => id.toString() !== primary._id.toString());
 
     // Backup secondary services data before marking as merged
@@ -179,7 +181,7 @@ router.post('/merge', async (req, res) => {
     // Update primary service with merged data - find primary in ManualServiceSubmission
     // If primary is not manual, create a new manual service for the merge
     let updatedMerged;
-    
+
     if (primary.constructor.modelName === 'ManualServiceSubmission') {
       updatedMerged = await ManualServiceSubmission.findByIdAndUpdate(
         primary._id,
@@ -216,7 +218,7 @@ router.post('/merge', async (req, res) => {
           { $set: updateData }
         )
       ]);
-      
+
       console.log(`Marked ${secondaryIds.length} services as merged`);
     }
 
@@ -307,7 +309,7 @@ router.post('/:id/unmerge', async (req, res) => {
           mergedIntoSet: 1
         }
       };
-      
+
       await Promise.all([
         Service.updateMany(
           { _id: { $in: secondaryIds } },
@@ -348,18 +350,24 @@ router.post('/:id/send-invoice', async (req, res) => {
         console.warn(`Certificate file not found for submission ${req.params.id}: ${certPath}`);
       }
     }
+    attachments.push(getCertificateEmailLogoAttachment());
 
     // Send email to user through the configured SMTP provider.
     const transporter = createEmailTransporter();
 
     try {
+      const emailContent = buildCertificateEmail({
+        recipientName: submission.name,
+        serviceName: submission.serviceType || submission.service,
+      });
       await transporter.sendMail({
         from: getEmailFrom(),
         to: submission.email,
-        subject: `Your Certificate for ${submission.serviceType || submission.service || ''}`,
-        text: `Dear ${submission.name},\n\nPlease find attached your certificate for the service: ${submission.serviceType || submission.service || ''}.\n\nThank you for choosing Zumar Law Firm.`,
+        ...emailContent,
         attachments
       });
+      submission.certificateEmailSentAt = new Date();
+      await submission.save();
       res.json({ message: 'Certificate sent to user email!' });
     } catch (mailErr) {
       console.error('Failed to send certificate email for manual service:', mailErr);
@@ -431,9 +439,22 @@ router.patch('/:id/status', async (req, res) => {
     if (String(existing.status || '') !== String(status || '')) {
       update.$push = { statusHistory: { from: existing.status || '', to: status || '', changedAt: new Date(), changedBy: actorName(req) } };
     }
-    await ManualServiceSubmission.findByIdAndUpdate(req.params.id, update, { new: true });
-    
-    res.json({ message: 'Status updated', status });
+    const updated = await ManualServiceSubmission.findByIdAndUpdate(req.params.id, update, { new: true });
+
+    let certificateEmail;
+    try {
+      certificateEmail = await autoSendCompletedServiceCertificate({
+        service: updated,
+        recipientEmail: updated.email,
+        recipientName: updated.name,
+        serviceName: updated.serviceType,
+      });
+    } catch (mailError) {
+      console.error('Automatic manual-service certificate email failed after completion:', mailError);
+      certificateEmail = { sent: false, reason: 'email_send_failed' };
+    }
+
+    res.json({ message: 'Status updated', status, certificateEmail });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update status' });
   }
@@ -466,10 +487,26 @@ router.post('/:id/certificate', upload.single('certificate'), async (req, res) =
       submission.certificatePending = req.file.filename;
     } else {
       submission.certificate = req.file.filename;
+      submission.certificateEmailSentAt = null;
     }
     await submission.save();
-    
-    res.json({ message: 'Certificate uploaded', file: req.file.filename });
+
+    let certificateEmail;
+    try {
+      certificateEmail = req.query.pending === 'true'
+        ? { sent: false, reason: 'certificate_pending' }
+        : await autoSendCompletedServiceCertificate({
+          service: submission,
+          recipientEmail: submission.email,
+          recipientName: submission.name,
+          serviceName: submission.serviceType,
+        });
+    } catch (mailError) {
+      console.error('Automatic manual-service certificate email failed after upload:', mailError);
+      certificateEmail = { sent: false, reason: 'email_send_failed' };
+    }
+
+    res.json({ message: 'Certificate uploaded', file: req.file.filename, certificateEmail });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }

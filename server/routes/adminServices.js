@@ -21,7 +21,7 @@ const isEmployeeRequest = (req) => {
 };
 
 const isRestrictedEmployeeRequest = (req) => (
-  isEmployeeRequest(req) && req.user?.canViewAllLeadsAndServices !== true
+  isEmployeeRequest(req) && req.user?.canViewAllServices !== true
 );
 
 const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
@@ -44,14 +44,28 @@ const actorName = (req) => req.user?.name || req.user?.email || req.user?.id || 
 // Allow certificate upload even if token is missing/expired; tryVerify will attach user if present
 router.post('/services/:id/certificate', tryVerify, upload.single('certificate'), async (req, res) => {
   try {
-    const service = await Service.findById(req.params.id);
+    const service = await Service.findById(req.params.id).populate('personalId');
     if (!service) return res.status(404).json({ error: 'Service not found' });
 
-   service.certificate = req.file.filename;
+    service.certificate = req.file.filename;
+    service.certificateEmailSentAt = null;
 
     await service.save();
 
-    res.json({ message: 'Certificate uploaded', file: req.file.filename });
+    let certificateEmail;
+    try {
+      certificateEmail = await autoSendCompletedServiceCertificate({
+        service,
+        recipientEmail: service.personalId?.email,
+        recipientName: service.personalId?.name,
+        serviceName: service.serviceTitle,
+      });
+    } catch (mailError) {
+      console.error('Automatic certificate email failed after upload:', mailError);
+      certificateEmail = { sent: false, reason: 'email_send_failed' };
+    }
+
+    res.json({ message: 'Certificate uploaded', file: req.file.filename, certificateEmail });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -61,6 +75,8 @@ router.post('/services/:id/certificate', tryVerify, upload.single('certificate')
 import { createEmailTransporter, getEmailFrom } from '../utils/emailTransporter.js';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
+import { buildCertificateEmail, getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
+import { autoSendCompletedServiceCertificate } from '../utils/serviceCertificateEmail.js';
 // Allow send-invoice to proceed even if token is missing/expired; tryVerify attached earlier in middleware stack if needed
 router.post('/services/:id/send-invoice', tryVerify, async (req, res) => {
   try {
@@ -85,17 +101,23 @@ router.post('/services/:id/send-invoice', tryVerify, async (req, res) => {
         attachments.push({ filename: service.certificate, path: certPath });
       }
     }
+    attachments.push(getCertificateEmailLogoAttachment());
 
     // Send email to user (credentials from env)
     const transporter = createEmailTransporter();
 
+    const emailContent = buildCertificateEmail({
+      recipientName: service.personalId.name,
+      serviceName: service.serviceTitle,
+    });
     await transporter.sendMail({
       from: getEmailFrom(),
       to: service.personalId.email,
-      subject: `Your Certificate for ${service.serviceTitle}`,
-      text: `Dear ${service.personalId?.name},\n\nPlease find attached your certificate for the service: ${service.serviceTitle}.\n\nThank you for choosing Zumar Law Firm.`,
+      ...emailContent,
       attachments
     });
+    service.certificateEmailSentAt = new Date();
+    await service.save();
 
     res.json({ message: 'Certificate sent to user email!' });
   } catch (err) {
@@ -170,8 +192,22 @@ router.patch('/services/:id/status', tryVerify, async (req, res) => {
     if (String(existing.status || '') !== String(status || '')) {
       update.$push = { statusHistory: { from: existing.status || '', to: status || '', changedAt: new Date(), changedBy: actorName(req) } };
     }
-    const service = await Service.findByIdAndUpdate(req.params.id, update, { new: true });
-    res.json(service);
+    const service = await Service.findByIdAndUpdate(req.params.id, update, { new: true }).populate('personalId');
+
+    let certificateEmail;
+    try {
+      certificateEmail = await autoSendCompletedServiceCertificate({
+        service,
+        recipientEmail: service.personalId?.email,
+        recipientName: service.personalId?.name,
+        serviceName: service.serviceTitle,
+      });
+    } catch (mailError) {
+      console.error('Automatic certificate email failed after completion:', mailError);
+      certificateEmail = { sent: false, reason: 'email_send_failed' };
+    }
+
+    res.json({ ...service.toObject(), certificateEmail });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }

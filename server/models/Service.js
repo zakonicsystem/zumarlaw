@@ -80,6 +80,7 @@ const ServiceDetailSchema = new mongoose.Schema({
     }
   ],
   certificate: { type: String, default: null },
+  certificateEmailSentAt: { type: Date, default: null },
   invoiceSent: { type: Boolean, default: false },
   payments: [PaymentSchema],
   pricing: { type: PricingSchema, default: {} },

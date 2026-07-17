@@ -12,6 +12,14 @@ const roleSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    canViewAllLeads: {
+        type: Boolean,
+        default: false
+    },
+    canViewAllServices: {
+        type: Boolean,
+        default: false
+    },
     tasks: [String],
     employmentStatus: {
         type: String,

@@ -47,6 +47,7 @@ const ManualServiceSubmissionSchema = new mongoose.Schema({
     }
   ],
   certificate: { type: String },
+  certificateEmailSentAt: { type: Date, default: null },
   assignedTo: { type: String, default: '' },
   assignmentHistory: [
     {

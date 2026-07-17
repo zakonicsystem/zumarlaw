@@ -1,5 +1,7 @@
 // Edit a specific payment for a converted lead
 import { notifyPaymentReceived } from '../utils/paymentNotification.js';
+import { buildCertificateEmail, getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
+import { autoSendCompletedServiceCertificate } from '../utils/serviceCertificateEmail.js';
 
 export const editPaymentForConvertedLead = async (id, paymentIdx, paymentData) => {
   const lead = await ConvertedLead.findById(id);
@@ -109,7 +111,7 @@ const isEmployeeRequest = (req) => {
 };
 
 const isRestrictedEmployeeRequest = (req) => (
-  isEmployeeRequest(req) && req.user?.canViewAllLeadsAndServices !== true
+  isEmployeeRequest(req) && req.user?.canViewAllServices !== true
 );
 
 const assignedToCurrentEmployeeQuery = (req, field = 'assigned') => {
@@ -375,15 +377,21 @@ export const sendInvoice = async (req, res) => {
         attachments.push({ filename: lead.certificate, path: certPath });
       }
     }
+    attachments.push(getCertificateEmailLogoAttachment());
     // Send email
     const transporter = createEmailTransporter();
+    const emailContent = buildCertificateEmail({
+      recipientName: lead.name,
+      serviceName: lead.service,
+    });
     await transporter.sendMail({
       from: getEmailFrom(),
       to: recipientEmail,
-      subject: `Your Certificate for ${lead.service || 'Service'}`,
-      text: `Dear ${lead.name || 'User'},\n\nPlease find attached your certificate for the service: ${lead.service || 'Service'}.\n\nThank you for choosing Zumar Law Firm.`,
+      ...emailContent,
       attachments,
     });
+    lead.certificateEmailSentAt = new Date();
+    await lead.save();
     res.json({ success: true, message: 'Certificate sent to user email!' });
   } catch (err) {
     console.error('Error sending invoice:', err);
@@ -398,9 +406,23 @@ export const uploadCertificate = async (req, res) => {
     if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
     lead.certificate = req.file.filename;
+    lead.certificateEmailSentAt = null;
     await lead.save();
 
-    res.json({ success: true, message: 'Certificate uploaded', certificate: req.file.filename });
+    let certificateEmail;
+    try {
+      certificateEmail = await autoSendCompletedServiceCertificate({
+        service: lead,
+        recipientEmail: lead.email,
+        recipientName: lead.name,
+        serviceName: lead.service,
+      });
+    } catch (mailError) {
+      console.error('Automatic converted-service certificate email failed after upload:', mailError);
+      certificateEmail = { sent: false, reason: 'email_send_failed' };
+    }
+
+    res.json({ success: true, message: 'Certificate uploaded', certificate: req.file.filename, certificateEmail });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -437,7 +459,20 @@ export const updateStatus = async (req, res) => {
     }
     const lead = await ConvertedLead.findByIdAndUpdate(id, update, { new: true });
 
-    res.json({ success: true, lead });
+    let certificateEmail;
+    try {
+      certificateEmail = await autoSendCompletedServiceCertificate({
+        service: lead,
+        recipientEmail: lead.email,
+        recipientName: lead.name,
+        serviceName: lead.service,
+      });
+    } catch (mailError) {
+      console.error('Automatic converted-service certificate email failed after completion:', mailError);
+      certificateEmail = { sent: false, reason: 'email_send_failed' };
+    }
+
+    res.json({ success: true, lead, certificateEmail });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

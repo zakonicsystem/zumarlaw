@@ -57,7 +57,8 @@ export const verifyJWT = async (req, res, next) => {
         email: employee.login?.email,
         role: employee.role || 'employee',
         assignedPages: employee.assignedPages || [],
-        canViewAllLeadsAndServices: employee.canViewAllLeadsAndServices === true
+        canViewAllLeads: employee.canViewAllLeads === true || employee.canViewAllLeadsAndServices === true,
+        canViewAllServices: employee.canViewAllServices === true || employee.canViewAllLeadsAndServices === true
       };
       console.log('[verifyJWT] Authenticated as employee:', req.user);
       return next();
@@ -152,7 +153,8 @@ export const tryVerify = async (req, res, next) => {
         name: employee.name,
         email: employee.login?.email,
         role: employee.role || 'employee',
-        canViewAllLeadsAndServices: employee.canViewAllLeadsAndServices === true
+        canViewAllLeads: employee.canViewAllLeads === true || employee.canViewAllLeadsAndServices === true,
+        canViewAllServices: employee.canViewAllServices === true || employee.canViewAllLeadsAndServices === true
       };
     }
     return next();

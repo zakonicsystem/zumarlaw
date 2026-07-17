@@ -10,6 +10,7 @@ import {
   getServicePriceSnapshot,
 } from '../data/servicePrices.js';
 import { notifyPaymentReceived } from '../utils/paymentNotification.js';
+import { autoSendCompletedServiceCertificate } from '../utils/serviceCertificateEmail.js';
 
 const router = express.Router();
 
@@ -25,7 +26,7 @@ const isEmployeeRequest = (req) => {
 };
 
 const isRestrictedEmployeeRequest = (req) => (
-  isEmployeeRequest(req) && req.user?.canViewAllLeadsAndServices !== true
+  isEmployeeRequest(req) && req.user?.canViewAllServices !== true
 );
 
 const assignedToCurrentEmployeeQuery = (req, field = 'assignedTo') => {
@@ -213,12 +214,25 @@ router.patch('/admin/services/:id/certificate', tryVerify, upload.single('certif
     }
     const updated = await ServiceDetail.findByIdAndUpdate(
       id,
-      { certificate: req.file.filename },
+      { certificate: req.file.filename, certificateEmailSentAt: null },
       { new: true }
-    ).populate('personalId', 'phone');
+    ).populate('personalId', 'name email phone');
     if (!updated) return res.status(404).json({ error: 'Service not found' });
 
-    res.json({ message: 'Certificate uploaded', certificate: req.file.filename });
+    let certificateEmail;
+    try {
+      certificateEmail = await autoSendCompletedServiceCertificate({
+        service: updated,
+        recipientEmail: updated.personalId?.email,
+        recipientName: updated.personalId?.name,
+        serviceName: updated.serviceTitle,
+      });
+    } catch (mailError) {
+      console.error('Automatic certificate email failed after upload:', mailError);
+      certificateEmail = { sent: false, reason: 'email_send_failed' };
+    }
+
+    res.json({ message: 'Certificate uploaded', certificate: req.file.filename, certificateEmail });
   } catch (err) {
     console.error('Certificate upload error:', err);
     res.status(500).json({ error: 'Failed to upload certificate' });
@@ -235,9 +249,22 @@ router.patch('/admin/services/:id/status', tryVerify, async (req, res) => {
     if (String(existing.status || '') !== String(status || '')) {
       update.$push = { statusHistory: { from: existing.status || '', to: status || '', changedAt: new Date(), changedBy: actorName(req) } };
     }
-    const updated = await ServiceDetail.findByIdAndUpdate(id, update, { new: true }).populate('personalId', 'phone');
+    const updated = await ServiceDetail.findByIdAndUpdate(id, update, { new: true }).populate('personalId', 'name email phone');
 
-    res.json({ message: 'Status updated', service: updated });
+    let certificateEmail;
+    try {
+      certificateEmail = await autoSendCompletedServiceCertificate({
+        service: updated,
+        recipientEmail: updated.personalId?.email,
+        recipientName: updated.personalId?.name,
+        serviceName: updated.serviceTitle,
+      });
+    } catch (mailError) {
+      console.error('Automatic certificate email failed after completion:', mailError);
+      certificateEmail = { sent: false, reason: 'email_send_failed' };
+    }
+
+    res.json({ message: 'Status updated', service: updated, certificateEmail });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update status' });
   }

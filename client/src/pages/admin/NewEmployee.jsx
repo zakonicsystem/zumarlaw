@@ -12,7 +12,8 @@ const NewEmployee = ({ onEmployeeAdded }) => {
     salary: '', // new field
     branch: '', // new field
     assignedPages: [],
-    canViewAllLeadsAndServices: false,
+    canViewAllLeads: false,
+    canViewAllServices: false,
     tasks: []
   });
   const [loading, setLoading] = useState(false);
@@ -168,7 +169,8 @@ const NewEmployee = ({ onEmployeeAdded }) => {
       salary: '', // new field
       branch: '', // new field
       assignedPages: [],
-      canViewAllLeadsAndServices: false,
+      canViewAllLeads: false,
+      canViewAllServices: false,
       tasks: []
     });
   };
@@ -190,18 +192,32 @@ const NewEmployee = ({ onEmployeeAdded }) => {
           <input name="salary" value={form.salary} onChange={handleChange} placeholder="Salary" className="border px-3 py-2 rounded" />
           <input name="branch" value={form.branch} onChange={handleChange} placeholder="Branch" className="border px-3 py-2 rounded" />
         </div>
-        <label className="mb-4 flex items-start gap-3 rounded border border-purple-200 bg-purple-50 p-3">
-          <input
-            type="checkbox"
-            checked={form.canViewAllLeadsAndServices}
-            onChange={e => setForm(prev => ({ ...prev, canViewAllLeadsAndServices: e.target.checked }))}
-            className="mt-1"
-          />
-          <span>
-            <span className="block font-medium text-[#57123f]">View all leads and services</span>
-            <span className="block text-sm text-gray-600">When disabled, the employee can only access records assigned to them.</span>
-          </span>
-        </label>
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="flex items-start gap-3 rounded-lg border border-purple-200 bg-purple-50 p-3">
+            <input
+              type="checkbox"
+              checked={form.canViewAllLeads}
+              onChange={e => setForm(prev => ({ ...prev, canViewAllLeads: e.target.checked }))}
+              className="mt-1 accent-[#57123f]"
+            />
+            <span>
+              <span className="block font-medium text-[#57123f]">View all leads</span>
+              <span className="block text-sm text-gray-600">Access every lead, including leads assigned to other employees.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-3 rounded-lg border border-purple-200 bg-purple-50 p-3">
+            <input
+              type="checkbox"
+              checked={form.canViewAllServices}
+              onChange={e => setForm(prev => ({ ...prev, canViewAllServices: e.target.checked }))}
+              className="mt-1 accent-[#57123f]"
+            />
+            <span>
+              <span className="block font-medium text-[#57123f]">View all services</span>
+              <span className="block text-sm text-gray-600">Access every service, including services assigned to other employees.</span>
+            </span>
+          </label>
+        </div>
         <div className="mb-4">
           <label className="block font-medium mb-2">Assign Pages:</label>
           <div className="grid grid-cols-2 gap-2">

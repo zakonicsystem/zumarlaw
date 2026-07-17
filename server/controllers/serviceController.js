@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { buildCertificateEmail, getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
 
 // Helper to get __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -27,18 +28,23 @@ export const sendInvoiceAndCertificate = async (req, res) => {
         path: path.join(__dirname, '../uploads/', service.certificate),
       });
     }
+    attachments.push(getCertificateEmailLogoAttachment());
 
     // Send email
     const transporter = createEmailTransporter();
+    const emailContent = buildCertificateEmail({
+      recipientName: user.name,
+      serviceName: service.serviceTitle,
+    });
     await transporter.sendMail({
       from: getEmailFrom(),
       to: user.email,
-      subject: `Your Certificate for ${service.serviceTitle}`,
-      text: `Dear ${user.name},\n\nPlease find attached your certificate for the service: ${service.serviceTitle}.\n\nThank you for choosing Zumar Law Firm.`,
+      ...emailContent,
       attachments,
     });
 
     service.invoiceSent = true;
+    service.certificateEmailSentAt = new Date();
     await service.save();
 
     res.json({ message: 'Certificate sent to user email!' });

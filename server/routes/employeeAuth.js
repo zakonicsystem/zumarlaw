@@ -34,7 +34,8 @@ router.get('/employee/me', verifyJWT, async (req, res) => {
     name: employee.name,
     email: employee.login?.email,
     assignedPages: employee.assignedPages,
-    canViewAllLeadsAndServices: employee.canViewAllLeadsAndServices === true
+    canViewAllLeads: employee.canViewAllLeads === true || employee.canViewAllLeadsAndServices === true,
+    canViewAllServices: employee.canViewAllServices === true || employee.canViewAllLeadsAndServices === true
   });
 });
 export default router;
