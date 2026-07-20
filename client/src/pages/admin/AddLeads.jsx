@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import axios from 'axios';
 import api from '../../utils/api';
 import { FiUser, FiCreditCard, FiPhone, FiCalendar, FiCheckCircle, FiChevronDown } from 'react-icons/fi';
+import { serviceData } from '../../data/serviceSchemas';
 
 const AddLeads = () => {
     const { register, handleSubmit, formState: { errors }, reset, control, watch } = useForm();
@@ -54,58 +55,7 @@ const AddLeads = () => {
         }
     };
 
-    const services = [
-        'NTN Registration - Business',
-        'NTN Registration - Salaried',
-        'NTN Registration - Partnership',
-        'NTN Registration - Company',
-        'NTN Registration - NGO/NPO',
-        'Private Limited Company Registration',
-        'Single Member Company Registration',
-        'Limited Liability Partnership (LLP)',
-        'Partnership/AOP Registration',
-        'Annual Tax Return - Salaried',
-        'Annual Tax Return - Sole Proprietor',
-        'Annual Tax Return - Company',
-        'Annual Tax Return - NPO/NGO',
-        'GST Registration - Trader',
-        'GST Registration - Manufacturer',
-        'Monthly Federal / Provincial Sales Tax Return Filing',
-        'PST Registration - Individual',
-        'PST Registration - Partnership',
-        'PST Registration - Company',
-        'Trademark Registration',
-        'Copyright Registration',
-        'Patent Registration',
-        'NPO Registration with SECP',
-        'NGO Registration with Registrar',
-        'NGO/NPO Registration',
-        'Registration of NGOs/ Charities/ Trusts with Sindh Charity Commission',
-        'Arms License - Punjab (Non-Prohibited Bore)',
-        'Arms License - All Pakistan (Non-Prohibited Bore)',
-        'ICT Arms License (Punjab/Islamabad)',
-        'Company Renewal Registration',
-        'Company Registration PSEB',
-        'Call Center Renewal Registration',
-        'New Call Center Registration',
-        'Freelancer Registration',
-        'Freelancer Renewal',
-        'Sole Proprietor',
-        'Partnership firm',
-        'Private Limited Company (PVT)',
-        'Newspaper Registration',
-  'RTO Password Recovery',
-  'Company Transfer',
-  'SECP Company Filing',
-  'PSDA License',
-  'Food Authority License',
-  'Company Close',
-  'ZGO License',
-  'DTS License',
-  'Medical Store License',
-  'Import Export License',
-  'OEP License'
-];
+    const services = Object.keys(serviceData.prices).sort((a, b) => a.localeCompare(b));
 
     const leadSources = [
         'Website',
@@ -227,8 +177,8 @@ const AddLeads = () => {
                                     className="w-full px-4 py-2 border rounded-md appearance-none focus:ring-blue-500 focus:border-blue-500"
                                 >
                                     <option value="">Select the service</option>
-                                    {services.map((service, index) => (
-                                        <option key={index} value={service}>{service}</option>
+                                    {services.map((service) => (
+                                        <option key={service} value={service}>{service}</option>
                                     ))}
                                 </select>
                                 <FiChevronDown className="absolute right-3 top-3 text-gray-400" />

@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { authenticateAdmin, verifyJWT } from '../middleware/authMiddleware.js'; 
 import User from '../models/User.js'; // Add this import for customer data
 import { sendPasswordResetOtp, verifyPasswordResetOtp } from '../utils/passwordResetOtp.js';
+import { getMaintenanceSettings, isSuperAdminRecord } from '../utils/maintenanceMode.js';
 
 const router = express.Router();
 
@@ -19,6 +20,20 @@ router.post('/login', async (req, res) => {
 
   const isMatch = await bcrypt.compare(password, admin.password);
   if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
+
+  const isSuperAdmin = isSuperAdminRecord(admin);
+  const maintenanceSettings = await getMaintenanceSettings();
+  if (maintenanceSettings.maintenanceMode && !isSuperAdmin) {
+    return res.status(503).json({
+      maintenance: true,
+      message: maintenanceSettings.maintenanceMessage,
+    });
+  }
+
+  if (isSuperAdmin && admin.isSuperAdmin !== true) {
+    admin.isSuperAdmin = true;
+    await admin.save();
+  }
 
   const token = jwt.sign(
     { id: admin._id, email: admin.email, role: 'admin' }, // ✅ include role

@@ -75,8 +75,9 @@ router.post('/services/:id/certificate', tryVerify, upload.single('certificate')
 import { createEmailTransporter, getEmailFrom } from '../utils/emailTransporter.js';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
-import { buildCertificateEmail, getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
+import { getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
 import { autoSendCompletedServiceCertificate } from '../utils/serviceCertificateEmail.js';
+import { buildPaymentInvoiceEmail, resolvePaymentInvoiceAmounts } from '../utils/paymentInvoiceEmail.js';
 // Allow send-invoice to proceed even if token is missing/expired; tryVerify attached earlier in middleware stack if needed
 router.post('/services/:id/send-invoice', tryVerify, async (req, res) => {
   try {
@@ -106,9 +107,12 @@ router.post('/services/:id/send-invoice', tryVerify, async (req, res) => {
     // Send email to user (credentials from env)
     const transporter = createEmailTransporter();
 
-    const emailContent = buildCertificateEmail({
+    const paymentSummary = resolvePaymentInvoiceAmounts(service);
+    const emailContent = buildPaymentInvoiceEmail({
       recipientName: service.personalId.name,
       serviceName: service.serviceTitle,
+      referenceId: service._id,
+      ...paymentSummary,
     });
     await transporter.sendMail({
       from: getEmailFrom(),
@@ -116,10 +120,12 @@ router.post('/services/:id/send-invoice', tryVerify, async (req, res) => {
       ...emailContent,
       attachments
     });
-    service.certificateEmailSentAt = new Date();
+    if (service.certificate && attachments.some((attachment) => attachment.filename === service.certificate)) {
+      service.certificateEmailSentAt = new Date();
+    }
     await service.save();
 
-    res.json({ message: 'Certificate sent to user email!' });
+    res.json({ message: 'Payment invoice sent to user email!', paymentSummary });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || 'Server error' });

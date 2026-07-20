@@ -1,7 +1,8 @@
 // Edit a specific payment for a converted lead
 import { notifyPaymentReceived } from '../utils/paymentNotification.js';
-import { buildCertificateEmail, getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
+import { getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
 import { autoSendCompletedServiceCertificate } from '../utils/serviceCertificateEmail.js';
+import { buildPaymentInvoiceEmail, resolvePaymentInvoiceAmounts } from '../utils/paymentInvoiceEmail.js';
 
 export const editPaymentForConvertedLead = async (id, paymentIdx, paymentData) => {
   const lead = await ConvertedLead.findById(id);
@@ -380,9 +381,12 @@ export const sendInvoice = async (req, res) => {
     attachments.push(getCertificateEmailLogoAttachment());
     // Send email
     const transporter = createEmailTransporter();
-    const emailContent = buildCertificateEmail({
+    const paymentSummary = resolvePaymentInvoiceAmounts(lead);
+    const emailContent = buildPaymentInvoiceEmail({
       recipientName: lead.name,
       serviceName: lead.service,
+      referenceId: lead._id,
+      ...paymentSummary,
     });
     await transporter.sendMail({
       from: getEmailFrom(),
@@ -390,9 +394,11 @@ export const sendInvoice = async (req, res) => {
       ...emailContent,
       attachments,
     });
-    lead.certificateEmailSentAt = new Date();
+    if (lead.certificate && attachments.some((attachment) => attachment.filename === lead.certificate)) {
+      lead.certificateEmailSentAt = new Date();
+    }
     await lead.save();
-    res.json({ success: true, message: 'Certificate sent to user email!' });
+    res.json({ success: true, message: 'Payment invoice sent to user email!', paymentSummary });
   } catch (err) {
     console.error('Error sending invoice:', err);
     res.status(500).json({ success: false, message: err.message });

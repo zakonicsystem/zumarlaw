@@ -1249,7 +1249,7 @@ const ServiceProcessingPage = () => {
                       try {
                         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                         await adminRequest({ method: 'post', url: `${apiUrl}/admin/services/${selectedRow._id}/send-invoice`, data: { email: userEmail } });
-                        toast.success('Invoice, certificate, images, and documents sent to user dashboard and email!');
+                        toast.success('Payment invoice sent to user email!');
                         fetchServices();
                       } catch (err) {
                         const msg = err?.response?.data?.error || err?.response?.data?.message || err.message || 'Failed to send invoice/certificate';

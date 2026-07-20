@@ -33,6 +33,9 @@ const Login = () => {
       const { token } = response.data;
 
       if (token) {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('employeeToken');
+        localStorage.removeItem('isSuperAdmin');
         localStorage.setItem('token', token);
 
         const decodedUser = jwtDecode(token);
@@ -72,6 +75,9 @@ const Login = () => {
         console.log('Received user data:', userData); // Debug log
         
         // Store token in localStorage
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('employeeToken');
+        localStorage.removeItem('isSuperAdmin');
         localStorage.setItem('token', token);
         
         // Store the complete user data

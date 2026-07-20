@@ -1,15 +1,19 @@
 import React from 'react';
 import { FaBell } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import MaintenanceControl from './MaintenanceControl';
 
 const Topbar = () => {
   return (
     <header className="flex justify-between items-center px-6 py-4 bg-white shadow-sm">
-      <input
-        type="text"
-        placeholder="Search"
-        className="border p-2 rounded w-1/3 focus:outline-none"
-      />
+      <div className="flex items-center gap-4">
+        <MaintenanceControl />
+        <input
+          type="text"
+          placeholder="Search"
+          className="border p-2 rounded w-56 focus:outline-none"
+        />
+      </div>
       <div className="flex items-center gap-4">
         <Link to="/admin/announcment" className="relative group">
           <FaBell className="text-[#57123f] text-2xl group-hover:text-yellow-500 transition duration-200" />

@@ -40,6 +40,8 @@ import formsRoutes from './routes/forms.js';
 import mergeConvertedLeadsRoutes from './routes/mergeConvertedLeads.js';
 import mergeServiceRoutes from './routes/mergeService.js';
 import clientHistoryRoutes from './routes/clientHistory.js';
+import systemSettingsRoutes from './routes/systemSettings.js';
+import { maintenanceGuard } from './middleware/maintenanceMiddleware.js';
 
 import './config/passport.js';
 import path from 'path';
@@ -61,6 +63,11 @@ app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true,
 }));
+
+// Expose the maintenance status, then enforce the system-wide lock for all
+// remaining API and upload routes. Super Admin recovery access is preserved.
+app.use('/api/system', systemSettingsRoutes);
+app.use(maintenanceGuard);
 
 // Session configuration
 app.use(session({

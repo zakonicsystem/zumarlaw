@@ -10,7 +10,7 @@ const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  
+
   // Password reset modal state
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
@@ -40,6 +40,7 @@ const AdminLogin = () => {
         localStorage.removeItem('assignedPages');
         localStorage.removeItem('token');
         localStorage.setItem('adminToken', token); // Save admin token
+        localStorage.removeItem('isSuperAdmin');
         toast.success("Admin login successful");
         navigate("/admin"); // Redirect to admin
       } else {
@@ -132,20 +133,20 @@ const AdminLogin = () => {
           <div className="bg-white p-6 rounded shadow-lg min-w-[320px] relative">
             <button
               type="button"
-              onClick={() => { 
-                setShowResetModal(false); 
-                setResetStep(1); 
-                setResetEmail(""); 
-                setResetToken(""); 
-                setNewPassword(""); 
+              onClick={() => {
+                setShowResetModal(false);
+                setResetStep(1);
+                setResetEmail("");
+                setResetToken("");
+                setNewPassword("");
                 setShowNewPassword(false);
-              }} 
+              }}
               className="absolute top-2 right-2 text-gray-500 hover:text-black"
             >
               &times;
             </button>
             <h3 className="text-lg font-bold mb-4">Reset Admin Password</h3>
-            
+
             {resetStep === 1 && (
               <>
                 <label className="block mb-2 text-sm font-medium">Enter your admin email address</label>
@@ -175,7 +176,7 @@ const AdminLogin = () => {
                 </button>
               </>
             )}
-            
+
             {resetStep === 2 && (
               <>
                 <label className="block mb-2 text-sm font-medium">OTP from email</label>

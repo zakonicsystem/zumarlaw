@@ -22,6 +22,7 @@
   },
   "scripts": {
     "mongo": "powershell -ExecutionPolicy Bypass -File ./start-mongo.ps1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "set-super-admin": "node scripts/setSuperAdmin.js"
   }
 }

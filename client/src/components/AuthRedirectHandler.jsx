@@ -11,6 +11,9 @@ const AuthRedirectHandler = () => {
     const user = params.get('user');
 
     if (token && user) {
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('employeeToken');
+      localStorage.removeItem('isSuperAdmin');
       localStorage.setItem('token', token);
       try {
         const parsedUser = JSON.parse(decodeURIComponent(user));

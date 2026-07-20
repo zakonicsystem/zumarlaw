@@ -995,7 +995,7 @@ const ManualService = () => {
                         try {
                           const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
                           await axios.post(`${apiUrl}/api/manualService/${invoiceData._id}/send-invoice`);
-                          toast.success('Invoice sent to user email!');
+                          toast.success('Payment invoice sent to user email!');
                         } catch (err) {
                           toast.error('Failed to send invoice');
                         }

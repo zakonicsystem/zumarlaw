@@ -34,6 +34,7 @@ const EmployeeLogin = () => {
 
             if (token) {
                 localStorage.removeItem("adminToken");
+                localStorage.removeItem("isSuperAdmin");
                 localStorage.removeItem("token");
                 localStorage.setItem("employeeToken", token);
                 if (employeeName) {

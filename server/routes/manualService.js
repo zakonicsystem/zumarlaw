@@ -13,8 +13,9 @@ import ConvertedLead from '../models/ConvertedLead.js';
 import { deleteManyManualServices } from '../controllers/manualServiceController.js';
 import { tryVerify, verifyJWT } from '../middleware/authMiddleware.js';
 import { notifyPaymentReceived } from '../utils/paymentNotification.js';
-import { buildCertificateEmail, getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
+import { getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
 import { autoSendCompletedServiceCertificate } from '../utils/serviceCertificateEmail.js';
+import { buildPaymentInvoiceEmail, resolvePaymentInvoiceAmounts } from '../utils/paymentInvoiceEmail.js';
 
 
 // Multer config for file uploads (store in /uploads)
@@ -356,9 +357,12 @@ router.post('/:id/send-invoice', async (req, res) => {
     const transporter = createEmailTransporter();
 
     try {
-      const emailContent = buildCertificateEmail({
+      const paymentSummary = resolvePaymentInvoiceAmounts(submission);
+      const emailContent = buildPaymentInvoiceEmail({
         recipientName: submission.name,
         serviceName: submission.serviceType || submission.service,
+        referenceId: submission._id,
+        ...paymentSummary,
       });
       await transporter.sendMail({
         from: getEmailFrom(),
@@ -366,12 +370,14 @@ router.post('/:id/send-invoice', async (req, res) => {
         ...emailContent,
         attachments
       });
-      submission.certificateEmailSentAt = new Date();
+      if (submission.certificate && attachments.some((attachment) => attachment.filename === submission.certificate)) {
+        submission.certificateEmailSentAt = new Date();
+      }
       await submission.save();
-      res.json({ message: 'Certificate sent to user email!' });
+      res.json({ message: 'Payment invoice sent to user email!', paymentSummary });
     } catch (mailErr) {
-      console.error('Failed to send certificate email for manual service:', mailErr);
-      return res.status(500).json({ error: 'Failed to send certificate email' });
+      console.error('Failed to send payment invoice email for manual service:', mailErr);
+      return res.status(500).json({ error: 'Failed to send payment invoice email' });
     }
   } catch (err) {
     console.error(err);

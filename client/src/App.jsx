@@ -47,10 +47,76 @@ import RefundManagement from './pages/admin/RefundManagement';
 import AdminChat from './pages/admin/AdminChat';
 import ChatButton from './components/ChatButton';
 import ClientHistory from './pages/admin/ClientHistory';
+import MaintenancePage from './components/MaintenancePage';
+import axios from 'axios';
 
 const AppContent = () => {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const [systemStatus, setSystemStatus] = useState({
+    loading: true,
+    maintenanceMode: false,
+    message: '',
+    superAdminVerified: false,
+  });
+
+  useEffect(() => {
+    const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+    const fetchSystemStatus = async () => {
+      try {
+        const { data } = await axios.get(`${apiUrl}/api/system/status`);
+        const adminToken = localStorage.getItem('adminToken');
+        let superAdminVerified = false;
+        if (adminToken) {
+          try {
+            const accessResponse = await axios.get(`${apiUrl}/api/system/access`, {
+              headers: { Authorization: `Bearer ${adminToken}` },
+            });
+            superAdminVerified = accessResponse.data.authorized === true;
+          } catch {
+            superAdminVerified = false;
+          }
+        }
+        setSystemStatus({
+          loading: false,
+          maintenanceMode: data.maintenanceMode === true,
+          message: data.message || '',
+          superAdminVerified,
+        });
+      } catch {
+        // Fail open if the status endpoint itself is temporarily unavailable.
+        setSystemStatus((current) => ({ ...current, loading: false }));
+      }
+    };
+    const handleMaintenanceChange = (event) => {
+      setSystemStatus((current) => ({
+        loading: false,
+        maintenanceMode: event.detail?.maintenanceMode === true,
+        message: event.detail?.message || '',
+        superAdminVerified: current.superAdminVerified,
+      }));
+    };
+
+    fetchSystemStatus();
+    const interval = window.setInterval(fetchSystemStatus, 10000);
+    window.addEventListener('maintenance-changed', handleMaintenanceChange);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('maintenance-changed', handleMaintenanceChange);
+    };
+  }, [location.pathname]);
+
+  const isAdminLoginRoute = location.pathname === '/admin/login';
+
+  if (systemStatus.loading) return null;
+  if (systemStatus.maintenanceMode && !systemStatus.superAdminVerified && !isAdminLoginRoute) {
+    return (
+      <>
+        <Toaster position="top-center" />
+        <MaintenancePage message={systemStatus.message} />
+      </>
+    );
+  }
 
   return (
     <>

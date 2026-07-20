@@ -84,6 +84,7 @@ const Sidebar = () => {
             await axios.get(`${apiUrl}/api/admin/logout`, { withCredentials: true });
             localStorage.removeItem('adminToken');
             localStorage.removeItem('employeeToken');
+            localStorage.removeItem('isSuperAdmin');
             toast.success('Successfully logged out');
             if (isEmployee) {
                 navigate('/admin/employee-login');

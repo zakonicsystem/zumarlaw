@@ -5,7 +5,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { buildCertificateEmail, getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
+import { getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
+import { buildPaymentInvoiceEmail, resolvePaymentInvoiceAmounts } from '../utils/paymentInvoiceEmail.js';
 
 // Helper to get __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -32,9 +33,12 @@ export const sendInvoiceAndCertificate = async (req, res) => {
 
     // Send email
     const transporter = createEmailTransporter();
-    const emailContent = buildCertificateEmail({
+    const paymentSummary = resolvePaymentInvoiceAmounts(service);
+    const emailContent = buildPaymentInvoiceEmail({
       recipientName: user.name,
       serviceName: service.serviceTitle,
+      referenceId: service._id,
+      ...paymentSummary,
     });
     await transporter.sendMail({
       from: getEmailFrom(),
@@ -44,13 +48,13 @@ export const sendInvoiceAndCertificate = async (req, res) => {
     });
 
     service.invoiceSent = true;
-    service.certificateEmailSentAt = new Date();
+    if (service.certificate) service.certificateEmailSentAt = new Date();
     await service.save();
 
-    res.json({ message: 'Certificate sent to user email!' });
+    res.json({ message: 'Payment invoice sent to user email!', paymentSummary });
   } catch (err) {
     console.error('Send invoice error:', err);
-    res.status(500).json({ error: 'Failed to send invoice/certificate' });
+    res.status(500).json({ error: 'Failed to send payment invoice' });
   }
 };
 
