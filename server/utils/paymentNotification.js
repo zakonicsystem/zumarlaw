@@ -1,5 +1,8 @@
 import ServiceMessage from '../models/Servicemessage.js';
 import cpaas from '../services/cpaasService.js';
+import { createEmailTransporter, getEmailFrom } from './emailTransporter.js';
+import { getBrandedEmailLogoAttachment } from './brandedEmail.js';
+import { buildPaymentInvoiceEmail, resolvePaymentInvoiceAmounts } from './paymentInvoiceEmail.js';
 
 const formatAmount = (value) => {
   const number = Number(value || 0);
@@ -39,6 +42,9 @@ export const notifyPaymentReceived = async ({ doc, amount, previousPaid = 0, ser
   const resolvedUserId = userId || doc?.userId || doc?._id;
   const resolvedServiceId = serviceId || doc?._id;
   const resolvedPhone = phone || doc?.phone || doc?.personalId?.phone;
+  const resolvedEmail = String(doc?.email || doc?.personalId?.email || '').trim();
+  const resolvedName = String(doc?.name || doc?.personalId?.name || '').trim() || 'Valued Client';
+  const resolvedServiceName = serviceName || doc?.service || doc?.serviceType || doc?.serviceTitle;
 
   try {
     if (resolvedUserId) {
@@ -51,11 +57,39 @@ export const notifyPaymentReceived = async ({ doc, amount, previousPaid = 0, ser
       });
     }
 
+  } catch (err) {
+    console.error('Payment in-app notification failed:', err.message);
+  }
+
+  try {
     if (resolvedPhone) {
       await cpaas.sendCustomSMS(resolvedPhone, message);
     }
   } catch (err) {
-    console.error('Payment notification failed:', err.message);
+    console.error('Payment SMS notification failed:', err.message);
+  }
+
+  try {
+    if (resolvedEmail) {
+      const paymentSummary = resolvePaymentInvoiceAmounts(doc);
+      const emailContent = buildPaymentInvoiceEmail({
+        recipientName: resolvedName,
+        serviceName: resolvedServiceName,
+        referenceId: resolvedServiceId,
+        ...paymentSummary,
+      });
+      const transporter = createEmailTransporter();
+      await transporter.sendMail({
+        from: getEmailFrom(),
+        to: resolvedEmail,
+        ...emailContent,
+        attachments: [getBrandedEmailLogoAttachment()],
+      });
+    }
+  } catch (err) {
+    // The payment is already safely recorded. A mail-provider issue must not
+    // roll it back or make the payment API return a failure.
+    console.error('Payment email notification failed:', err.message);
   }
 
   return message;

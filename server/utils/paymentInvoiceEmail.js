@@ -57,7 +57,7 @@ export const buildPaymentInvoiceEmail = ({
     title: 'Payment Invoice',
     preheader: `${paymentLabel}: ${formatAmount(paidAmount)} paid, ${formatAmount(remainingAmount)} remaining.`,
     greeting: `Dear ${name},`,
-    contentText: `Please find your payment summary below.\n\nService: ${service}\nInvoice Reference: ${reference}\nTotal Amount: ${formatAmount(totalAmount)}\nPaid Amount: ${formatAmount(paidAmount)}\nRemaining Amount: ${formatAmount(remainingAmount)}\nPayment Status: ${paymentLabel}`,
+    contentText: `Please find your payment summary below.\n\nService: ${service}\nInvoice Reference: ${reference}\nTotal Amount: ${formatAmount(totalAmount)}\nPaid Amount: ${formatAmount(paidAmount)}\nRemaining Amount: ${formatAmount(remainingAmount)}\nPayment Status: ${paymentLabel}\n\nRefund Policy Notice: If a refund is processed, an 18% administrative deduction will apply to the total service payment.`,
     contentHtml: `
       <p style="margin:0 0 20px; font-size:15px; line-height:25px; color:#263442;">Please find your payment summary below.</p>
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 20px; border-collapse:separate; border-spacing:0; border:1px solid #eadfe6; border-radius:8px; overflow:hidden;">
@@ -82,7 +82,8 @@ export const buildPaymentInvoiceEmail = ({
           <td align="right" style="padding:13px 16px; font-size:15px; font-weight:bold; color:#b42318;">${formatAmount(remainingAmount)}</td>
         </tr>
       </table>
-      <div style="padding:14px 16px; background-color:${statusBackground}; border-radius:6px; text-align:center; font-size:14px; line-height:20px; font-weight:bold; color:${statusColor};">Payment Status: ${paymentLabel}</div>`,
+      <div style="padding:14px 16px; background-color:${statusBackground}; border-radius:6px; text-align:center; font-size:14px; line-height:20px; font-weight:bold; color:${statusColor};">Payment Status: ${paymentLabel}</div>
+      <div style="margin-top:16px; padding:13px 15px; background-color:#fbf5f9; border-left:4px solid #57123f; border-radius:4px; font-size:12px; line-height:19px; color:#5f4b58;"><strong style="color:#57123f;">Refund Policy Notice:</strong> If a refund is processed, an 18% administrative deduction will apply to the total service payment.</div>`,
     signatureTitle: 'Accounts Department',
   });
 };
