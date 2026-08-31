@@ -62,6 +62,7 @@ export const servicePrices = {
     'PEC Engineer Registration': 5000,
     'Labour Department Registration': 10000,
     'OEP License': 300000,
+    'Trade Organization Registration': 300000,
 };
 
 const legacyPriceFallbacks = {

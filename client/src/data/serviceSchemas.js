@@ -63,6 +63,7 @@ export const serviceData = Object.freeze({
     'PEC Engineer Registration': 5000,
     'Labour Department Registration': 10000,
     'OEP License': 300000,
+    'Trade Organization Registration': 300000,
   },
   // Fields
   fields: {
@@ -708,6 +709,17 @@ export const serviceData = Object.freeze({
       { name: 'business_registration_certificate', label: 'Business Registration Certificate', type: 'file' },
       { name: 'owner_cv', label: 'Owner CV', type: 'file' },
       { name: 'character_certificate', label: 'Character Certificate', type: 'file' }
+    ],
+
+    'Trade Organization Registration': [
+      { name: 'organization_name', label: 'Organization Name', type: 'text' },
+      { name: 'organization_address', label: 'Organization Address', type: 'text' },
+      { name: 'nature_of_business', label: 'Nature Of Business', type: 'text' },
+      { name: 'organization_type', label: 'Organization Type', type: 'select', options: ['Small Association', 'All Pakistan Association', 'Chamber of Commerce Registration'] },
+      { name: 'all_member_cnic', label: 'All Member CNIC Attached', type: 'file' },
+      { name: 'all_member_ntn', label: 'All Member NTN Attached', type: 'file' },
+      { name: 'all_member_tax_return', label: 'All Member Tax Return Attached', type: 'file' },
+      { name: 'additional_documents', label: 'Other Additional Documents', type: 'file' }
     ]
 
 

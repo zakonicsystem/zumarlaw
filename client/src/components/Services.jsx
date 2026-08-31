@@ -340,6 +340,11 @@ const services = [
     category: "Chamber of Commerce",
     icon: company
   },
+  {
+    title: "Trade Organization Registration",
+    category: "Chamber of Commerce",
+    icon: company
+  },
 
   // Professional Registration Services
   {

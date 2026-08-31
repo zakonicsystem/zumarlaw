@@ -160,6 +160,19 @@ const ConvertLeadModal = ({
                       checked={!!convertFields[field.name]}
                       onChange={onFieldChange}
                     />
+                  ) : field.type === 'select' ? (
+                    <select
+                      name={field.name}
+                      value={convertFields[field.name] || ''}
+                      required={field.required}
+                      onChange={onFieldChange}
+                      className="border rounded px-2 py-1 bg-white"
+                    >
+                      <option value="">Select {field.label || field.name}</option>
+                      {(field.options || []).map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
                   ) : (
                     <input
                       type={field.type || 'text'}

@@ -630,6 +630,17 @@ const serviceFields = {
     { name: 'owner_cnic_back', label: 'Owner CNIC Back', type: 'file' },
     { name: 'business_reg_cert', label: 'Business Registration Certificate', type: 'file' },
     { name: 'num_employees', label: 'Number Of Employees', type: 'text' }
+  ],
+
+  'Trade Organization Registration': [
+    { name: 'organization_name', label: 'Organization Name', type: 'text' },
+    { name: 'organization_address', label: 'Organization Address', type: 'text' },
+    { name: 'nature_of_business', label: 'Nature Of Business', type: 'text' },
+    { name: 'organization_type', label: 'Organization Type', type: 'select', options: ['Small Association', 'All Pakistan Association', 'Chamber of Commerce Registration'] },
+    { name: 'all_member_cnic', label: 'All Member CNIC Attached', type: 'file' },
+    { name: 'all_member_ntn', label: 'All Member NTN Attached', type: 'file' },
+    { name: 'all_member_tax_return', label: 'All Member Tax Return Attached', type: 'file' },
+    { name: 'additional_documents', label: 'Other Additional Documents', type: 'file' }
   ]
 
 
@@ -883,6 +894,19 @@ const AddServiceDetails = () => {
                 {field.type !== 'checkbox' && (
                   <>
                     <label className="mb-2 font-medium text-gray-700">{field.label}</label>
+                    {field.type === 'select' ? (
+                      <select
+                        name={field.name}
+                        value={formData[field.name] || ''}
+                        onChange={handleChange}
+                        className="border rounded p-2 bg-white"
+                      >
+                        <option value="">Select {field.label}</option>
+                        {field.options.map((option) => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    ) : (
                     <input
                       type={field.type}
                       name={field.name}
@@ -906,6 +930,7 @@ const AddServiceDetails = () => {
                       className="border rounded p-2"
                       accept={field.type === 'file' ? '.pdf,.jpg,.jpeg,.png' : undefined}
                     />
+                    )}
                   </>
                 )}
                 {field.type === 'checkbox' && (
