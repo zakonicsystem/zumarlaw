@@ -1,3 +1,4 @@
+import { isLegacyEmployeePassword } from '../utils/employeeSetup.js';
 import express from 'express';
 import Roles from '../models/Roles.js';
 import bcrypt from 'bcrypt';
@@ -8,6 +9,7 @@ const router = express.Router();
 // Employee login
 router.post('/employee-login', async (req, res) => {
   const { email, password } = req.body;
+  if (isLegacyEmployeePassword(password)) return res.status(403).json({ message: 'The shared employee password is retired. Use Forgot Password to set your own password.' });
 
   try {
     const employee = await Roles.findOne({ 'login.email': email });

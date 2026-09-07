@@ -1,3 +1,4 @@
+import { isLegacyEmployeePassword } from '../utils/employeeSetup.js';
 
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
@@ -10,6 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // Employee Login
 export const employeeLogin = async (req, res) => {
   const { email, password } = req.body;
+  if (isLegacyEmployeePassword(password)) return res.status(403).json({ message: 'The shared employee password is retired. Use Forgot Password to set your own password.' });
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
   }

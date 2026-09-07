@@ -12,3 +12,5 @@ export async function sendEmployeeSetup(employee) {
     text: 'Set your password using this single-use link. It expires in 24 hours.\n\n' + link }); }
   finally { transporter.close(); }
 }
+
+export const isLegacyEmployeePassword = password => typeof password === 'string' && crypto.createHash('sha256').update(password).digest('hex') === 'f382b67316f6f13c825902f872121583cf5587f18edf43aa49ccdf5826f34e4c';
