@@ -527,13 +527,15 @@ const AccountStatsModal = ({ open, onClose, dataByType = {}, onEdit, summary = {
           </div>
 
           {/* Mode views */}
+          <p className="text-sm text-gray-600 my-2">{summary.reportingBasis} Service rows below show lifetime balances.</p>
+          {mode === 'profit' && <div className="text-center py-6"><h3 className="font-bold">Net Profit (After Fees)</h3><p>{summary.netProfit ?? 0} PKR</p><p className="text-sm">Received payments less paid salaries, paid expenses and fees.</p></div>}
           {mode === 'totalRevenue' && (
             <div className="text-center py-6">
-              <h3 className="text-xl font-bold text-[#57123f] mb-2">Total Revenue</h3>
+              <h3 className="text-xl font-bold text-[#57123f] mb-2">Contracted Fees</h3>
               <p className="text-3xl font-semibold">{summary.totalRevenue ?? 0} PKR</p>
               {summary.totalFees && summary.totalFees > 0 && (
                 <div className="mt-4 pt-4 border-t">
-                  <div className="text-green-600 font-semibold text-xl mt-2">Net Profit: {(summary.totalRevenue ?? 0) - (summary.totalFees ?? 0)} PKR</div>
+                  <div className="text-green-600 font-semibold text-xl mt-2">Net Profit: {summary.netProfit ?? 0} PKR</div>
                 </div>
               )}
             </div>
