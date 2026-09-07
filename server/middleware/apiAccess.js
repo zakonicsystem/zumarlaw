@@ -39,7 +39,9 @@ export const apiAccess = (req, res, next) => {
     if (path === '/service' && req.method === 'GET') return requirePages('/admin/services','/admin/challan','/admin/customers','/admin/account')(req,res,next);
     if (/^\/(processing|manualservice|convertedservice)\/[^/]+(?:\/payments(?:\/[^/]+)?)?$/.test(path) && req.user.assignedPages?.includes('/admin/account')) return next();
     for (const [pattern, pages] of groups) if (pattern.test(path)) return requirePages(...pages)(req, res, next);
-    if (path.startsWith('/admin') || path.startsWith('/sms') || path.startsWith('/notifications') || path === '/invoices/delete-multiple' || (path === '/servicemessage' && req.method !== 'GET') || (path.startsWith('/refund') && (req.method === 'DELETE' || path.endsWith('/status')))) return requireAdminRole(req, res, next);
+    if (path.startsWith('/notifications')) return requirePages('/admin/account')(req,res,next);
+    if (path.startsWith('/sms') || path === '/invoices/delete-multiple' || (path === '/servicemessage' && req.method !== 'GET')) return requirePages('/admin/services','/admin/services/manual','/admin/services/converted','/admin/leads')(req,res,next);
+    if (path.startsWith('/admin')) return authenticateAdmin(req,res,next);
     if (/^\/(auth\/(verify-user|whoami)|employee\/me|userpanel\/services|forms\/(chat|user)|refund(?:\/[^/]+(?:\/details)?)?)$/.test(path) || (path === '/invoices' && req.method === 'POST') || (['/announcements','/servicemessage'].includes(path) && req.method === 'GET')) return next();
     return requirePages('/admin')(req,res,next);
   });

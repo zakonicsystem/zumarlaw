@@ -49,6 +49,7 @@ test('real HTTP gate rejects anonymous and unauthorized requests, including mixe
  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));t.after(()=>server.close());
  const base='http://127.0.0.1:'+server.address().port;
  for(const path of ['/api/admin/roles','/api/payrolls','/api/accounts/summary','/api/expense','/api/attendance/history','/api/forms/user']) assert.equal((await fetch(base+path)).status,401);
+ assert.equal((await fetch(base+'/api/admin/unknown-alias',{headers:{Authorization:'Bearer '+makeToken(empId)}})).status,403);
  assert.equal((await fetch(base+'/api/PAYROLLS',{headers:{Authorization:'Bearer '+makeToken(empId)}})).status,403);
  assert.equal((await fetch(base+'/api/payrolls',{headers:{Authorization:'Bearer '+makeToken(userId)}})).status,403);
  assert.equal((await fetch(base+'/api/attendance/history',{headers:{Authorization:'Bearer '+makeToken(empId)}})).status,200);

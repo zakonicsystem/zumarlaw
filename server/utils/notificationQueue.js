@@ -50,8 +50,9 @@ export async function processNotificationQueue({ model=Job, deliver=deliverNotif
   for(let i=0;i<10;i++) {
     const job = await model.findOneAndUpdate({status:'pending',nextAttemptAt:{$lte:new Date()}},{$set:{status:'sending',leaseUntil:new Date(Date.now()+120000)},$inc:{attempts:1}},{new:true,sort:{nextAttemptAt:1}});
     if(!job) break;
-    try { await deliver(job); await model.updateOne({_id:job._id,status:'sending'},{$set:{status:'sent',sentAt:new Date(),lastError:''},$unset:{leaseUntil:1}}); }
-    catch(error) { await model.updateOne({_id:job._id,status:'sending'},{$set:failureState(error,job.attempts),$unset:{leaseUntil:1}}); }
+    let delivered = false;
+    try { await deliver(job); delivered = true; await model.updateOne({_id:job._id,status:'sending'},{$set:{status:'sent',sentAt:new Date(),lastError:''},$unset:{leaseUntil:1}}); }
+    catch(error) { if (delivered) { error.uncertain = true; error.message = 'Delivery accepted but status could not be saved. Verify before retrying.'; } await model.updateOne({_id:job._id,status:'sending'},{$set:failureState(error,job.attempts),$unset:{leaseUntil:1}}); }
   }
 }
 export function startNotificationWorker() {
