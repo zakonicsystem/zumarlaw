@@ -34,7 +34,7 @@ const ChatButton = () => {
 
     // Initialize and monitor login status changes
     useEffect(() => {
-        let lastToken = localStorage.getItem('token');
+        let lastToken = null;
 
         const checkAuthStatus = () => {
             const currentToken = localStorage.getItem('token');

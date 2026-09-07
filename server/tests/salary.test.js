@@ -7,9 +7,6 @@ import { salarySlipTotals } from '../../client/src/utils/salarySlip.js';
 const fullMonth = (year, month) => Array.from({ length: new Date(year, month, 0).getDate() }, (_, i) => ({
   date: [year, String(month).padStart(2, '0'), String(i + 1).padStart(2, '0')].join('-'), present: true
 }));
-const source = readFileSync(new URL('../../client/src/pages/admin/Salary.jsx', import.meta.url), 'utf8');
-const fallbackBody = source.slice(source.indexOf('          const compute = (emp) => {'), source.indexOf('          data = employees.map(compute);'));
-const fallback = new Function('emp', 'attendance', 'year', 'month', fallbackBody + '; return compute(emp);');
 
 for (const [year, month] of [[2026, 2], [2024, 2], [2026, 4], [2026, 7]]) {
   test('half-day pays 500 at a 1000 daily rate: ' + year + '-' + month, () => {
@@ -20,10 +17,6 @@ for (const [year, month] of [[2026, 2], [2024, 2], [2026, 4], [2026, 7]]) {
     assert.equal(result.finalSalary, base - 500);
     assert.equal(result.cutDays, 0.5);
     assert.equal(result.present, records.length - 1);
-    const emp = { name: 'Employee', email: 'employee@example.test', salary: base };
-    const client = fallback(emp, records.map(r => ({ ...r, employeeEmail: emp.email })), year, month);
-    assert.equal(client.finalSalary, result.finalSalary);
-    assert.equal(client.cutDays, result.cutDays);
     assert.equal(salarySlipTotals(result, result.workingDays, result.cutDays).netPay, result.finalSalary);
   });
 }
@@ -73,12 +66,13 @@ test('salary preview and payroll creation agree', async () => {
   const { default: Roles } = await import('../models/Roles.js');
   const { default: Attendance } = await import('../models/Attendance.js');
   const { default: Payroll } = await import('../models/Payroll.js');
-  const originals = [Roles.find, Attendance.find, Payroll.prototype.save];
+  const originals = [Roles.find, Attendance.find, Payroll.prototype.save, Payroll.findOne];
   const records = fullMonth(2026, 9);
   records[0] = { date: records[0].date, halfDay: true };
   try {
-    Roles.find = async () => [{ _id: 'test', name: 'Employee', branch: 'Main', salary: '30000' }];
+    Roles.find = async () => [{ _id: '000000000000000000000001', name: 'Employee', branch: 'Main', salary: '30000' }];
     Attendance.find = async () => records;
+    Payroll.findOne = async () => null;
     Payroll.prototype.save = async function () { return this; };
     const invoke = async (path) => {
       let output;
@@ -91,7 +85,7 @@ test('salary preview and payroll creation agree', async () => {
     assert.equal(preview[0].finalSalary, 29500);
     assert.equal(created.payrolls[0].salary, preview[0].finalSalary);
   } finally {
-    [Roles.find, Attendance.find, Payroll.prototype.save] = originals;
+    [Roles.find, Attendance.find, Payroll.prototype.save, Payroll.findOne] = originals;
   }
 });
 
@@ -117,7 +111,7 @@ test('generated PDF contains corrected half-day deduction and net pay', async ()
   const generate = new Function('rec', 'jsPDF', 'salarySlipTotals', 'formatCurrency', 'numberToWords', 'toast', body + '; generate(null);');
   const records = fullMonth(2026, 9);
   records[0] = { date: records[0].date, halfDay: true };
-  generate({ ...calculateSalary(30000, records, 2026, 9), employee: 'Employee', payrollMonth: '2026-09' },
+  generate({ ...calculateSalary(30000, records, 2026, 9), salaryBreakdown: calculateSalary(30000, records, 2026, 9), employee: 'Employee', payrollMonth: '2026-09' },
     Pdf, salarySlipTotals, v => String(Number(v) || 0), { toWords: n => String(n) },
     { success() {}, error(message) { assert.fail(message); } });
   assert.ok(saved);

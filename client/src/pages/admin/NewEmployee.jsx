@@ -133,22 +133,8 @@ const NewEmployee = ({ onEmployeeAdded }) => {
         withCredentials: true
       });
 
-      // If backend returns the created employee with plainPassword, store it for display and pass to parent
-      const credentials = res.data?.credentials;
-      if (!isEditing && credentials?.email && credentials?.password) {
-        setLastCreatedEmployee({
-          email: credentials.email,
-          password: credentials.password
-        });
-        if (onEmployeeAdded) onEmployeeAdded({
-          email: credentials.email,
-          password: credentials.password
-        });
-      } else {
-        if (onEmployeeAdded) onEmployeeAdded();
-      }
-
-      toast.success(isEditing ? 'Employee updated successfully!' : 'Employee added successfully!');
+      if (onEmployeeAdded) onEmployeeAdded();
+      toast.success(isEditing ? 'Employee updated successfully!' : res.data.setupMessage || 'Employee added');
       resetForm();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Operation failed');

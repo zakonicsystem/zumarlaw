@@ -65,7 +65,7 @@ export const getMessages = async (req, res) => {
         query.userId = userId;
       }
     }
-    console.log('ServiceMessage query:', query);
+    if (req.user.role === 'user') query.userId = req.user.id;
     const messages = await ServiceMessage.find(query).sort({ createdAt: -1 });
     res.json(messages);
   } catch (err) {

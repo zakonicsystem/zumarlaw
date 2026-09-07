@@ -1,7 +1,4 @@
-import ServiceMessage from '../models/Servicemessage.js';
-import cpaas from '../services/cpaasService.js';
-import { createEmailTransporter, getEmailFrom } from './emailTransporter.js';
-import { getBrandedEmailLogoAttachment } from './brandedEmail.js';
+import { enqueueNotification, notificationKey } from './notificationQueue.js';
 import { buildPaymentInvoiceEmail, resolvePaymentInvoiceAmounts } from './paymentInvoiceEmail.js';
 
 const formatAmount = (value) => {
@@ -46,51 +43,12 @@ export const notifyPaymentReceived = async ({ doc, amount, previousPaid = 0, ser
   const resolvedName = String(doc?.name || doc?.personalId?.name || '').trim() || 'Valued Client';
   const resolvedServiceName = serviceName || doc?.service || doc?.serviceType || doc?.serviceTitle;
 
-  try {
-    if (resolvedUserId) {
-      await ServiceMessage.create({
-        userId: resolvedUserId,
-        serviceId: resolvedServiceId,
-        type: 'payment',
-        message,
-        createdAt: new Date(),
-      });
-    }
-
-  } catch (err) {
-    console.error('Payment in-app notification failed:', err.message);
+  const jobs = [];
+  if (resolvedUserId) jobs.push({ channel:'inapp', recipient:String(resolvedUserId), payload:{userId:resolvedUserId,serviceId:resolvedServiceId,type:'payment',message} });
+  if (resolvedPhone) jobs.push({channel:'sms',recipient:resolvedPhone,payload:{message}});
+  if (resolvedEmail) jobs.push({channel:'email',recipient:resolvedEmail,payload:buildPaymentInvoiceEmail({recipientName:resolvedName,serviceName:resolvedServiceName,referenceId:resolvedServiceId,...resolvePaymentInvoiceAmounts(doc)})});
+  for(const job of jobs) {
+    await enqueueNotification({...job,key:notificationKey(resolvedServiceId,previousPaid,amount,job.channel),serviceId:String(resolvedServiceId)});
   }
-
-  try {
-    if (resolvedPhone) {
-      await cpaas.sendCustomSMS(resolvedPhone, message);
-    }
-  } catch (err) {
-    console.error('Payment SMS notification failed:', err.message);
-  }
-
-  try {
-    if (resolvedEmail) {
-      const paymentSummary = resolvePaymentInvoiceAmounts(doc);
-      const emailContent = buildPaymentInvoiceEmail({
-        recipientName: resolvedName,
-        serviceName: resolvedServiceName,
-        referenceId: resolvedServiceId,
-        ...paymentSummary,
-      });
-      const transporter = createEmailTransporter();
-      await transporter.sendMail({
-        from: getEmailFrom(),
-        to: resolvedEmail,
-        ...emailContent,
-        attachments: [getBrandedEmailLogoAttachment()],
-      });
-    }
-  } catch (err) {
-    // The payment is already safely recorded. A mail-provider issue must not
-    // roll it back or make the payment API return a failure.
-    console.error('Payment email notification failed:', err.message);
-  }
-
   return message;
 };

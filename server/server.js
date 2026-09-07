@@ -1,3 +1,7 @@
+import { apiAccess } from './middleware/apiAccess.js';
+import { privateFiles } from './middleware/privateFiles.js';
+import notificationRoutes from './routes/notifications.js';
+import { startNotificationWorker } from './utils/notificationQueue.js';
 import autoSalaryRoutes from './routes/autoSalary.js';
 // ✅ MUST BE FIRST - Load environment variables before anything else
 import dotenv from 'dotenv';
@@ -83,6 +87,10 @@ app.use(session({
 // Passport middleware
 app.use(passport.initialize());
 
+app.use(cookieParser());
+app.use('/api', apiAccess);
+app.use('/api/notifications', notificationRoutes);
+
 // Announcements route
 app.use('/api/announcements', announcementsRouter);
 app.use(passport.session());
@@ -95,7 +103,7 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', privateFiles);
 app.use('/api/admin', manualServiceRoutes);
 app.use('/api/admin', adminServiceRoutes);
 app.use('/api/serviceMessage', serviceMessageRoutes);
@@ -140,7 +148,11 @@ app.use((err, req, res, next) => {
 
 // Connect MongoDB and start server
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
+    await (await import('./models/Payroll.js')).default.init();
+    await (await import('./models/NotificationJob.js')).default.init();
+    await (await import('./models/Servicemessage.js')).default.init();
+    startNotificationWorker();
     const port = process.env.PORT || 5000;
     app.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);

@@ -1,8 +1,9 @@
+import crypto from 'crypto';
 import express from 'express';
 import bcrypt from 'bcrypt';
 import Admin from '../models/Admin.js';
 import jwt from 'jsonwebtoken';
-import { authenticateAdmin, verifyJWT } from '../middleware/authMiddleware.js'; 
+import { authenticateAdmin, verifyJWT } from '../middleware/authMiddleware.js';
 import User from '../models/User.js'; // Add this import for customer data
 import { sendPasswordResetOtp, verifyPasswordResetOtp } from '../utils/passwordResetOtp.js';
 import { getMaintenanceSettings, isSuperAdminRecord } from '../utils/maintenanceMode.js';
@@ -67,7 +68,7 @@ router.get('/customers', verifyJWT, async (req, res) => {
       _id: user._id,
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
-      password: user.password,  
+
       phone: canViewPhone ? (user.phoneNumber || 'N/A') : maskPhoneNumber(user.phoneNumber),
       createdAt: user.createdAt,
       services: user.services || [],
@@ -88,7 +89,7 @@ router.post('/customers/:id/reset-password', authenticateAdmin, async (req, res)
     const generateTemp = () => {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*';
       let out = '';
-      for (let i = 0; i < 12; i++) out += chars[Math.floor(Math.random() * chars.length)];
+      for (let i = 0; i < 12; i++) out += chars[crypto.randomInt(chars.length)];
       return out;
     };
 
@@ -122,7 +123,7 @@ router.get('/customers/:id', authenticateAdmin, async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      password: user.password,
+
       phone: user.phoneNumber,
       createdAt: user.createdAt,
       services: user.services || [],
@@ -141,7 +142,7 @@ router.post('/forgot-password', async (req, res) => {
   try {
     const admin = await Admin.findOne({ email });
     if (!admin) return res.status(404).json({ message: 'Admin not found' });
-    
+
     await sendPasswordResetOtp({ email: admin.email, accountType: 'admin' });
     return res.json({ message: 'OTP sent to your email.' });
   } catch (err) {
@@ -154,18 +155,18 @@ router.post('/forgot-password', async (req, res) => {
 router.post('/reset-password', async (req, res) => {
   const { email, otp, newPassword } = req.body;
   if (!email || !otp || !newPassword) return res.status(400).json({ message: 'Email, OTP and new password required' });
-  
+
   try {
     const admin = await Admin.findOne({ email });
     if (!admin) return res.status(404).json({ message: 'Admin not found' });
 
     const otpMatches = await verifyPasswordResetOtp({ email: admin.email, accountType: 'admin', otp });
     if (!otpMatches) return res.status(400).json({ message: 'Invalid or expired OTP' });
-    
+
     const hashed = await bcrypt.hash(newPassword, 10);
     admin.password = hashed;
     await admin.save();
-    
+
     return res.json({ message: 'Password reset successful' });
   } catch (err) {
     console.error('Admin reset password error:', err);

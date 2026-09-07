@@ -1,3 +1,4 @@
+import { uploadOptions } from '../utils/uploadOptions.js';
 import express from 'express';
 import multer from 'multer';
 import { createRefund, getRefunds, getRefund, updateRefundStatus, deleteRefund, updateRefundDetails } from '../controllers/refundController.js';
@@ -16,7 +17,7 @@ const storage = multer.diskStorage({
     cb(null, `${unique}.${ext}`);
   }
 });
-const upload = multer({ storage });
+const upload = multer(uploadOptions);
 
 // Support multiple file uploads: rejectionImage, processingImage, refundedImage
 const uploadMultiple = upload.fields([

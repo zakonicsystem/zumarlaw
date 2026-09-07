@@ -16,4 +16,6 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+
+userSchema.set('toJSON', { transform(doc, ret) { delete ret.password; delete ret.resetPasswordToken; delete ret.resetPasswordExpires; if (ret.login) delete ret.login.password; return ret; } });
 export default mongoose.model('User', userSchema);

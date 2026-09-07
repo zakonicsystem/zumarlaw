@@ -1,3 +1,4 @@
+import { reportingPeriod, inPeriod, feesInPeriod } from '../utils/reportingPeriod.js';
 import express from 'express';
 import invoice from '../models/Invoice.js';
 import Payroll from '../models/Payroll.js';
@@ -147,28 +148,11 @@ router.get('/summary', async (req, res) => {
       ConvertedLead.find()
     ]);
 
-    // Parse optional date/month/year filters from query string and build a date range
-    const { date, month, year } = req.query || {};
-    let range = null;
-    if (date) {
-      // date expected in YYYY-MM-DD
-      const start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(start);
-      end.setDate(end.getDate() + 1);
-      range = { start, end };
-    } else if (month && year) {
-      const y = Number(year);
-      const m = Number(month) - 1; // JS months 0-11
-      const start = new Date(y, m, 1);
-      const end = new Date(y, m + 1, 1);
-      range = { start, end };
-    } else if (year) {
-      const y = Number(year);
-      const start = new Date(y, 0, 1);
-      const end = new Date(y + 1, 0, 1);
-      range = { start, end };
-    }
+    let range;
+    try { range = reportingPeriod(req.query); } catch(error) { return res.status(400).json({error:error.message}); }
+    const periodServices = services.filter(s => inPeriod(s.createdAt,range));
+    const periodManuals = manuals.filter(s => inPeriod(s.createdAt,range));
+    const periodConverteds = converteds.filter(s => inPeriod(s.createdAt,range));
 
     // Helper to sum payments and pending for a list
     function sumPayments(arr, range) {
@@ -196,7 +180,7 @@ router.get('/summary', async (req, res) => {
     }
 
     const totalReceived = sumPayments(services, range) + sumPayments(manuals, range) + sumPayments(converteds, range);
-    const totalPending = sumPending(services) + sumPending(manuals) + sumPending(converteds);
+    const totalPending = sumPending(periodServices) + sumPending(periodManuals) + sumPending(periodConverteds);
 
     // Salary paid from payrolls: sum all payroll records' salary values
     let payrolls = [];
@@ -210,7 +194,7 @@ router.get('/summary', async (req, res) => {
       const paidPayrolls = await Payroll.find(payrollFilter);
       salaryPaid = paidPayrolls.reduce((acc, p) => acc + Number(p.salary || 0), 0);
       // Also fetch all payrolls for display (unfiltered) - keep previous behavior
-      payrolls = await Payroll.find().sort({ createdAt: -1 });
+      payrolls = await Payroll.find(range ? {paymentDate:{$gte:range.start,$lt:range.end},status:'Paid'} : {status:{$ne:'Voided'}}).sort({ createdAt: -1 });
     } catch (e) {
       console.error('Error loading payrolls:', e);
       return res.status(500).json({ error: 'Error loading payrolls', details: e.message, stack: e.stack });
@@ -225,13 +209,7 @@ router.get('/summary', async (req, res) => {
         return sum;
       }, 0);
     }
-    // totalRevenue: show sum of payments in the selected range (if any), otherwise fall back to totalPayment
-    let totalRevenue = 0;
-    if (range) {
-      totalRevenue = sumPayments(services, range) + sumPayments(manuals, range) + sumPayments(converteds, range);
-    } else {
-      totalRevenue = sumTotalPayment(services) + sumTotalPayment(manuals) + sumTotalPayment(converteds);
-    }
+    const totalRevenue = sumTotalPayment(periodServices) + sumTotalPayment(periodManuals) + sumTotalPayment(periodConverteds);
 
     // Revenue by service (service name -> totalPayment sum)
     const revenueByServices = {};
@@ -243,9 +221,9 @@ router.get('/summary', async (req, res) => {
         revenueByServices[name] += amt;
       });
     }
-    addToRevenueByService(services, svc => svc.serviceTitle || svc.service || 'Processing');
-    addToRevenueByService(manuals, svc => svc.serviceType || 'Manual');
-    addToRevenueByService(converteds, svc => svc.service || 'Converted');
+    addToRevenueByService(periodServices, svc => svc.serviceTitle || svc.service || 'Processing');
+    addToRevenueByService(periodManuals, svc => svc.serviceType || 'Manual');
+    addToRevenueByService(periodConverteds, svc => svc.service || 'Converted');
 
     // Profit: received - salaryPaid - paidExpenses
     let paidExpensesTotal = 0;
@@ -258,25 +236,26 @@ router.get('/summary', async (req, res) => {
         paidExpensesTotal = paidExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
       }
     } catch (e) {
-      console.error('Error loading paid expenses:', e);
+      return res.status(500).json({error:'Could not load expenses; profit cannot be calculated reliably'});
     }
     const totalProfit = totalReceived - salaryPaid - paidExpensesTotal;
 
     // Load total fees (Challan + Consultancy)
-    let totalFees = 0;
+    let totalFees = 0, totalChallanFees = 0, totalConsultancyFees = 0;
     try {
       const challans = await Challan.find({ status: 'active' });
-      challans.forEach((c) => {
-        totalFees += (c.challanFee?.amount || 0) + (c.consultancyFee?.amount || 0);
-      });
+      totalFees = feesInPeriod(challans,range);
+      totalChallanFees = challans.reduce((sum,c)=>sum+(inPeriod(c.challanFee?.addedAt || c.createdAt,range)?Number(c.challanFee?.amount || 0):0),0);
+      totalConsultancyFees = totalFees - totalChallanFees;
     } catch (e) {
-      console.error('Error loading fees:', e);
+      return res.status(500).json({error:'Could not load fees; net profit is unavailable'});
     }
 
     // Net profit after fees
     const netProfit = totalProfit - totalFees;
 
     res.json({
+      reportingBasis: 'Pakistan time. Contracted fees and outstanding balances relate to services created in the selected period. Collections, salary and expenses use payment dates; fees use their recorded fee dates.',
       totalRevenue,
       totalReceived,
       totalPending,
@@ -285,6 +264,8 @@ router.get('/summary', async (req, res) => {
       paidExpensesTotal,
       totalProfit,
       totalFees,
+      totalChallanFees,
+      totalConsultancyFees,
       netProfit,
       revenueByServices,
       latestPayrolls: payrolls

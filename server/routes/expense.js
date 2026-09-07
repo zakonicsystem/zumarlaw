@@ -1,3 +1,4 @@
+import { uploadOptions } from '../utils/uploadOptions.js';
 import express from 'express';
 import multer from 'multer';
 import { addExpense, getExpenses, updateExpense, deleteExpense, getAllSubmissions, payExpense, getBranches } from '../controllers/expenseController.js';
@@ -15,7 +16,7 @@ const storage = multer.diskStorage({
 		cb(null, `${unique}.${ext}`);
 	}
 });
-const upload = multer({ storage });
+const upload = multer(uploadOptions);
 
 // Public: allow creating and viewing expense submissions without authentication
 router.post('/', addExpense);

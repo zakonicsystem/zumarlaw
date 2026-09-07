@@ -17,10 +17,10 @@ const router = express.Router();
 // ===== PUBLIC ENDPOINTS (No Authentication Required) =====
 
 // User sends message through chat button
-router.post('/chat', submitChatMessage);
+router.post('/chat', verifyJWT, submitChatMessage);
 
 // Get user's conversation by email (public endpoint)
-router.get('/user', getUserConversations);
+router.get('/user', verifyJWT, getUserConversations);
 
 // ===== ADMIN ENDPOINTS (Authentication Required) =====
 

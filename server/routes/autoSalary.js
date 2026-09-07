@@ -3,80 +3,41 @@ import Attendance from '../models/Attendance.js';
 import Roles from '../models/Roles.js';
 import Payroll from '../models/Payroll.js';
 import { calculateSalary } from '../utils/calculateSalary.js';
-
+import { payrollPeriod, employeeCountsForSalaryMonth, payrollIdentity, existingPayrollQuery, auditEntry } from '../utils/payrollRules.js';
 const router = express.Router();
-
-function employeeCountsForSalaryMonth(employee, year, month) {
-  if (employee.employmentStatus !== 'terminated' || !employee.terminatedAt) return true;
-
-  const monthEnd = new Date(Number(year), Number(month), 0);
-  return new Date(employee.terminatedAt) > monthEnd;
-}
-
-// POST /autoSalary/calculate
-// { year, month }
-router.post('/calculate', async (req, res) => {
-  const { year, month } = req.body;
-  if (!year || !month) return res.status(400).json({ message: 'Missing year or month' });
-
+router.post('/calculate', async (req,res) => {
+  let period;
+  try { period = payrollPeriod(req.body.year,req.body.month); } catch (error) { return res.status(400).json({message:error.message}); }
   try {
-  const employees = (await Roles.find()).filter((employee) => employeeCountsForSalaryMonth(employee, year, month));
-  console.log('[autoSalary] employees found:', employees.length);
-    const results = [];
-    if (employees.length === 0) {
-      return res.json([]);
-    }
+    const employees = (await Roles.find()).filter(emp => employeeCountsForSalaryMonth(emp,period.year,period.month));
+    const rows = [];
     for (const emp of employees) {
-      // fetch attendance records for the employee for the month
-      const records = await Attendance.find({
-        employeeId: emp._id,
-        date: { $regex: `^${year}-` + String(month).padStart(2, '0') }
-      });
-      console.log(`[autoSalary] emp=${emp.name} records=${records.length}`);
-      const calculation = calculateSalary(emp.salary, records, year, month);
-      results.push({
-        employee: emp.name,
-        email: emp.email,
-        branch: emp.branch || '-',
-        ...calculation
-      });
+      const records = await Attendance.find({ employeeId: emp._id, date: { $regex: '^' + period.key } });
+      rows.push({ employeeId: emp._id, employee: emp.name, email: emp.email, branch: emp.branch || '-', ...calculateSalary(emp.salary,records,period.year,period.month,emp) });
     }
-    res.json(results);
-  } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
-  }
+    res.json(rows);
+  } catch { res.status(500).json({message:'Could not calculate salaries'}); }
 });
-// POST /auto-salary - Calculate and create payroll for all employees for a given month/year
-router.post('/', async (req, res) => {
-  const { month, year, paidBy, paymentDate, paymentMethod } = req.body;
-  if (!month || !year) return res.status(400).json({ error: 'Month and year required' });
+router.post('/', async (req,res) => {
+  let period;
+  try { period = payrollPeriod(req.body.year,req.body.month); } catch(error) { return res.status(400).json({error:error.message}); }
+  const payrolls = []; const skipped = [];
   try {
-    const employees = (await Roles.find()).filter((employee) => employeeCountsForSalaryMonth(employee, year, month));
-    const payrolls = [];
+    const employees = (await Roles.find()).filter(emp => employeeCountsForSalaryMonth(emp,period.year,period.month));
     for (const emp of employees) {
-      // Get all attendance for this employee in the month/year
-      const records = await Attendance.find({
-        employeeId: emp._id,
-        date: { $regex: `^${year}-` + String(month).padStart(2, '0') }
-      });
-      const { finalSalary: salary } = calculateSalary(emp.salary, records, year, month);
-      // Create payroll record
-      const payroll = new Payroll({
-        payrollMonth: `${year}-${String(month).padStart(2, '0')}`,
-        branch: emp.branch || '',
-        employee: emp.name,
-        paidBy: paidBy || 'Auto',
-        salary,
-        paymentDate: paymentDate || new Date(),
-        paymentMethod: paymentMethod || 'Auto'
-      });
-      await payroll.save();
-      payrolls.push(payroll);
+      const existing = await Payroll.findOne(existingPayrollQuery(emp,period.key));
+      if (existing) { skipped.push(emp.name); continue; }
+      const records = await Attendance.find({ employeeId: emp._id, date: { $regex: '^' + period.key } });
+      const breakdown = calculateSalary(emp.salary,records,period.year,period.month,emp);
+      try {
+        const payroll = new Payroll({ payrollKey: payrollIdentity(emp,period.key), employeeId: emp._id, payrollMonth: period.key,
+          branch: emp.branch || '', employee: emp.name, salary: breakdown.finalSalary,
+          calculationSource: 'attendance', calculationVersion: 2, salaryBreakdown: breakdown,
+          auditHistory: [auditEntry(req.user,'created',null,{salary:breakdown.finalSalary},'Attendance calculation')] });
+        await payroll.save(); payrolls.push(payroll);
+      } catch(error) { if(error.code === 11000) skipped.push(emp.name); else throw error; }
     }
-    res.json({ success: true, payrolls });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    res.json({ success:true, payrolls, skipped });
+  } catch { res.status(500).json({error:'Payroll creation stopped. Retry safely; existing records will be skipped.',created:payrolls.length}); }
 });
-
 export default router;

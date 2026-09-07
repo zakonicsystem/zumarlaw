@@ -7,7 +7,7 @@ const Salary = () => {
   const [loading, setLoading] = useState(false);
   const [lastQuery, setLastQuery] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [usedFallback, setUsedFallback] = useState(false);
+
 
   const formatCurrency = (v) => {
     const n = Number(v) || 0;
@@ -18,7 +18,7 @@ const Salary = () => {
   const handleFetchSalary = async () => {
     if (!selectedMonth) return;
     setLoading(true);
-    setUsedFallback(false);
+    setSalaryData([]);
     try {
       const [yearStr, monthStr] = selectedMonth.split('-');
       const year = Number(yearStr);
@@ -27,98 +27,6 @@ const Salary = () => {
       const res = await axios.post(`${apiUrl}/api/autoSalary/calculate`, { month, year });
       console.log('autoSalary/calculate response:', res.data);
       let data = res.data || [];
-      // If backend returned empty, try to compute client-side using roles + attendance
-      if ((!data || data.length === 0)) {
-        try {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-          const [rolesRes, attRes] = await Promise.all([
-            axios.get(`${apiUrl}/api/admin/roles`),
-            axios.get(`${apiUrl}/api/attendance/history`, { params: { year, month } })
-          ]);
-          const employeeCountsForSalaryMonth = (emp) => {
-            if (emp.employmentStatus !== 'terminated' || !emp.terminatedAt) return true;
-            const monthEnd = new Date(year, month, 0);
-            return new Date(emp.terminatedAt) > monthEnd;
-          };
-          const employees = Array.isArray(rolesRes.data)
-            ? rolesRes.data.filter(employeeCountsForSalaryMonth)
-            : [];
-          const attendance = attRes.data || [];
-          // compute per employee (match backend rules)
-          const compute = (emp) => {
-            // Attendance history exposes employeeEmail and employeeName.
-            const empAtt = attendance.filter(a => (emp.email && a.employeeEmail === emp.email) || a.employeeName === emp.name);
-            let absent = 0, leave = 0, holiday = 0, present = 0, leaveRelief = 0, halfDay = 0;
-            const daysInMonth = new Date(year, month, 0).getDate();
-            const baseSalary = parseFloat(emp.salary || '0') || 0;
-            // iterate every day: Sundays and holidays are treated as paid days
-            let computedSundays = 0;
-            // We'll treat missing record on Sunday as paid (no absent)
-            for (let d = 1; d <= daysInMonth; d++) {
-              const dateObj = new Date(year, month - 1, d);
-              const iso = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-              if (dateObj.getDay() === 0) {
-                computedSundays++;
-              }
-              const rec = empAtt.find(r => r.date === iso);
-              if (rec) {
-                if (rec.holiday) {
-                  holiday++; // holiday is paid
-                } else if (rec.leaveRelief) {
-                  leaveRelief++;
-                } else if (rec.halfDay) {
-                  halfDay++; // Count separately; each half-day is 50% paid.
-                } else if (rec.leave) {
-                  leave++;
-                } else if (rec.present) {
-                  present++;
-                } else if (rec.absent) {
-                  absent++;
-                } else {
-                  absent++;
-                }
-              } else {
-                // no record
-                if (dateObj.getDay() === 0) {
-                  // Sunday no record -> paid
-                } else {
-                  // non-Sunday no record -> absent
-                  absent++;
-                }
-              }
-            }
-            const sundays = computedSundays;
-            // Sundays and holidays are paid; workingDays = full days in month
-            const workingDays = daysInMonth;
-            const perDaySalary = baseSalary / (workingDays || 1);
-            const extraLeaves = Math.max(0, leave - 2);
-            const cutDays = absent + extraLeaves + halfDay * 0.5;
-            const finalSalary = Math.round(baseSalary - cutDays * perDaySalary);
-            return {
-              employee: emp.name,
-              email: emp.email,
-              branch: emp.branch || '-',
-              baseSalary,
-              workingDays,
-              perDaySalary,
-              extraLeaves,
-              present,
-              absent,
-              leave,
-              holiday,
-              halfDay,
-              leaveRelief,
-              sundays,
-              cutDays,
-              finalSalary
-            };
-          };
-          data = employees.map(compute);
-          setUsedFallback(true);
-        } catch (err) {
-          console.warn('fallback compute failed', err);
-        }
-      }
       setSalaryData(data || []);
       setLastQuery({ year, month });
     } catch (err) {
@@ -137,7 +45,7 @@ const Salary = () => {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await axios.post(`${apiUrl}/api/autoSalary`, { month, year });
       if (res.data && res.data.success) {
-        alert(`Payroll created for ${res.data.payrolls.length} employees`);
+        alert(`Payroll created for ${res.data.payrolls.length} employees. Existing payrolls skipped: ${res.data.skipped?.length || 0}`);
       } else {
         alert('Payroll created');
       }
@@ -180,12 +88,10 @@ const Salary = () => {
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm text-gray-700">Results for: {lastQuery ? `${new Date(lastQuery.year, lastQuery.month - 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}` : '—'}</div>
-            <div className="text-sm text-gray-600">Source: {usedFallback ? 'Client fallback' : 'Server'}</div>
+
           </div>
-          {usedFallback && (
-            <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded">Showing client-side calculated salaries because server returned no data for the selected month.</div>
-          )}
-          <p className="text-sm text-gray-600 mb-3">Daily rate = base salary / calendar days. Cut days = absences + leaves beyond 2 + half days x 0.5. Final salary = base salary - (daily rate x cut days), rounded to the nearest rupee.</p>
+
+          <p className="text-sm text-gray-600 mb-3">Daily rate = base salary / calendar days. Cut days = absences + leaves beyond 2 + half days x 0.5 + days outside employment. Final salary = base salary - (daily rate x cut days), rounded to the nearest rupee.</p>
           <div className="overflow-auto border rounded shadow" style={{ maxHeight: '60vh' }}>
             <table className="min-w-full text-sm" style={{ tableLayout: 'fixed', minWidth: 900 }}>
               <thead className="bg-gray-100 sticky top-0">

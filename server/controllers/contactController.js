@@ -7,7 +7,9 @@ import ContactSubmission from '../models/ContactSubmission.js';
  */
 const submitChatMessage = async (req, res) => {
   try {
-    const { name, email, phone, subject, message } = req.body;
+    const { phone, subject, message } = req.body;
+    const email = req.user.email;
+    const name = req.user.name || req.user.firstName || email;
 
     // Validation
     if (!name || !email || !message) {
@@ -277,7 +279,7 @@ const getConversationById = async (req, res) => {
  */
 const getUserConversations = async (req, res) => {
   try {
-    const { email } = req.query;
+    const email = req.user.email;
 
     if (!email) {
       return res.status(400).json({

@@ -1,3 +1,4 @@
+import { sendEmployeeSetup } from '../utils/employeeSetup.js';
 import express from 'express';
 import Roles from '../models/Roles.js';
 import bcrypt from 'bcrypt';
@@ -9,7 +10,8 @@ const router = express.Router();
 router.get('/roles', async (req, res) => {
   try {
     const roles = await Roles.find();
-    res.json(roles);
+    const mayReadSalary = req.user.role === 'admin' || req.user.assignedPages?.some(p => ['/admin/payroll','/admin/salary','/admin/roles'].includes(p));
+    res.json(mayReadSalary ? roles : roles.map(r => ({_id:r._id,name:r.name,email:r.email,branch:r.branch,employmentStatus:r.employmentStatus,terminatedAt:r.terminatedAt})));
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch employees' });
   }
@@ -17,6 +19,7 @@ router.get('/roles', async (req, res) => {
 
 // Get a single employee by ID
 router.get('/roles/:id', async (req, res) => {
+  if(req.user.role !== 'admin' && !req.user.assignedPages?.includes('/admin/roles')) return res.sendStatus(403);
   try {
     const role = await Roles.findById(req.params.id);
     if (!role) return res.status(404).json({ message: 'Employee not found' });
@@ -29,12 +32,12 @@ router.get('/roles/:id', async (req, res) => {
 // Create a new employee
 router.post('/roles', async (req, res) => {
   try {
-    // Always use the fixed password
-    const plainPassword = 'welcomezumarlaw';
+    // No shared default password; the employee chooses one through an expiring invitation.
+    const plainPassword = crypto.randomBytes(32).toString('hex');
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
     const newRole = new Roles({
-      ...req.body,
+      ...Object.fromEntries(Object.entries(req.body).filter(([key]) => ['name','phone','email','cnic','role','salary','branch','assignedPages','tasks','canViewAllLeads','canViewAllServices'].includes(key))),
       login: {
         email: req.body.email,
         password: hashedPassword
@@ -42,14 +45,14 @@ router.post('/roles', async (req, res) => {
     });
 
     await newRole.save();
+    let invitationSent = false;
+    try { await sendEmployeeSetup(newRole); invitationSent = true; } catch { console.error('Employee invitation delivery failed'); }
 
     res.status(201).json({
       message: 'Employee created successfully',
       employee: newRole,
-      credentials: {
-        email: req.body.email,
-        password: plainPassword
-      }
+      invitationSent,
+      setupMessage: invitationSent ? 'Password setup link sent to the employee email.' : 'Employee created. Use Forgot Password to request a code, or resend the invitation.'
     });
   } catch (err) {
     console.error(err);
@@ -57,10 +60,21 @@ router.post('/roles', async (req, res) => {
   }
 });
 
+router.post('/roles/:id/invite', async (req, res) => {
+  try {
+    const employee = await Roles.findById(req.params.id);
+    if (!employee || employee.employmentStatus === 'terminated') return res.status(404).json({ message: 'Active employee not found' });
+    await sendEmployeeSetup(employee);
+    res.json({ message: 'Setup link sent' });
+  } catch { res.status(503).json({ message: 'Could not send setup link. Employee can use Forgot Password.' }); }
+});
+
 // Update an employee
 router.put('/roles/:id', async (req, res) => {
   try {
-    const update = { ...req.body };
+    const allowed = ['name','phone','email','cnic','role','salary','branch','assignedPages','tasks','canViewAllLeads','canViewAllServices'];
+    const update = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));
+    if (update.email) update['login.email'] = update.email;
     if (
       Object.prototype.hasOwnProperty.call(update, 'canViewAllLeads') ||
       Object.prototype.hasOwnProperty.call(update, 'canViewAllServices')

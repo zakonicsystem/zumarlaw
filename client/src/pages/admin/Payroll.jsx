@@ -91,14 +91,18 @@ export default function Payroll() {
   const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
   const totalPages = Math.ceil(filtered.length / perPage);
 
+  const handleRecalculate = async (rec) => {
+    try { const { data } = await axios.post((import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api/payrolls/' + rec._id + '/recalculate'); setPayrolls(rows => rows.map(row => row._id === rec._id ? data : row)); toast.success('Unpaid payroll and payslip updated'); }
+    catch(error) { toast.error(error.response?.data?.error || 'Could not recalculate payroll'); }
+  };
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this payroll?")) return;
+    if (!window.confirm("Void this unpaid payroll? Its audit history will be retained.")) return;
     try {
       setLoading(true);
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       await axios.delete(`${apiUrl}/api/payrolls/${id}`);
       setPayrolls((prev) => prev.filter((p) => p._id !== id));
-      toast.success("Payroll deleted successfully!");
+      toast.success("Unpaid payroll voided");
     } catch (err) {
       console.error("Delete payroll error:", err);
       toast.error(err?.response?.data?.error || "Failed to delete payroll");
@@ -113,6 +117,7 @@ export default function Payroll() {
   };
 
   const openPaymentModal = (rec) => {
+    if (['Paid','Voided'].includes(rec.status)) return toast('This payroll is locked. Its recorded payment is preserved.');
     setPaymentRec(rec);
     setPaymentMethod(rec.paymentMethod || 'Cash');
     setPaymentAccount(rec.accountNumber || '');
@@ -146,13 +151,13 @@ export default function Payroll() {
       };
       // Update server (PUT replaces the payroll object)
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.put(`${apiUrl}/api/payrolls/${paymentRec._id}`, updated);
-      setPayrolls((prev) => prev.map((p) => (p._id === paymentRec._id ? updated : p)));
+      const { data } = await axios.put(`${apiUrl}/api/payrolls/${paymentRec._id}`, updated);
+      setPayrolls((prev) => prev.map((p) => (p._id === paymentRec._id ? data : p)));
       toast.success('Payment recorded and status set to Paid');
       closePaymentModal();
     } catch (err) {
       console.error('Mark paid error', err);
-      toast.error('Failed to record payment');
+      toast.error(err.response?.data?.error || 'Failed to record payment');
     }
     setPaymentLoading(false);
   };
@@ -187,25 +192,16 @@ export default function Payroll() {
   };
 
   const handleSalarySlip = async (rec) => {
-    // Refresh attendance so existing payroll slips also use corrected formulas.
-    let enhancedRec = { ...rec };
+    // A payslip is a receipt for the saved payroll, never a fresh attendance calculation.
+    let enhancedRec;
     try {
-      const pm = rec.payrollMonth || String(rec.paymentDate || '').slice(0, 7);
-      const [year, month] = pm.split('-').map(Number);
-      if (!year || !month) throw new Error('Missing payroll month');
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const resp = await axios.post(apiUrl + '/api/autoSalary/calculate', { year, month });
-      const matches = resp.data.filter(r =>
-        String(r.employee).toLowerCase() === String(rec.employee).toLowerCase() &&
-        (!rec.branch || r.branch === rec.branch));
-      if (matches.length !== 1) throw new Error('Employee salary breakdown could not be identified');
-      enhancedRec = { ...rec, ...matches[0] };
-    } catch (e) {
-      console.error('Failed to fetch salary breakdown', e);
-      toast.error('Could not load salary breakdown. Please check employee details and try again.');
-      return;
+      const { data } = await axios.get(apiUrl + '/api/payrolls/' + rec._id);
+      if (data.status === 'Voided') { toast.error('This payroll is voided'); return; }
+      enhancedRec = { ...data, ...(data.salaryBreakdown || {}), baseSalary: data.salaryBreakdown?.baseSalary ?? data.salary, cutDays: data.salaryBreakdown?.cutDays ?? 0 };
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Could not load saved payroll'); return;
     }
-    // Every logo success/failure path uses the same refreshed calculation.
     rec = enhancedRec;
 
     const img = new Image();
@@ -326,7 +322,7 @@ export default function Payroll() {
         // Draw attendance box below employee info and above earnings as a clean 2-column table
         const attendanceY = infoY + 92; // place under the info section
         // rows to display (label, value)
-        const attendanceRows = [
+        const attendanceRows = rec.salaryBreakdown ? [
           ['Calendar Days', monthDays],
           ['Present', present],
           ['Absent', absent],
@@ -335,8 +331,8 @@ export default function Payroll() {
           ['Half Day (50% paid)', halfDay],
           ['Leave Relief', leaveRelief],
           ['Sunday', sundays],
-          ['Cut Days (absent + excess leave + half days x 0.5)', cutDays],
-        ];
+          ['Cut Days (including unpaid days outside employment)', cutDays],
+        ] : [['Attendance breakdown', 'Not recorded']];
         const rowH = 15;
         const headerH = 22;
         const attendanceH = headerH + (attendanceRows.length * rowH) + 12;
@@ -441,7 +437,7 @@ export default function Payroll() {
 
     // Rows
   const baseMonthly = totals.baseSalary;
-  drawRow(ry, 'Basic Salary', String(monthDays), '', baseMonthly, baseMonthly);
+  drawRow(ry, rec.salaryBreakdown ? 'Basic Salary' : 'Recorded Salary', String(monthDays), '', baseMonthly, baseMonthly);
         ry += gap;
   // show Monthly Basic Salary (from model if available) as small right-aligned note under the basic row
   pdf.setFontSize(9);
@@ -709,6 +705,7 @@ export default function Payroll() {
                     >
                       <FaFilePdf size={16} />
                     </button>
+                    {!['Paid','Voided'].includes(rec.status) && <button className="text-xs underline" onClick={() => handleRecalculate(rec)}>Recalculate</button>}
                     <Edit size={18} className="cursor-pointer" onClick={() => navigate(`/admin/payroll/add/${rec._id}`)} />
                     <Trash2 size={18} className="cursor-pointer" onClick={() => handleDelete(rec._id)} />
                   </td>

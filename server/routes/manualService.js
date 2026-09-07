@@ -1,3 +1,4 @@
+import { uploadOptions } from '../utils/uploadOptions.js';
 
 // Payments API for manual service submission
 import * as manualServiceController from '../controllers/manualServiceController.js';
@@ -28,7 +29,7 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + '-' + file.originalname.replace(/\s+/g, '_'));
   }
 });
-const upload = multer({ storage });
+const upload = multer(uploadOptions);
 
 const router = express.Router();
 

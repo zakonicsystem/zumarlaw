@@ -1,3 +1,4 @@
+import EmployeeSetup from './pages/EmployeeSetup';
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
@@ -125,6 +126,7 @@ const AppContent = () => {
       <AuthRedirectHandler />
       <ChatButton />
       <Routes>
+        <Route path="/employee-setup" element={<EmployeeSetup />} />
         {/* Public and User Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />

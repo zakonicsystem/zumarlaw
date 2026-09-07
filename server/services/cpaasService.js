@@ -5,10 +5,9 @@ class CPaaS {
     constructor() {
         this.apiUrl = 'https://api.veevotech.com/v3/sendsms';
         // Fallback: Use hardcoded values if env variables don't load
-        this.apiKey = process.env.VEEVOTECH_API_KEY || '6d239e242dcfd02b64d9738f1b9d2724';
+        this.apiKey = '';
         this.senderID = process.env.VEEVOTECH_SENDER_ID || 'Default';
 
-        console.log('[CPaaS] Initialization - API Key Loaded:', this.apiKey ? '✅ YES' : '❌ NO');
     }
 
     /**
@@ -19,6 +18,8 @@ class CPaaS {
      */
     async sendSMS(phoneNumber, message) {
         try {
+            this.apiKey = process.env.VEEVOTECH_API_KEY || '';
+            this.senderID = process.env.VEEVOTECH_SENDER_ID || 'Default';
             if (!this.apiKey) {
                 console.error('[CPaaS] VEEVOTECH_API_KEY not set in environment');
                 return { success: false, error: 'API Key not configured' };

@@ -48,7 +48,7 @@ router.post('/employee-login', async (req, res) => {
 // Get all employees
 router.get('/employees', async (req, res) => {
   try {
-    const employees = await Roles.find({ role: 'employee', employmentStatus: { $ne: 'terminated' } });
+    const employees = await Roles.find({ role: 'employee', employmentStatus: { $ne: 'terminated' } }).select('name email branch role');
     res.json(employees);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

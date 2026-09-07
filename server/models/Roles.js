@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 const roleSchema = new mongoose.Schema({
+    setupTokenHash: { type: String, select: false },
+    setupExpiresAt: { type: Date, select: false },
     name: String,
     phone: String,
     email: String,
@@ -40,4 +42,6 @@ const roleSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+
+roleSchema.set('toJSON', { transform(doc, ret) { delete ret.setupTokenHash; delete ret.setupExpiresAt; delete ret.password; delete ret.resetPasswordToken; delete ret.resetPasswordExpires; if (ret.login) delete ret.login.password; return ret; } });
 export default mongoose.model('Roles', roleSchema);

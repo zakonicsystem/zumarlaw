@@ -1,3 +1,4 @@
+import NotificationDeliveries from '../../components/NotificationDeliveries';
 import React, { useState, useEffect } from 'react';
 import AccountStatsModal from '../../components/AccountStatModal';
 import axios from 'axios';
@@ -69,11 +70,11 @@ const Account = () => {
     const [totalConsultancyFees, setTotalConsultancyFees] = useState(0);
 
     const topStatsPieData = [
-        { name: 'Total Revenue', value: summary.totalRevenue || 0 },
+        { name: 'Contracted Fees', value: summary.totalRevenue || 0 },
         { name: 'Total Received', value: summary.totalReceived || 0 },
         { name: 'Pending/Remaining', value: summary.remainingAmount || summary.totalPending || 0 },
         { name: 'Salary Paid', value: summary.salaryPaid || 0 },
-        { name: 'Net Profit (After Challan Fees)', value: Math.max(0, (summary.totalProfit || 0) - totalChallanFees) },
+        { name: 'Net Profit (After Fees)', value: summary.netProfit || 0 },
         { name: 'Challan Fees', value: totalChallanFees || 0 },
         { name: 'Consultancy Fees', value: totalConsultancyFees || 0 }
     ];
@@ -128,7 +129,7 @@ const Account = () => {
         }
         // fallback: open modal for other types
         // set modal mode based on clicked card
-        if (type === 'Total Revenue') setModalMode('totalRevenue');
+        if (type === 'Contracted Fees') setModalMode('totalRevenue');
         else if (type === 'Total Received') setModalMode('totalReceived');
         else if (type === 'Pending Amount' || type === 'Pending/Remaining Amount' || type === 'Remaining') setModalMode('remaining');
         else setModalMode('');
@@ -149,41 +150,16 @@ const Account = () => {
         fetchModalData();
     }, [modalOpen]);
 
-    // Fetch challan fees summary
     useEffect(() => {
-        const fetchChallans = async () => {
-            try {
-                const params = new URLSearchParams();
-                if (selectedDate) params.append('date', selectedDate);
-                if (typeof selectedMonth === 'number' && selectedMonth >= 0) {
-                    params.append('month', String(selectedMonth + 1));
-                }
-                if (selectedYear) params.append('year', String(selectedYear));
-
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                const res = await axios.get(`${apiUrl}/api/challans?${params.toString()}`);
-                const challans = res.data.challans || [];
-
-                const challanTotal = challans.reduce((sum, c) => sum + (c.challanFee?.amount || 0), 0);
-                const consultancyTotal = challans.reduce((sum, c) => sum + (c.consultancyFee?.amount || 0), 0);
-                const totalFeesAmount = challanTotal + consultancyTotal;
-
-                setTotalChallanFees(challanTotal);
-                setTotalConsultancyFees(consultancyTotal);
-                setTotalFees(totalFeesAmount);
-            } catch (err) {
-                setTotalChallanFees(0);
-                setTotalConsultancyFees(0);
-                setTotalFees(0);
-            }
-        };
-        fetchChallans();
-    }, [selectedMonth, selectedDate, selectedYear]);
+      setTotalChallanFees(summary.totalChallanFees || 0);
+      setTotalConsultancyFees(summary.totalConsultancyFees || 0);
+      setTotalFees(summary.totalFees || 0);
+    }, [summary]);
 
     // Carousel blocks data
     const carouselBlocks = [
         {
-            title: 'Total Revenue',
+            title: 'Contracted Fees',
             value: fmt(summary.totalRevenue || 0),
             icon: <FaChartLine className="text-xl" />,
             bgColor: '#57123f',
@@ -219,7 +195,7 @@ const Account = () => {
         },
         {
             title: 'Net Profit (After Fees)',
-            value: fmt((summary.totalProfit || 0) - totalChallanFees),
+            value: fmt(summary.netProfit || 0),
             icon: <FaChartLine className="text-xl" />,
             bgColor: '#ec4899',
             onClick: () => { setModalMode('profit'); setModalOpen(true); }
@@ -260,6 +236,8 @@ const Account = () => {
                     </select>
                 </div>
             </div>
+            <p className="text-sm text-gray-600 my-4">{summary.reportingBasis}</p>
+            <NotificationDeliveries />
             {/* Carousel Slider */}
             <div className="relative my-6 group">
                 <div className="flex items-center gap-0">

@@ -15,6 +15,9 @@ export const createEmailTransporter = () => {
   return nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.hostinger.com',
     port,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 45000,
     secure: parseBoolean(process.env.EMAIL_SECURE, port === 465),
     auth: {
       user: process.env.EMAIL_USER,

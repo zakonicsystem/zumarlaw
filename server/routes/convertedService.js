@@ -1,3 +1,4 @@
+import { uploadOptions } from '../utils/uploadOptions.js';
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
@@ -23,7 +24,7 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + '-' + file.originalname.replace(/\s+/g, '_'));
   }
 });
-const upload = multer({ storage });
+const upload = multer(uploadOptions);
 
 // Accept any file fields (dynamic)
 const anyFiles = upload.any();

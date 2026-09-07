@@ -80,7 +80,7 @@ export const createRefund = async (req, res) => {
 
 export const getRefunds = async (req, res) => {
   try {
-    const refunds = await Refund.find({})
+    const refunds = await Refund.find(req.user.role === 'user' ? {createdBy:req.user.id} : {})
       .populate('createdBy', 'email name role')
       .populate('processedBy', 'email name role')
       .sort({ createdAt: -1 });
@@ -236,7 +236,7 @@ export const updateRefundDetails = async (req, res) => {
       return res.status(400).json({ error: 'All refund details are required' });
     }
 
-    const existing = await Refund.findById(id);
+    const existing = await Refund.findOne(req.user.role === 'user' ? {_id:id,createdBy:req.user.id} : {_id:id});
     if (!existing) return res.status(404).json({ error: 'Refund not found' });
 
     // Only allow adding refund details if admin has approved the request

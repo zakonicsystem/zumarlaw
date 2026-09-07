@@ -1,3 +1,4 @@
+import { uploadOptions } from '../utils/uploadOptions.js';
 
 import express from 'express';
 import { verifyJWT, tryVerify } from '../middleware/authMiddleware.js';
@@ -14,7 +15,7 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
   }
 });
-const upload = multer({ storage: storage });
+const upload = multer(uploadOptions);
 
 const isEmployeeRequest = (req) => {
   return req.user && !['admin', 'user'].includes(req.user.role);

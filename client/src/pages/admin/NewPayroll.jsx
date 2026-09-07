@@ -10,6 +10,7 @@ const NewPayroll = () => {
     branch: '',
     employee: '',
     paidBy: '',
+    reason: '',
     salary: '',
     paymentDate: '',
     paymentMethod: 'Cash'
@@ -82,8 +83,8 @@ const NewPayroll = () => {
     e.preventDefault();
     try {
       setLoading(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       if (id) {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
         await axios.put(`${apiUrl}/api/payrolls/${id}`, formData);
         alert('Payroll updated successfully!');
       } else {
@@ -101,7 +102,7 @@ const NewPayroll = () => {
       });
       navigate('/admin/payroll');
     } catch (err) {
-      alert('Failed to save payroll');
+      alert(err.response?.data?.error || 'Failed to save payroll');
     } finally {
       setLoading(false);
     }
@@ -176,6 +177,7 @@ const NewPayroll = () => {
             </div>
           </div>
         </div>
+        {id && <label className="block">Reason for salary change<input name="reason" value={formData.reason || ''} onChange={handleChange} className="border p-2 w-full" /></label>}
         {/* Payment Details */}
         <div className="border-1 p-6 rounded-lg">
           <h3 className="text-xl font-semibold text-[#57123f] mb-4">Payment Details</h3>

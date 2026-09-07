@@ -1,3 +1,4 @@
+import { uploadOptions } from '../utils/uploadOptions.js';
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
@@ -19,7 +20,7 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
-const upload = multer({ storage });
+const upload = multer(uploadOptions);
 
 const isEmployeeRequest = (req) => {
   return req.user && !['admin', 'user'].includes(req.user.role);
