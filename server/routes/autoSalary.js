@@ -2,18 +2,9 @@ import express from 'express';
 import Attendance from '../models/Attendance.js';
 import Roles from '../models/Roles.js';
 import Payroll from '../models/Payroll.js';
+import { calculateSalary } from '../utils/calculateSalary.js';
 
 const router = express.Router();
-
-// Utility: get all dates in month/year
-function getMonthDates(year, month) {
-  const dates = [];
-  const daysInMonth = new Date(year, month, 0).getDate();
-  for (let day = 1; day <= daysInMonth; day++) {
-    dates.push(new Date(year, month - 1, day));
-  }
-  return dates;
-}
 
 function employeeCountsForSalaryMonth(employee, year, month) {
   if (employee.employmentStatus !== 'terminated' || !employee.terminatedAt) return true;
@@ -42,66 +33,12 @@ router.post('/calculate', async (req, res) => {
         date: { $regex: `^${year}-` + String(month).padStart(2, '0') }
       });
       console.log(`[autoSalary] emp=${emp.name} records=${records.length}`);
-      // build map date->record
-      const recMap = {};
-      records.forEach(r => { recMap[r.date] = r; });
-      const daysInMonth = new Date(year, month, 0).getDate();
-  let sundays = 0, present = 0, leave = 0, leaveRelief = 0, holiday = 0, absent = 0, halfDay = 0;
-      for (let day = 1; day <= daysInMonth; day++) {
-        const d = new Date(year, month - 1, day);
-        const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        if (d.getDay() === 0) {
-          // Sunday (paid)
-          sundays++;
-        }
-        const rec = recMap[iso];
-        if (rec) {
-          if (rec.holiday) {
-            holiday++; // holiday is paid
-          } else if (rec.leaveRelief) {
-            leaveRelief++;
-          } else if (rec.halfDay) {
-            halfDay++; present++; // half-day treated as paid
-          } else if (rec.leave) {
-            leave++;
-          } else if (rec.present) {
-            present++;
-          } else if (rec.absent) {
-            absent++;
-          } else {
-            absent++;
-          }
-        } else {
-          // no record
-          if (d.getDay() === 0) {
-            // Sunday with no record -> paid, do nothing
-          } else {
-            // non-Sunday no record -> absent
-            absent++;
-          }
-        }
-      }
-      const baseSalary = parseFloat(emp.salary || '0') || 0;
-    const workingDays = daysInMonth;
-    const perDaySalary = baseSalary / (workingDays || 1);
-    const extraLeaves = Math.max(0, leave - 2);
-    // half-day is paid complete and does not count as cut
-    const cutDays = absent + extraLeaves;
-      const finalSalary = Math.round(baseSalary - (cutDays * perDaySalary));
+      const calculation = calculateSalary(emp.salary, records, year, month);
       results.push({
         employee: emp.name,
         email: emp.email,
         branch: emp.branch || '-',
-        baseSalary,
-        present,
-        absent,
-        halfDay,
-        leave,
-        holiday,
-        leaveRelief,
-        sundays,
-        cutDays,
-        finalSalary
+        ...calculation
       });
     }
     res.json(results);
@@ -120,59 +57,12 @@ router.post('/', async (req, res) => {
       // Get all attendance for this employee in the month/year
       const records = await Attendance.find({
         employeeId: emp._id,
-        date: { $regex: `^${year}-` + (month < 10 ? `0${month}` : month) }
+        date: { $regex: `^${year}-` + String(month).padStart(2, '0') }
       });
-      // build map and iterate all days to compute counts consistently
-      const recMap = {};
-      records.forEach(r => { recMap[r.date] = r; });
-      const daysInMonth = new Date(year, month, 0).getDate();
-  let sundays = 0, present = 0, leave = 0, leaveRelief = 0, holiday = 0, absent = 0, halfDay = 0;
-      for (let day = 1; day <= daysInMonth; day++) {
-        const d = new Date(year, month - 1, day);
-        const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        if (d.getDay() === 0) {
-          // Sunday (paid)
-          sundays++;
-        }
-        const rec = recMap[iso];
-        if (rec) {
-          if (rec.holiday) {
-            holiday++; // holiday is paid
-          } else if (rec.leaveRelief) {
-            leaveRelief++;
-          } else if (rec.halfDay) {
-            halfDay++; present++; // half-day treated as paid
-          } else if (rec.leave) {
-            leave++;
-          } else if (rec.present) {
-            present++;
-          } else if (rec.absent) {
-            absent++;
-          } else {
-            absent++;
-          }
-        } else {
-          // no record
-          if (d.getDay() === 0) {
-            // Sunday with no record -> paid, do nothing
-          } else {
-            // non-Sunday no record -> absent
-            absent++;
-          }
-        }
-      }
-      // Salary logic
-      let baseSalary = parseFloat(emp.salary || '0') || 0;
-      // Sundays and holidays are paid; workingDays = full month days
-      let workingDays = daysInMonth;
-      let perDaySalary = baseSalary / (workingDays || 1);
-      let extraLeaves = Math.max(0, leave - 2);
-      // half-day is paid complete and does not reduce salary
-      const cutDays = absent + extraLeaves;
-      let salary = Math.round(baseSalary - (cutDays * perDaySalary));
+      const { finalSalary: salary } = calculateSalary(emp.salary, records, year, month);
       // Create payroll record
       const payroll = new Payroll({
-        payrollMonth: `${year}-${month < 10 ? `0${month}` : month}`,
+        payrollMonth: `${year}-${String(month).padStart(2, '0')}`,
         branch: emp.branch || '',
         employee: emp.name,
         paidBy: paidBy || 'Auto',

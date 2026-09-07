@@ -18,6 +18,7 @@ const Salary = () => {
   const handleFetchSalary = async () => {
     if (!selectedMonth) return;
     setLoading(true);
+    setUsedFallback(false);
     try {
       const [yearStr, monthStr] = selectedMonth.split('-');
       const year = Number(yearStr);
@@ -45,8 +46,8 @@ const Salary = () => {
           const attendance = attRes.data || [];
           // compute per employee (match backend rules)
           const compute = (emp) => {
-            // attendance entries use `email` and `employeeName` fields
-            const empAtt = attendance.filter(a => a.email === emp.email || a.employeeName === emp.name);
+            // Attendance history exposes employeeEmail and employeeName.
+            const empAtt = attendance.filter(a => (emp.email && a.employeeEmail === emp.email) || a.employeeName === emp.name);
             let absent = 0, leave = 0, holiday = 0, present = 0, leaveRelief = 0, halfDay = 0;
             const daysInMonth = new Date(year, month, 0).getDate();
             const baseSalary = parseFloat(emp.salary || '0') || 0;
@@ -66,7 +67,7 @@ const Salary = () => {
                 } else if (rec.leaveRelief) {
                   leaveRelief++;
                 } else if (rec.halfDay) {
-                  halfDay++; present++; // half-day treated as paid
+                  halfDay++; // Count separately; each half-day is 50% paid.
                 } else if (rec.leave) {
                   leave++;
                 } else if (rec.present) {
@@ -91,13 +92,16 @@ const Salary = () => {
             const workingDays = daysInMonth;
             const perDaySalary = baseSalary / (workingDays || 1);
             const extraLeaves = Math.max(0, leave - 2);
-            const cutDays = absent + extraLeaves;
+            const cutDays = absent + extraLeaves + halfDay * 0.5;
             const finalSalary = Math.round(baseSalary - cutDays * perDaySalary);
             return {
               employee: emp.name,
               email: emp.email,
               branch: emp.branch || '-',
               baseSalary,
+              workingDays,
+              perDaySalary,
+              extraLeaves,
               present,
               absent,
               leave,
@@ -181,6 +185,7 @@ const Salary = () => {
           {usedFallback && (
             <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded">Showing client-side calculated salaries because server returned no data for the selected month.</div>
           )}
+          <p className="text-sm text-gray-600 mb-3">Daily rate = base salary / calendar days. Cut days = absences + leaves beyond 2 + half days x 0.5. Final salary = base salary - (daily rate x cut days), rounded to the nearest rupee.</p>
           <div className="overflow-auto border rounded shadow" style={{ maxHeight: '60vh' }}>
             <table className="min-w-full text-sm" style={{ tableLayout: 'fixed', minWidth: 900 }}>
               <thead className="bg-gray-100 sticky top-0">

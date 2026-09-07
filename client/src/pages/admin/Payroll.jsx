@@ -1,3 +1,4 @@
+import { salarySlipTotals } from '../../utils/salarySlip';
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
@@ -186,39 +187,26 @@ export default function Payroll() {
   };
 
   const handleSalarySlip = async (rec) => {
-    // Ensure we have cutDays and base salary. If missing, call server autoSalary/calculate for the payroll month
+    // Refresh attendance so existing payroll slips also use corrected formulas.
     let enhancedRec = { ...rec };
     try {
-      const pm = rec.payrollMonth || (rec.paymentDate ? (rec.paymentDate + '').slice(0,7) : null); // YYYY-MM
-      if (pm) {
-        const [yStr, mStr] = pm.split('-');
-        const year = Number(yStr);
-        const month = Number(mStr);
-        if ((!enhancedRec.cutDays && enhancedRec.cutDays !== 0) || (!enhancedRec.baseSalary && enhancedRec.baseSalary !== 0)) {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-          const resp = await axios.post(`${apiUrl}/api/autoSalary/calculate`, { year, month }).catch(() => null);
-          if (resp && Array.isArray(resp.data)) {
-            const found = resp.data.find(r => String(r.employee).toLowerCase() === String(rec.employee).toLowerCase());
-            if (found) {
-              // Map fields from autoSalary result - merge all attendance counts so the payslip can display them
-              enhancedRec.cutDays = enhancedRec.cutDays ?? (found.cutDays ?? 0);
-              enhancedRec.baseSalary = enhancedRec.baseSalary ?? (found.baseSalary ?? 0);
-              enhancedRec.present = enhancedRec.present ?? (found.present ?? 0);
-              enhancedRec.absent = enhancedRec.absent ?? (found.absent ?? 0);
-              enhancedRec.leave = enhancedRec.leave ?? (found.leave ?? 0);
-              enhancedRec.halfDay = enhancedRec.halfDay ?? (found.halfDay ?? 0);
-              // autoSalary returns `holiday` (singular) for count
-              enhancedRec.holiday = enhancedRec.holiday ?? (found.holiday ?? 0);
-              enhancedRec.leaveRelief = enhancedRec.leaveRelief ?? (found.leaveRelief ?? 0);
-              enhancedRec.sundays = enhancedRec.sundays ?? (found.sundays ?? 0);
-              enhancedRec.finalSalary = enhancedRec.finalSalary ?? (found.finalSalary ?? 0);
-            }
-          }
-        }
-      }
+      const pm = rec.payrollMonth || String(rec.paymentDate || '').slice(0, 7);
+      const [year, month] = pm.split('-').map(Number);
+      if (!year || !month) throw new Error('Missing payroll month');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const resp = await axios.post(apiUrl + '/api/autoSalary/calculate', { year, month });
+      const matches = resp.data.filter(r =>
+        String(r.employee).toLowerCase() === String(rec.employee).toLowerCase() &&
+        (!rec.branch || r.branch === rec.branch));
+      if (matches.length !== 1) throw new Error('Employee salary breakdown could not be identified');
+      enhancedRec = { ...rec, ...matches[0] };
     } catch (e) {
-      console.warn('Failed to fetch salary breakdown, proceeding with available data', e);
+      console.error('Failed to fetch salary breakdown', e);
+      toast.error('Could not load salary breakdown. Please check employee details and try again.');
+      return;
     }
+    // Every logo success/failure path uses the same refreshed calculation.
+    rec = enhancedRec;
 
     const img = new Image();
     img.crossOrigin = 'Anonymous';
@@ -310,8 +298,8 @@ export default function Payroll() {
     const cutDays = Number(rec.cutDays ?? rec.daysCut ?? rec.cut ?? 0);
     // totalDays prefer explicit workingDays/totalWorkingDays, otherwise fallback to present+cutDays
     const totalDays = Number((rec.workingDays ?? rec.totalWorkingDays ?? (present + cutDays)) || 0);
-    const salary = Number(rec.baseSalary ?? rec.salary ?? rec.finalSalary ?? 0) || 0;
-    const perDay = totalDays ? Math.round(salary / totalDays) : 0;
+
+
         // compute days in month from payrollMonth (YYYY-MM) or paymentDate
         let monthDays = totalDays;
         try {
@@ -339,17 +327,17 @@ export default function Payroll() {
         const attendanceY = infoY + 92; // place under the info section
         // rows to display (label, value)
         const attendanceRows = [
-          ['Working Days', monthDays],
+          ['Calendar Days', monthDays],
           ['Present', present],
           ['Absent', absent],
           ['Leave', leave],
           ['Holidays', holidayCount],
-          ['Half Day', halfDay],
+          ['Half Day (50% paid)', halfDay],
           ['Leave Relief', leaveRelief],
           ['Sunday', sundays],
-          ['Cut Days', cutDays],
+          ['Cut Days (absent + excess leave + half days x 0.5)', cutDays],
         ];
-        const rowH = 18;
+        const rowH = 15;
         const headerH = 22;
         const attendanceH = headerH + (attendanceRows.length * rowH) + 12;
         pdf.setFillColor(245,245,245);
@@ -417,8 +405,8 @@ export default function Payroll() {
         
 
         let ry = tableTop + 36;
-        const gap = 18;
-        const basicCurrent = Math.round(perDay * present);
+        const gap = 15;
+        const totals = salarySlipTotals(rec, monthDays, cutDays);
 
         // column widths & right-edge helpers for better alignment
         const colWidth1 = colB - colA;
@@ -452,38 +440,38 @@ export default function Payroll() {
         };
 
     // Rows
-  const baseMonthly = Number(rec.baseSalary ?? 0) || salary || 0;
+  const baseMonthly = totals.baseSalary;
   drawRow(ry, 'Basic Salary', String(monthDays), '', baseMonthly, baseMonthly);
         ry += gap;
   // show Monthly Basic Salary (from model if available) as small right-aligned note under the basic row
   pdf.setFontSize(9);
   pdf.setFont(undefined,'normal');
 
-        const medical = Number(rec.medicalAllowance ?? rec.medical ?? 0);
+        const medical = totals.medical;
   drawRow(ry, 'Medical Allowance', '0', '', medical, medical);
         ry += gap;
 
-        const traveling = Number(rec.travelingAllowance ?? rec.travellingAllowance ?? 0);
+        const traveling = totals.traveling;
   drawRow(ry, 'Traveling Allowance', '0', '', traveling, traveling);
         ry += gap;
 
-        const overtime = Number(rec.overtimePay ?? 0);
+        const overtime = totals.overtime;
   drawRow(ry, 'Overtime Pay', '0', '', overtime, overtime);
         ry += gap;
 
-        const holiday = Number(rec.holidayPay ?? 0);
+        const holiday = totals.holiday;
   drawRow(ry, 'Holiday pay', '0', '', holiday, holiday);
         ry += gap;
 
   // Gross (show Basic Salary clearly and Gross total) - use monthly base (without deductions)
-  const gross = baseMonthly + medical + traveling + overtime + holiday;
+  const gross = totals.gross;
         pdf.setFillColor(255,204,153);
         pdf.rect(colA, ry + 6, tableW, 24, 'F');
         pdf.setFont(undefined,'bold');
         pdf.text('GROSS PAY', colA + 6, ry + 22);
         // show Basic Salary (monthly base from Salary model if available)
         pdf.setFont(undefined,'normal');
-  drawRight(`Basic: ${formatCurrency(baseMonthly || basicCurrent)}`, currentRight, ry + 22);
+  drawRight(`Basic: ${formatCurrency(baseMonthly)}`, currentRight, ry + 22);
         pdf.setFont(undefined,'bold');
         drawRight(formatCurrency(gross), pkrRight, ry + 22);
 
@@ -497,12 +485,10 @@ export default function Payroll() {
         dy += 26;
         pdf.setFont(undefined,'normal');
 
-  const payTax = Number(rec.payTax ?? 0);
-  const leaves = Number(rec.leaves ?? rec.leaveDeductions ?? 0);
-  const loan = Number(rec.loan ?? rec.loanDeduction ?? 0);
-  // calculate per-day based on monthly base and monthDays, then compute cut deduction
-  const perDayBase = monthDays ? Math.round(baseMonthly / monthDays) : 0;
-  const cutDeduction = Math.round(perDayBase * cutDays);
+  const payTax = totals.payTax;
+  const leaves = totals.leaveDeductions;
+  const loan = totals.loan;
+  const cutDeduction = totals.cutDeduction;
 
   // Cut Days deduction row (show number of cut days under Days column and deduction amount)
   // add a small top margin so this deduction row is visually separated from the GROSS block
@@ -524,7 +510,7 @@ export default function Payroll() {
   drawRow(dy, 'Loan', '0', '', 0, loan);
         dy += gap;
 
-        const totalDeductions = Math.round(cutDeduction + payTax + leaves + loan);
+        const totalDeductions = totals.totalDeductions;
         pdf.setFillColor(245,245,245);
         pdf.rect(colA, dy + 6, tableW, 20, 'F');
         pdf.setFont(undefined,'bold');
@@ -537,7 +523,7 @@ export default function Payroll() {
         pdf.rect(colA + tableW*0.25, netY, tableW*0.5, 32, 'F');
         pdf.setTextColor(255,255,255);
         pdf.setFont(undefined,'bold');
-        const netPay = gross - totalDeductions;
+        const netPay = totals.netPay;
         pdf.text('NET PAY', colA + tableW*0.28, netY + 21);
         pdf.text(`PKR ${formatCurrency(netPay)}`, colA + tableW*0.58, netY + 21);
 
