@@ -1,13 +1,23 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaBell } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import MaintenanceControl from './MaintenanceControl';
+import { FaSlidersH } from 'react-icons/fa';
+import axios from 'axios';
+
+const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 
 const Topbar = () => {
+  const [superAdmin, setSuperAdmin] = useState(false);
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken');
+    if (token) axios.get(`${apiUrl}/api/system/access`, { headers: { Authorization: `Bearer ${token}` } }).then(() => setSuperAdmin(true)).catch(() => { });
+  }, []);
   return (
     <header className="flex justify-between items-center px-6 py-4 bg-white shadow-sm">
       <div className="flex items-center gap-4">
         <MaintenanceControl />
+        {superAdmin && <Link to="/admin/api-controls" className="flex items-center gap-2 rounded bg-[#57123f] px-3 py-2 text-xs font-semibold text-white"><FaSlidersH /> API Controls</Link>}
         <input
           type="text"
           placeholder="Search"

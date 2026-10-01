@@ -49,6 +49,7 @@ import AdminChat from './pages/admin/AdminChat';
 import ChatButton from './components/ChatButton';
 import ClientHistory from './pages/admin/ClientHistory';
 import MaintenancePage from './components/MaintenancePage';
+import ApiControls from './pages/admin/ApiControls';
 import axios from 'axios';
 
 const AppContent = () => {
@@ -192,6 +193,7 @@ const AppContent = () => {
           <Route path='/admin/refund-management' element={<EmployeeProtectedRoute><RefundManagement /></EmployeeProtectedRoute>} />
           <Route path='/admin/chat' element={<AdminChat />} />
           <Route path='/admin/challan' element={< ChallanManagement/>} />
+          <Route path='/admin/api-controls' element={<ApiControls />} />
         </Route>
       </Routes>
     </>

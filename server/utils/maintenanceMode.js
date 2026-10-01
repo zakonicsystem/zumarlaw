@@ -3,6 +3,23 @@ import SystemSettings from '../models/SystemSettings.js';
 const DEFAULT_MESSAGE = 'The Zumar Law Firm system is temporarily unavailable for scheduled maintenance.';
 const CACHE_TTL_MS = 2000;
 
+export const API_CONTROL_GROUPS = {
+  sms: { label: 'SMS / Vevotech', prefixes: ['/api/sms'] },
+  accounts: { label: 'Accounts', prefixes: ['/api/accounts'] },
+  leads: { label: 'Leads', prefixes: ['/api/leads', '/api/mergeConvertedLeads'] },
+  services: { label: 'Services', prefixes: ['/api/service', '/api/admin/services', '/api/manualService', '/api/convertedService', '/api/mergeService'] },
+  payroll: { label: 'Payroll', prefixes: ['/api/payrolls', '/api/autoSalary'] },
+  attendance: { label: 'Attendance', prefixes: ['/api/attendance'] },
+  expenses: { label: 'Expenses', prefixes: ['/api/expense'] },
+  refunds: { label: 'Refunds', prefixes: ['/api/refund'] },
+  forms: { label: 'Forms', prefixes: ['/api/forms'] },
+  notifications: { label: 'Notifications', prefixes: ['/api/notifications'] },
+  customers: { label: 'Customers / Users', prefixes: ['/api/userpanel', '/api/users'] },
+  other: { label: 'Other APIs', prefixes: ['/api'] },
+};
+
+export const defaultApiControls = () => Object.fromEntries(Object.keys(API_CONTROL_GROUPS).map((key) => [key, true]));
+
 let cachedSettings = null;
 let cacheExpiresAt = 0;
 
@@ -22,7 +39,7 @@ export const getMaintenanceSettings = async ({ fresh = false } = {}) => {
 
   const settings = await SystemSettings.findOneAndUpdate(
     { key: 'global' },
-    { $setOnInsert: { maintenanceMode: false, smsApiEnabled: true, accountApiEnabled: true, externalApisEnabled: true, maintenanceMessage: DEFAULT_MESSAGE } },
+    { $setOnInsert: { maintenanceMode: false, smsApiEnabled: true, accountApiEnabled: true, externalApisEnabled: true, apiControls: defaultApiControls(), maintenanceMessage: DEFAULT_MESSAGE } },
     { new: true, upsert: true, setDefaultsOnInsert: true }
   ).lean();
 

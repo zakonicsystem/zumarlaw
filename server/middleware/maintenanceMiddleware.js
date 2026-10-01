@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import Admin from '../models/Admin.js';
-import { getMaintenanceSettings, isSuperAdminRecord } from '../utils/maintenanceMode.js';
+import { getMaintenanceSettings, isSuperAdminRecord, API_CONTROL_GROUPS, defaultApiControls } from '../utils/maintenanceMode.js';
 
 const getBearerToken = (req) => {
   const authorization = req.headers.authorization;
@@ -29,6 +29,9 @@ export const maintenanceGuard = async (req, res, next) => {
     const settings = await getMaintenanceSettings();
     const superAdmin = await requestIsFromSuperAdmin(req);
     if (superAdmin) return next();
+    const controls = { ...defaultApiControls(), ...(settings.apiControls || {}) };
+    const blockedGroup = Object.entries(API_CONTROL_GROUPS).find(([key, group]) => controls[key] === false && group.prefixes.some((prefix) => req.path.startsWith(prefix)));
+    if (blockedGroup) return res.status(503).json({ apiBlocked: true, apiGroup: blockedGroup[0], message: `${blockedGroup[1].label} API is currently disabled by the Super Admin.` });
     const blockedIntegration = req.path.startsWith('/api/sms') && settings.smsApiEnabled === false
       ? 'SMS/Vevotech API'
       : req.path.startsWith('/api/accounts') && settings.accountApiEnabled === false

@@ -6,6 +6,7 @@ const SystemSettingsSchema = new mongoose.Schema({
   smsApiEnabled: { type: Boolean, default: true },
   accountApiEnabled: { type: Boolean, default: true },
   externalApisEnabled: { type: Boolean, default: true },
+  apiControls: { type: mongoose.Schema.Types.Mixed, default: {} },
   maintenanceMessage: {
     type: String,
     default: 'The Zumar Law Firm system is temporarily unavailable for scheduled maintenance.',

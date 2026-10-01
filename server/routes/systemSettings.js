@@ -1,10 +1,13 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import Admin from '../models/Admin.js';
+import SystemSettings from '../models/SystemSettings.js';
 import {
   getMaintenanceSettings,
   isSuperAdminRecord,
   setMaintenanceMode,
+  API_CONTROL_GROUPS,
+  defaultApiControls,
 } from '../utils/maintenanceMode.js';
 
 const router = express.Router();
@@ -47,6 +50,17 @@ router.get('/status', async (req, res) => {
 
 router.get('/access', requireSuperAdmin, (req, res) => {
   res.json({ authorized: true });
+});
+
+router.get('/api-controls', requireSuperAdmin, async (req, res) => {
+  const settings = await getMaintenanceSettings();
+  res.json({ controls: { ...defaultApiControls(), ...(settings.apiControls || {}) }, groups: API_CONTROL_GROUPS });
+});
+
+router.put('/api-controls', requireSuperAdmin, async (req, res) => {
+  const controls = Object.fromEntries(Object.keys(API_CONTROL_GROUPS).map((key) => [key, req.body?.controls?.[key] !== false]));
+  const settings = await SystemSettings.findOneAndUpdate({ key: 'global' }, { $set: { apiControls: controls, updatedBy: req.superAdmin.email } }, { new: true, upsert: true, setDefaultsOnInsert: true }).lean();
+  res.json({ controls: { ...defaultApiControls(), ...(settings.apiControls || {}) } });
 });
 
 router.put('/maintenance', requireSuperAdmin, async (req, res) => {
