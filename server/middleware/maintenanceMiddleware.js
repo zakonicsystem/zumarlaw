@@ -27,7 +27,16 @@ export const maintenanceGuard = async (req, res, next) => {
 
   try {
     const settings = await getMaintenanceSettings();
-    if (!settings.maintenanceMode || await requestIsFromSuperAdmin(req)) return next();
+    const superAdmin = await requestIsFromSuperAdmin(req);
+    if (superAdmin) return next();
+    const blockedIntegration = req.path.startsWith('/api/sms') && settings.smsApiEnabled === false
+      ? 'SMS/Vevotech API'
+      : req.path.startsWith('/api/accounts') && settings.accountApiEnabled === false
+        ? 'Accounts API'
+        : ['/api/serviceMessage', '/api/notifications'].some((prefix) => req.path.startsWith(prefix)) && settings.externalApisEnabled === false
+          ? 'External integrations' : null;
+    if (blockedIntegration) return res.status(503).json({ apiBlocked: true, message: `${blockedIntegration} is currently disabled by the Super Admin.` });
+    if (!settings.maintenanceMode) return next();
 
     return res.status(503).json({
       maintenance: true,

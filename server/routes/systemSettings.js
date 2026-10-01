@@ -34,6 +34,9 @@ router.get('/status', async (req, res) => {
     const settings = await getMaintenanceSettings();
     res.json({
       maintenanceMode: settings.maintenanceMode === true,
+      smsApiEnabled: settings.smsApiEnabled !== false,
+      accountApiEnabled: settings.accountApiEnabled !== false,
+      externalApisEnabled: settings.externalApisEnabled !== false,
       message: settings.maintenanceMessage,
       updatedAt: settings.updatedAt,
     });
@@ -50,12 +53,18 @@ router.put('/maintenance', requireSuperAdmin, async (req, res) => {
   try {
     const settings = await setMaintenanceMode({
       enabled: req.body.enabled === true,
+      smsApiEnabled: req.body.smsApiEnabled,
+      accountApiEnabled: req.body.accountApiEnabled,
+      externalApisEnabled: req.body.externalApisEnabled,
       message: req.body.message,
       updatedBy: req.superAdmin.email,
     });
     res.json({
       message: settings.maintenanceMode ? 'Maintenance mode enabled' : 'Maintenance mode disabled',
       maintenanceMode: settings.maintenanceMode,
+      smsApiEnabled: settings.smsApiEnabled !== false,
+      accountApiEnabled: settings.accountApiEnabled !== false,
+      externalApisEnabled: settings.externalApisEnabled !== false,
       maintenanceMessage: settings.maintenanceMessage,
       updatedAt: settings.updatedAt,
     });

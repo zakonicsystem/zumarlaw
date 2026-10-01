@@ -7,6 +7,7 @@ const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace
 
 const MaintenanceControl = () => {
   const [enabled, setEnabled] = useState(false);
+  const [apis, setApis] = useState({ smsApiEnabled: true, accountApiEnabled: true, externalApisEnabled: true });
   const [loading, setLoading] = useState(false);
   const [authorized, setAuthorized] = useState(false);
 
@@ -23,11 +24,30 @@ const MaintenanceControl = () => {
       .then(([, statusResponse]) => {
         setAuthorized(true);
         setEnabled(statusResponse.data.maintenanceMode === true);
+        setApis({
+          smsApiEnabled: statusResponse.data.smsApiEnabled !== false,
+          accountApiEnabled: statusResponse.data.accountApiEnabled !== false,
+          externalApisEnabled: statusResponse.data.externalApisEnabled !== false,
+        });
       })
       .catch(() => setAuthorized(false));
   }, []);
 
   if (!authorized) return null;
+
+  const updateSettings = async (changes, prompt) => {
+    if (prompt && !window.confirm(prompt)) return;
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('adminToken');
+      const { data } = await axios.put(`${apiUrl}/api/system/maintenance`, { enabled, ...apis, ...changes }, { headers: { Authorization: `Bearer ${token}` } });
+      setEnabled(data.maintenanceMode === true);
+      setApis({ smsApiEnabled: data.smsApiEnabled !== false, accountApiEnabled: data.accountApiEnabled !== false, externalApisEnabled: data.externalApisEnabled !== false });
+      window.dispatchEvent(new CustomEvent('maintenance-changed', { detail: { maintenanceMode: data.maintenanceMode, message: data.maintenanceMessage } }));
+      toast.success(data.message);
+    } catch (error) { toast.error(error.response?.data?.message || 'Unable to update system controls'); }
+    finally { setLoading(false); }
+  };
 
   const toggleMaintenance = async () => {
     const nextEnabled = !enabled;
@@ -36,24 +56,7 @@ const MaintenanceControl = () => {
       : 'Disable maintenance mode and reopen the system for everyone?';
     if (!window.confirm(prompt)) return;
 
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('adminToken');
-      const { data } = await axios.put(
-        `${apiUrl}/api/system/maintenance`,
-        { enabled: nextEnabled },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setEnabled(data.maintenanceMode === true);
-      window.dispatchEvent(new CustomEvent('maintenance-changed', {
-        detail: { maintenanceMode: data.maintenanceMode, message: data.maintenanceMessage },
-      }));
-      toast.success(data.message);
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Unable to update maintenance mode');
-    } finally {
-      setLoading(false);
-    }
+    await updateSettings({ enabled: nextEnabled });
   };
 
   return (
@@ -73,6 +76,13 @@ const MaintenanceControl = () => {
         <FaPowerOff />
         {loading ? 'Saving...' : enabled ? 'Maintenance ON' : 'Maintenance OFF'}
       </button>
+      <div className="hidden 2xl:flex items-center gap-2 text-[10px] text-gray-700">
+        {[['smsApiEnabled', 'SMS'], ['accountApiEnabled', 'Accounts'], ['externalApisEnabled', 'Other APIs']].map(([key, label]) => (
+          <button key={key} type="button" disabled={loading} onClick={() => updateSettings({ [key]: !apis[key] }, `${apis[key] ? 'Block' : 'Enable'} ${label} API?`)} className={`rounded px-2 py-1 font-semibold ${apis[key] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+            {label}: {apis[key] ? 'ON' : 'OFF'}
+          </button>
+        ))}
+      </div>
     </div>
   );
 };

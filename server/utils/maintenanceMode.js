@@ -22,7 +22,7 @@ export const getMaintenanceSettings = async ({ fresh = false } = {}) => {
 
   const settings = await SystemSettings.findOneAndUpdate(
     { key: 'global' },
-    { $setOnInsert: { maintenanceMode: false, maintenanceMessage: DEFAULT_MESSAGE } },
+    { $setOnInsert: { maintenanceMode: false, smsApiEnabled: true, accountApiEnabled: true, externalApisEnabled: true, maintenanceMessage: DEFAULT_MESSAGE } },
     { new: true, upsert: true, setDefaultsOnInsert: true }
   ).lean();
 
@@ -31,11 +31,14 @@ export const getMaintenanceSettings = async ({ fresh = false } = {}) => {
   return settings;
 };
 
-export const setMaintenanceMode = async ({ enabled, message, updatedBy }) => {
+export const setMaintenanceMode = async ({ enabled, message, updatedBy, smsApiEnabled, accountApiEnabled, externalApisEnabled }) => {
   const update = {
     maintenanceMode: enabled === true,
     updatedBy: String(updatedBy || ''),
   };
+  for (const [field, value] of Object.entries({ smsApiEnabled, accountApiEnabled, externalApisEnabled })) {
+    if (typeof value === 'boolean') update[field] = value;
+  }
   if (String(message || '').trim()) update.maintenanceMessage = String(message).trim();
 
   const settings = await SystemSettings.findOneAndUpdate(
