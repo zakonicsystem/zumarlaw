@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Edit, Trash2, Eye, UserX, RotateCcw } from 'lucide-react';
@@ -58,8 +58,21 @@ const pages = [
   },
 ];
 
+const accessPageLabels = {
+  '/admin': 'Dashboard', '/admin/employee-reports': 'Employee Reports', '/admin/chat': 'Support Chat',
+  '/admin/tickets': 'Support Tickets', '/admin/salary': 'Salary', '/admin/attendance': 'Attendance',
+  '/admin/challan': 'Challan', '/admin/announcment': 'Announcements', '/admin/refund-management': 'Refund Management',
+  '/admin/api-controls': 'API Controls', '/admin/add-Service': 'Add Manual Service',
+  ...Object.fromEntries(pages.flatMap(page => [[page.path, page.label], ...(page.children || []).map(child => [child.path, child.label])])),
+};
+const accessPageName = path => accessPageLabels[path] || path.replace(/^\/admin\/?/, '').split('/').filter(Boolean).map(part => part.replace(/[-_]/g, ' ').replace(/\b\w/g, char => char.toUpperCase())).join(' / ') || 'Dashboard';
+const employeeAccessNames = employee => [...new Set([...(employee.assignedPages || []), '/admin/employee-reports'].map(accessPageName))];
+
 const Roles = () => {
   const [employees, setEmployees] = useState([]);
+  const [accessEmployee, setAccessEmployee] = useState(null);
+  const accessDialog = useRef(null);
+  useEffect(() => { if (accessEmployee) accessDialog.current?.showModal(); }, [accessEmployee]);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -242,6 +255,20 @@ const Roles = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
       <div className="mb-6">
+        <dialog ref={accessDialog} aria-labelledby="employee-access-title" onClose={() => setAccessEmployee(null)} className="m-auto w-[calc(100%-2rem)] max-w-lg max-h-[85vh] rounded-2xl p-0 shadow-2xl backdrop:bg-black/50">
+          {accessEmployee && <div className="p-6 space-y-5">
+            <div className="flex items-start justify-between gap-4"><div><h3 id="employee-access-title" className="text-xl font-semibold text-[#57123f]">Access Pages</h3><p className="text-sm text-gray-500 mt-1">{accessEmployee.name}</p></div><button type="button" aria-label="Close access details" onClick={() => accessDialog.current?.close()} className="rounded-lg border px-3 py-1">&times;</button></div>
+            <ul className="grid sm:grid-cols-2 gap-2 text-sm text-gray-700" aria-label="Accessible pages">
+              {employeeAccessNames(accessEmployee).map(name => <li key={name} className="rounded-lg bg-purple-50 px-3 py-2 break-words">{name}</li>)}
+            </ul>
+            <div className="border-t border-gray-200 pt-4 space-y-2 text-sm">
+              <p><strong>Lead access: </strong>{accessEmployee.canViewAllLeads === true || accessEmployee.canViewAllLeadsAndServices === true ? 'All leads' : 'Assigned leads only'}</p>
+              <p><strong>Service access: </strong>{accessEmployee.canViewAllServices === true || accessEmployee.canViewAllLeadsAndServices === true ? 'All services' : 'Assigned services only'}</p>
+              {accessEmployee.employmentStatus === 'terminated' && <p className="font-medium text-red-700">Account access disabled</p>}
+            </div>
+            <button type="button" onClick={() => accessDialog.current?.close()} className="bg-[#57123f] text-white rounded-lg px-5 py-2">Close</button>
+          </div>}
+        </dialog>
         {/* Modal for viewing credentials */}
         {viewModal && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
@@ -325,16 +352,14 @@ const Roles = () => {
           <p className="text-gray-500">No employees added.</p>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="min-w-[1180px] w-full border-collapse text-sm">
+          <table className="min-w-[960px] w-full border-collapse text-sm">
             <thead className="bg-[#57123f] text-left text-white">
               <tr>
                 <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Employee</th>
                 <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Contact</th>
                 <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Role & Branch</th>
                 <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Salary</th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Lead Access</th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Service Access</th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Assigned Pages</th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Access Pages</th>
                 <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">Status</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide">Actions</th>
               </tr>
@@ -355,38 +380,10 @@ const Roles = () => {
                     <div className="mt-1 text-xs text-gray-500">{emp.branch || 'No branch'}</div>
                   </td>
                   <td className="px-4 py-4 font-medium text-gray-800" title={emp.salary}>{emp.salary || '-'}</td>
-                  <td className="px-4 py-4">
-                    {emp.canViewAllLeads === true || emp.canViewAllLeadsAndServices === true
-                      ? <span className="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">All leads</span>
-                      : <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">Assigned only</span>}
-                  </td>
-                  <td className="px-4 py-4">
-                    {emp.canViewAllServices === true || emp.canViewAllLeadsAndServices === true
-                      ? <span className="inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">All services</span>
-                      : <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">Assigned only</span>}
-                  </td>
-                  <td className="px-4 py-4 text-xs">
-                    {emp.assignedPages?.length ? (
-                      (() => {
-                        // Map path to label using pages structure
-                        const getLabel = (path) => {
-                          for (const page of pages) {
-                            if (page.path === path) return page.label;
-                            if (page.children) {
-                              const child = page.children.find(c => c.path === path);
-                              if (child) return child.label;
-                            }
-                          }
-                          return path;
-                        };
-                        const names = Array.from(new Set(emp.assignedPages.map(getLabel)));
-                        return (
-                          <span className="inline-flex max-w-[220px] rounded bg-purple-50 px-2 py-1 text-[#57123f]" title={names.join(', ')}>
-                            <span className="truncate">{names.join(', ')}</span>
-                          </span>
-                        );
-                      })()
-                    ) : '-'}
+                  <td className="px-4 py-4 min-w-[230px] max-w-[300px]">
+                    <button type="button" onClick={() => setAccessEmployee(emp)} aria-haspopup="dialog" className="rounded-lg border border-purple-100 bg-purple-50/50 px-3 py-2.5 text-sm font-semibold text-[#57123f] hover:bg-purple-100">
+                        View access <span className="ml-1 text-xs font-normal text-gray-500">({employeeAccessNames(emp).length} pages)</span>
+                    </button>
                   </td>
                   <td className="px-4 py-4">
                     {emp.employmentStatus === 'terminated' ? (

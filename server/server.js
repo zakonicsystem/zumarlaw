@@ -1,4 +1,6 @@
 import { apiAccess } from './middleware/apiAccess.js';
+import supportTicketRoutes from './routes/supportTickets.js';
+import adReportRoutes from './routes/adReports.js';
 import { privateFiles } from './middleware/privateFiles.js';
 import notificationRoutes from './routes/notifications.js';
 import { startNotificationWorker } from './utils/notificationQueue.js';
@@ -89,6 +91,8 @@ app.use(passport.initialize());
 
 app.use(cookieParser());
 app.use('/api', apiAccess);
+app.use('/api/support-tickets', supportTicketRoutes);
+app.use('/api/ad-reports', adReportRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 // Announcements route

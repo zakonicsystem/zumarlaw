@@ -1,4 +1,6 @@
 import EmployeeSetup from './pages/EmployeeSetup';
+import SupportTickets from './pages/SupportTickets';
+import EmployeeReports from './pages/admin/EmployeeReports';
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
@@ -144,6 +146,7 @@ const AppContent = () => {
           </UserPrivateRoute>
         } />
         <Route path="/userpanel" element={<UserDashboard />} />
+        <Route path="/support" element={<UserPrivateRoute><SupportTickets /></UserPrivateRoute>} />
         {/* User Protected Route */}
         <Route path="/" element={
           <UserPrivateRoute>
@@ -194,6 +197,8 @@ const AppContent = () => {
           <Route path='/admin/chat' element={<AdminChat />} />
           <Route path='/admin/challan' element={< ChallanManagement/>} />
           <Route path='/admin/api-controls' element={<ApiControls />} />
+          <Route path='/admin/tickets' element={<SupportTickets admin />} />
+          <Route path='/admin/employee-reports' element={<EmployeeReports />} />
         </Route>
       </Routes>
     </>

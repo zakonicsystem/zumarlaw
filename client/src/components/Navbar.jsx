@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { HashLink } from 'react-router-hash-link';
-import { FaHome, FaSignOutAlt, FaUserCircle, FaTachometerAlt } from 'react-icons/fa';
+import { FaHome, FaSignOutAlt, FaUserCircle, FaTachometerAlt, FaTicketAlt } from 'react-icons/fa';
 import { MdMiscellaneousServices } from 'react-icons/md';
 import Logo from '../assets/ZumarLogo.png';
 
@@ -40,7 +40,8 @@ const Navbar = () => {
         </Link>
 
         {isLoggedIn && (
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 sm:gap-6">
+            <Link to="/support" className={getLinkStyles('/support')} title="Support Tickets" aria-label="Support Tickets" aria-current={isActive('/support') ? 'page' : undefined}><FaTicketAlt className="text-2xl" /><span className="hidden sm:inline ml-2 text-sm font-medium">Support Tickets</span></Link>
             <Link to="/" className={getLinkStyles('/')}> 
               <FaHome className="text-2xl" />
             </Link>

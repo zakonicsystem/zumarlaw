@@ -10,3 +10,4 @@ yarn-debug.log*
 yarn-error.log*
 server/notification-outbox/
 server/uploads/
+.local-tools/

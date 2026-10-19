@@ -6,7 +6,7 @@ import logo from '../../assets/ZumarLogo.png';
 import {
     FaTachometerAlt, FaUsers, FaTasks, FaSignOutAlt, FaBars, FaMoneyCheckAlt,
     FaUserShield, FaUserFriends, FaUserCog, FaChevronDown, FaPlus,
-    FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck, FaComments, FaBan, FaHistory
+    FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck, FaComments, FaBan, FaHistory, FaTicketAlt, FaFileAlt
 } from 'react-icons/fa';
 import { jwtDecode } from 'jwt-decode';
 
@@ -99,7 +99,7 @@ const Sidebar = () => {
     const allMenuItems = [
         { name: 'Dashboard', icon: <FaTachometerAlt />, path: '/admin' },
         {
-            name: 'Lead Management', icon: <FaUserFriends />, path: '/admin/leads',
+            name: 'Leads', icon: <FaUserFriends />, path: '/admin/leads',
             children: [
                 { name: 'New Leads', path: '/admin/leads/new', icon: <FaUserFriends /> },
                 { name: 'Add Lead', path: '/admin/leads/add', icon: <FaPlus /> },
@@ -111,7 +111,7 @@ const Sidebar = () => {
             ]
         },
         {
-            name: 'Service Processing', icon: <FaTasks />, path: '/admin/services',
+            name: 'Services', icon: <FaTasks />, path: '/admin/services',
             children: [
                 { name: 'Converted Service', path: '/admin/services/converted', icon: <FaExchangeAlt /> },
                 { name: 'Manual Service', path: '/admin/services/manual', icon: <FaFileImport /> },
@@ -132,6 +132,7 @@ const Sidebar = () => {
             name: 'Roles', icon: <FaUserShield />, path: '/admin/roles',
             children: [
                 { name: 'Add New Employee', path: '/admin/roles/add', icon: <FaPlus /> },
+                { name: 'Employee Reports', path: '/admin/employee-reports', icon: <FaFileAlt />, allEmployees: true },
             ]
         },
         {
@@ -141,7 +142,13 @@ const Sidebar = () => {
                 { name: 'Client History', icon: <FaHistory />, path: '/admin/client-history' },
             ]
         },
-        { name: 'Support Chat', icon: <FaComments />, path: '/admin/chat' },
+        {
+            name: 'Support', icon: <FaComments />, path: '/admin/chat', groupOnly: true,
+            children: [
+                { name: 'Support Chat', icon: <FaComments />, path: '/admin/chat' },
+                { name: 'Support Tickets', icon: <FaTicketAlt />, path: '/admin/tickets', adminOnly: true },
+            ]
+        },
         {
             name: 'Account', icon: <FaUserCog />, path: '/admin/account',
             children: [
@@ -163,10 +170,10 @@ const Sidebar = () => {
         }
 
         // Employees see only assigned pages
-        const isParentEnabled = assignedPages.includes(item.path);
+        const isParentEnabled = !item.adminOnly && assignedPages.includes(item.path);
         const childItems = (item.children || []).map(child => ({
             ...child,
-            enabled: assignedPages.includes(child.path)
+            enabled: !child.adminOnly && (child.allEmployees || assignedPages.includes(child.path))
         }));
         const hasVisibleChildren = childItems.some(c => c.enabled);
 
@@ -176,6 +183,11 @@ const Sidebar = () => {
             children: childItems
         };
     });
+
+    useEffect(() => {
+        if (location.pathname === '/admin/employee-reports' || location.pathname.startsWith('/admin/roles')) setOpenAccordion('Roles');
+        else if (['/admin/chat', '/admin/tickets'].includes(location.pathname)) setOpenAccordion('Support');
+    }, [location.pathname]);
 
 
 
@@ -206,20 +218,30 @@ const Sidebar = () => {
                                         <div className="relative">
                                             <Link
                                                 to={item.path}
-                                                onClick={() => setSidebarOpen(false)}
-                                                className={`flex items-center gap-2 p-2 w-full rounded-lg transition-colors text-[1.1rem] font-medium ${location.pathname.startsWith(item.path)
+                                                onClick={(event) => {
+                                                    if (visibleChildren.length && (item.groupOnly || (isEmployee && !assignedPages.includes(item.path)))) {
+                                                        event.preventDefault();
+                                                        setOpenAccordion(isOpen ? '' : item.name);
+                                                    } else {
+                                                        setOpenAccordion(item.name);
+                                                        setSidebarOpen(false);
+                                                    }
+                                                }}
+                                                aria-current={location.pathname === item.path ? 'page' : undefined}
+                                                className={`flex items-center gap-3 p-2 pr-9 w-full rounded-lg transition-colors text-[1.1rem] font-medium ${((item.path === '/admin' ? location.pathname === '/admin' : location.pathname === item.path || location.pathname.startsWith(item.path + '/')) || visibleChildren.some(child => location.pathname === child.path))
                                                     ? 'bg-[#57123f] text-white'
                                                     : 'text-gray-600 hover:bg-[#57123f] hover:text-white'}`}
                                             >
-                                                {item.icon}
-                                                {item.name}
+                                                <span className="shrink-0" aria-hidden="true">{item.icon}</span>
+                                                <span>{item.name}</span>
                                             </Link>
                                             {visibleChildren.length > 0 && (
                                                 <button
                                                     type="button"
                                                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
                                                     onClick={() => setOpenAccordion(isOpen ? '' : item.name)}
-                                                    tabIndex={-1}
+                                                    aria-label={`Toggle ${item.name} menu`}
+                                                    aria-expanded={isOpen}
                                                 >
                                                     <FaChevronDown className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
                                                 </button>
