@@ -9,6 +9,7 @@ import {
     FaFileImport, FaExchangeAlt, FaPhoneVolume, FaStar, FaClipboardCheck, FaComments, FaBan, FaHistory, FaTicketAlt, FaFileAlt
 } from 'react-icons/fa';
 import { jwtDecode } from 'jwt-decode';
+import { logoutStaff } from '../../utils/staffLogout';
 
 const Sidebar = () => {
     const location = useLocation();
@@ -16,6 +17,7 @@ const Sidebar = () => {
     const [openAccordion, setOpenAccordion] = useState('');
     const [assignedPages, setAssignedPages] = useState([]);
     const [assignedPagesError, setAssignedPagesError] = useState(null);
+    const [objectionCount, setObjectionCount] = useState(0);
     const navigate = useNavigate();
 
     // Ensure only one role is active at a time
@@ -24,6 +26,35 @@ const Sidebar = () => {
     // If both tokens exist, prefer admin (or clear one on login logic)
     const isAdmin = !!adminToken && !employeeToken;
     const isEmployee = !!employeeToken && !adminToken;
+
+    useEffect(() => {
+        if (!isEmployee) { setObjectionCount(0); return; }
+        let controller;
+        let disposed = false;
+        const refresh = () => {
+            controller?.abort();
+            controller = new AbortController();
+            const current = controller;
+            const base = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+            axios.get(`${base}/api/ad-reports/objections-summary`, {
+                headers: { Authorization: `Bearer ${employeeToken}` }, signal: current.signal,
+            }).then(({ data }) => {
+                if (!disposed && !current.signal.aborted) setObjectionCount(data.count || 0);
+            }).catch(() => { /* Keep the notification until a successful refresh confirms its state. */ });
+        };
+        const onVisible = () => { if (!document.hidden) refresh(); };
+        refresh();
+        const interval = window.setInterval(onVisible, 15000);
+        window.addEventListener('focus', refresh);
+        window.addEventListener('employee-report-updated', refresh);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+            disposed = true; controller?.abort(); window.clearInterval(interval);
+            window.removeEventListener('focus', refresh);
+            window.removeEventListener('employee-report-updated', refresh);
+            document.removeEventListener('visibilitychange', onVisible);
+        };
+    }, [isEmployee, employeeToken]);
 
     // assignedPages is fetched from the Roles model via /employee/me endpoint
     useEffect(() => {
@@ -79,21 +110,16 @@ const Sidebar = () => {
     }, [assignedPages, assignedPagesError, isEmployee]);
 
     const handleLogout = async () => {
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            await axios.get(`${apiUrl}/api/admin/logout`, { withCredentials: true });
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('employeeToken');
-            localStorage.removeItem('isSuperAdmin');
-            toast.success('Successfully logged out');
-            if (isEmployee) {
-                navigate('/admin/employee-login');
-            } else {
-                navigate('/admin/login');
-            }
-        } catch (err) {
-            toast.error('Logout failed');
-        }
+        const base = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
+        const token = employeeToken || adminToken;
+        await logoutStaff({
+            request: () => axios.get(base + '/api/admin/logout', {
+                withCredentials: true, timeout: 5000,
+                headers: token ? { Authorization: 'Bearer ' + token } : {},
+            }),
+            storage: localStorage, redirect: navigate, isEmployee,
+        });
+        toast.success('Successfully logged out');
     };
 
     const allMenuItems = [
@@ -146,7 +172,7 @@ const Sidebar = () => {
             name: 'Support', icon: <FaComments />, path: '/admin/chat', groupOnly: true,
             children: [
                 { name: 'Support Chat', icon: <FaComments />, path: '/admin/chat' },
-                { name: 'Support Tickets', icon: <FaTicketAlt />, path: '/admin/tickets', adminOnly: true },
+                { name: 'Support Tickets', icon: <FaTicketAlt />, path: '/admin/tickets', allEmployees: true },
             ]
         },
         {
@@ -234,6 +260,7 @@ const Sidebar = () => {
                                             >
                                                 <span className="shrink-0" aria-hidden="true">{item.icon}</span>
                                                 <span>{item.name}</span>
+                                                {isEmployee && item.name === 'Roles' && objectionCount > 0 && <span role="status" aria-label={`${objectionCount} reports need correction`} title="Report objections need correction" className="ml-auto shrink-0 rounded-full bg-red-600 text-white text-xs font-bold px-2 py-0.5 ring-2 ring-white">{objectionCount > 99 ? '99+' : objectionCount}</span>}
                                             </Link>
                                             {visibleChildren.length > 0 && (
                                                 <button
@@ -252,7 +279,7 @@ const Sidebar = () => {
                                             <ul className={`ml-6 mt-1 space-y-1 overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'}`} style={{ transitionProperty: 'max-height, opacity' }}>
                                                 {visibleChildren.map(child => (
                                                     <li key={child.name}>
-                                                        <Link to={child.path}
+                                                        <Link to={isEmployee && child.path === '/admin/employee-reports' && objectionCount > 0 ? `${child.path}?objections=1` : child.path}
                                                             onClick={() => setSidebarOpen(false)}
                                                             className={`flex items-center gap-2 p-2 rounded-lg transition-colors text-[0.9rem] font-normal ${location.pathname === child.path
                                                                 ? 'bg-[#57123f] text-white'
@@ -260,6 +287,7 @@ const Sidebar = () => {
                                                         >
                                                             {child.icon}
                                                             {child.name}
+                                                            {isEmployee && child.path === '/admin/employee-reports' && objectionCount > 0 && <span role="status" aria-label={`${objectionCount} reports need correction`} title="Open objections" className="ml-auto shrink-0 rounded-full bg-red-600 text-white text-xs font-bold px-2 py-0.5 ring-2 ring-white">{objectionCount > 99 ? '99+' : objectionCount}</span>}
                                                         </Link>
                                                     </li>
                                                 ))}

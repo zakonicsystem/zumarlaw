@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { complaintCustomerLookup } from '../utils/customerLookup.js';
 import express from 'express';
 import bcrypt from 'bcrypt';
 import Admin from '../models/Admin.js';
@@ -47,6 +48,7 @@ router.post('/login', async (req, res) => {
 
 router.get('/logout', (req, res) => {
   res.clearCookie('token');
+  res.clearCookie('portal_files', { path: '/uploads' });
   res.status(200).json({ message: 'Logged out successfully' });
 });
 
@@ -62,6 +64,7 @@ const maskPhoneNumber = (phone) => {
 // Add this route to provide customers for admin/employee dashboards.
 router.get('/customers', verifyJWT, async (req, res) => {
   try {
+    if (req.query.lookup === 'complaint') return await complaintCustomerLookup(req, res);
     const canViewPhone = req.user?.role === 'admin';
     const users = await User.find().sort({ createdAt: -1 });
     const transformedUsers = users.map(user => ({

@@ -66,7 +66,7 @@ const accessPageLabels = {
   ...Object.fromEntries(pages.flatMap(page => [[page.path, page.label], ...(page.children || []).map(child => [child.path, child.label])])),
 };
 const accessPageName = path => accessPageLabels[path] || path.replace(/^\/admin\/?/, '').split('/').filter(Boolean).map(part => part.replace(/[-_]/g, ' ').replace(/\b\w/g, char => char.toUpperCase())).join(' / ') || 'Dashboard';
-const employeeAccessNames = employee => [...new Set([...(employee.assignedPages || []), '/admin/employee-reports'].map(accessPageName))];
+const employeeAccessNames = employee => [...new Set([...(employee.assignedPages || []), '/admin/employee-reports', '/admin/tickets'].map(accessPageName))];
 
 const Roles = () => {
   const [employees, setEmployees] = useState([]);
@@ -253,7 +253,7 @@ const Roles = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6">
+    <div className="max-w-7xl mx-auto ">
       <div className="mb-6">
         <dialog ref={accessDialog} aria-labelledby="employee-access-title" onClose={() => setAccessEmployee(null)} className="m-auto w-[calc(100%-2rem)] max-w-lg max-h-[85vh] rounded-2xl p-0 shadow-2xl backdrop:bg-black/50">
           {accessEmployee && <div className="p-6 space-y-5">

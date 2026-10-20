@@ -4,22 +4,31 @@ import Report, { metrics } from '../models/DailyAdReport.js';
 import Roles from '../models/Roles.js';
 import { servicePrices } from '../data/servicePrices.js';
 import { periodRange } from '../utils/adReportRules.js';
+import { reportStatus, revisionQuery, reportValues, reportSnapshot } from '../utils/reportReview.js';
 const router = express.Router();
 router.use((req, res, next) => ['admin', 'employee'].includes(req.user.role) ? next() : res.status(403).json({ message: 'Staff access required' }));
+router.get('/objections-summary', async (req, res) => {
+  if (req.user.role !== 'employee') return res.status(403).json({ message: 'Employee access required' });
+  const count = await Report.countDocuments({ employee: req.user.id, reviewStatus: 'objected' });
+  res.set('Cache-Control', 'private, no-store');
+  res.json({ count });
+});
 router.get('/options', async (req, res) => {
   const employee = req.user.role === 'employee' ? await Roles.findById(req.user.id).select('name role phone').lean() : null;
   res.json({ services: Object.keys(servicePrices), employee, employees: req.user.role === 'admin' ? await Roles.find().select('name').sort({ name: 1 }).lean() : [] });
 });
 async function queryReports(req) {
-  const range = periodRange(req.query.period, req.query.date);
-  const filter = { reportDate: { $gte: range.start, $lte: range.end } };
+  const objectionsOnly = req.query.period === 'objections';
+  const range = objectionsOnly ? { start: 'All dates', end: 'Open objections' } : periodRange(req.query.period, req.query.date);
+  const filter = objectionsOnly ? { reviewStatus: 'objected' } : { reportDate: { $gte: range.start, $lte: range.end } };
   if (req.query.service) {
     if (typeof req.query.service !== 'string' || req.query.service.length > 200) throw new Error('Invalid service filter');
     filter.dealingService = req.query.service;
   }
   if (req.query.review) {
-    if (!['pending', 'reviewed'].includes(req.query.review)) throw new Error('Invalid review filter');
-    filter.reviewedAt = req.query.review === 'reviewed' ? { $ne: null } : null;
+    const status = req.query.review === 'reviewed' ? 'approved' : req.query.review;
+    if (!['pending', 'approved', 'objected', 'resubmitted'].includes(status)) throw new Error('Invalid review filter');
+    filter.$and = [{ $or: [{ reviewStatus: status }, ...(status === 'pending' ? [{ reviewStatus: { $exists: false }, reviewedAt: null }] : status === 'approved' ? [{ reviewStatus: { $exists: false }, reviewedAt: { $ne: null } }] : [])] }];
   }
   if (req.query.search) {
     if (typeof req.query.search !== 'string' || req.query.search.length > 120) throw new Error('Search must be 120 characters or fewer');
@@ -31,7 +40,7 @@ async function queryReports(req) {
     if (!/^[a-f0-9]{24}$/i.test(req.query.employee)) throw new Error('Invalid employee');
     filter.employee = req.query.employee;
   }
-  const reports = await Report.find(filter).sort({ reportDate: -1, employeeName: 1 }).lean();
+  const reports = (await Report.find(filter).sort({ reportDate: -1, employeeName: 1 }).lean()).map(r => ({ ...r, reviewStatus: reportStatus(r), revision: r.revision || 0 }));
   return { range, reports, totals: Object.fromEntries(metrics.map(k => [k, reports.reduce((sum, r) => sum + r[k], 0)])) };
 }
 router.get('/', async (req, res) => {
@@ -52,9 +61,47 @@ router.post('/', async (req, res) => {
 });
 router.patch('/:id/review', async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ message: 'Administrator access required' });
-  if (!/^[a-f0-9]{24}$/i.test(req.params.id) || !['supervisorName', 'supervisorSignature', 'remark'].every(k => typeof req.body[k] === 'string' && req.body[k].trim() && req.body[k].length <= (k === 'remark' ? 4000 : 160))) return res.status(400).json({ message: 'Supervisor name, signature and remark are required' });
-  const report = await Report.findByIdAndUpdate(req.params.id, { $set: { supervisorName: req.body.supervisorName, supervisorSignature: req.body.supervisorSignature, remark: req.body.remark, reviewedAt: new Date() } }, { new: true, runValidators: true });
-  if (!report) return res.status(404).json({ message: 'Report not found' });
+  const { decision, revision, supervisorName, supervisorSignature, remark } = req.body;
+  if (!/^[a-f0-9]{24}$/i.test(req.params.id) || !['approve', 'object'].includes(decision) || !Number.isSafeInteger(revision) || revision < 0 ||
+    ![supervisorName, supervisorSignature, remark].every((v, i) => typeof v === 'string' && v.trim() && v.length <= (i === 2 ? 4000 : 160))) return res.status(400).json({ message: 'Decision, report revision, supervisor name, signature and remark are required' });
+  const current = await Report.findById(req.params.id).lean();
+  if (!current) return res.status(404).json({ message: 'Report not found' });
+  if (!['pending', 'resubmitted'].includes(reportStatus(current)) || (current.revision || 0) !== revision) return res.status(409).json({ message: 'This report changed or is not awaiting review. Refresh the report.' });
+  const nextStatus = decision === 'object' ? 'objected' : 'approved';
+  const report = await Report.findOneAndUpdate({ _id: current._id, ...revisionQuery(revision), ...(current.reviewStatus ? { reviewStatus: current.reviewStatus } : { reviewStatus: { $exists: false } }) }, {
+    $set: { reviewStatus: nextStatus, supervisorName: supervisorName.trim(), supervisorSignature: supervisorSignature.trim(), remark: remark.trim(),
+      objectionRemark: decision === 'object' ? remark.trim() : '', reviewedAt: new Date() },
+    $inc: { revision: 1 }, $push: { reviewHistory: { action: nextStatus, actor: String(req.user.id), actorName: supervisorName.trim(), remark: remark.trim(), revision, at: new Date(), snapshot: reportSnapshot(current) } },
+  }, { new: true, runValidators: true });
+  if (!report) return res.status(409).json({ message: 'Report changed. Refresh before reviewing.' });
+  res.json(report);
+});
+router.patch('/:id/resubmit', async (req, res) => {
+  if (req.user.role !== 'employee') return res.status(403).json({ message: 'Only the report owner can submit corrections' });
+  if (!/^[a-f0-9]{24}$/i.test(req.params.id)) return res.status(400).json({ message: 'Invalid report' });
+  const { revision, correctionRemark } = req.body;
+  let values;
+  try {
+    values = reportValues(req.body);
+    if (typeof req.body.reportDate !== 'string') throw new Error('Enter a valid report date');
+    periodRange('daily', req.body.reportDate);
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
+    if (req.body.reportDate > today || !Object.hasOwn(servicePrices, req.body.dealingService)) throw new Error('Check the report date and dealing service');
+    values = { ...values, reportDate: req.body.reportDate, dealingService: req.body.dealingService };
+    if (!Number.isSafeInteger(revision) || revision < 0 || typeof correctionRemark !== 'string' || !correctionRemark.trim() || correctionRemark.length > 4000) throw new Error('Enter a correction note and valid report revision');
+  } catch (error) { return res.status(400).json({ message: error.message }); }
+  const current = await Report.findOne({ _id: req.params.id, employee: req.user.id }).lean();
+  if (!current) return res.status(404).json({ message: 'Report not found' });
+  if (reportStatus(current) !== 'objected' || (current.revision || 0) !== revision) return res.status(409).json({ message: 'Only a report with an open objection can be corrected. Refresh the report.' });
+  let report;
+  try { report = await Report.findOneAndUpdate({ _id: current._id, employee: req.user.id, reviewStatus: 'objected', ...revisionQuery(revision) }, {
+    $set: { ...values, reviewStatus: 'resubmitted', correctionRemark: correctionRemark.trim() }, $inc: { revision: 1 },
+    $push: { reviewHistory: { action: 'resubmitted', actor: String(req.user.id), actorName: req.user.name, remark: correctionRemark.trim(), revision: revision + 1, at: new Date(), snapshot: reportSnapshot({ ...current, ...values }) } },
+  }, { new: true, runValidators: true }); } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ message: 'You already have a report for this date and service. Choose a different date or service.' });
+    throw error;
+  }
+  if (!report) return res.status(409).json({ message: 'Report changed. Refresh before resubmitting.' });
   res.json(report);
 });
 router.get('/pdf', async (req, res) => {

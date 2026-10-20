@@ -5,6 +5,13 @@ import Ticket from '../models/SupportTicket.js';
 import Job from '../models/NotificationJob.js';
 import { normalizeTicketStatus } from '../utils/ticketRules.js';
 import { buildTicketEmail } from '../utils/ticketEmail.js';
+import { ticketSubmitter } from '../../client/src/utils/ticketSubmitter.js';
+test('submitter labels show Admin, employee name, or client name', () => {
+  assert.deepEqual(ticketSubmitter({ createdByRole: 'admin', createdByName: 'Internal admin', name: 'Complaint Person' }), { name: 'Admin', role: 'Administrator' });
+  assert.deepEqual(ticketSubmitter({ createdByRole: 'employee', createdByName: 'Test Employee', name: 'Complaint Person' }), { name: 'Test Employee', role: 'Employee' });
+  assert.deepEqual(ticketSubmitter({ createdByRole: 'user', createdByName: 'Test Client', name: 'Complaint Person' }), { name: 'Test Client', role: 'Client' });
+  assert.equal(ticketSubmitter({ name: 'Legacy Client' }).name, 'Legacy Client');
+});
 test('ticket emails escape client content and include status, logo, contact and plain text', () => {
   const ticket = { name: '<script>alert(1)</script>', subject: '<img src=x>', reference: 'ZLF-TEST', description: 'First line\nSecond line', resolution: '<b>Fixed</b>\nDetails', status: 'resolved' };
   const received = buildTicketEmail(ticket, 'created');
@@ -30,7 +37,7 @@ const invoke = async (path, method, req) => {
   return res;
 };
 const user = { role: 'user', id: '507f1f77bcf86cd799439011', name: 'Test Client' };
-const body = { category: 'Employee Behaviour', description: 'Please review this issue.', email: 'client@example.test', phone: '03001234567' };
+const body = { category: 'Employee Behaviour', name: 'Test Client', cnic: '12345-1234567-1', description: 'Please review this issue.', email: 'client@example.test', phone: '03001234567' };
 test('predefined subjects are stored from the selected category and notify both channels', async t => {
   let saved; const jobs = [];
   t.mock.method(Ticket, 'create', async data => { saved = data; return { ...data, id: 'ticket-test' }; });

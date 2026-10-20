@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import { fileURLToPath } from 'node:url';
+import { reportStatus } from './reportReview.js';
 const logo = fileURLToPath(new URL('../../client/src/assets/ZumarLogo.png', import.meta.url));
 const plum = '#57123f', ink = '#252333', muted = '#756676', line = '#e6dce3';
 const labels = { totalLeads: 'Total no. of leads', fakeLeads: 'Unrelated / fake leads', noResponseLeads: 'No response leads', interestedLeads: 'New / interested leads', matureLeads: 'Mature leads', previousMatureLeads: 'Previous mature leads', followUpLeads: 'Follow up leads', convertedNew: 'Converted clients - new', convertedOld: 'Converted clients - old' };
@@ -92,7 +93,8 @@ export function createAdReportPdf({ reports, range, period = 'daily', individual
   }
   reports.forEach((r, index) => {
     if (!individual || index) doc.addPage();
-    header('DAILY AD REPORT', `Report date: ${r.reportDate}   |   ${r.reviewedAt ? 'Reviewed by supervisor' : 'Pending supervisor review'}`);
+    const statusLabels = { pending: 'Pending supervisor review', objected: 'Objection raised', resubmitted: 'Resubmitted for review', approved: 'Approved' };
+    header('DAILY AD REPORT', `Report date: ${r.reportDate}   |   ${statusLabels[reportStatus(r)]}`);
     section('Employee details');
     pair(['Employee name', r.employeeName], ['Designation', r.designation]);
     pair(['Dealing service', r.dealingService], ['Employee cell no.', r.employeePhone]);
@@ -108,6 +110,12 @@ export function createAdReportPdf({ reports, range, period = 'daily', individual
     section('Official use only');
     signaturePair(['Supervisor name', r.supervisorName], ['Supervisor signature', r.supervisorSignature]);
     comments('Supervisor remark', r.remark);
+    if (r.objectionRemark) comments('Supervisor objection', r.objectionRemark);
+    if (r.correctionRemark) comments('Employee correction note', r.correctionRemark);
+    if (r.reviewHistory?.length) {
+      section('Review and correction history');
+      for (const event of r.reviewHistory) comments(`${statusLabels[event.action] || event.action} - ${event.actorName || 'Staff'}`, event.remark);
+    }
   });
   const pages = doc.bufferedPageRange();
   for (let i = pages.start; i < pages.start + pages.count; i++) {

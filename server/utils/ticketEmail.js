@@ -25,7 +25,8 @@ export function buildTicketEmail(ticket, event) {
   const link = supportUrl();
   const details = [
     ['Ticket reference', reference], ['Subject', ticket.subject || ticket.category || 'Support request'],
-    ['Category', ticket.category || 'Other'], ['Status', status], ...(timestamp ? [[received ? 'Submitted on' : 'Closed on', timestamp]] : []),
+    ['Category', ticket.category || 'Other'], ...(ticket.serviceName ? [['Service', ticket.serviceName]] : []),
+    ['Status', status], ...(timestamp ? [[received ? 'Submitted on' : 'Closed on', timestamp]] : []),
   ];
   const rows = details.map(([label, value]) => `<tr><td width="35%" style="padding:12px 14px;border-bottom:1px solid #eee6ec;color:#796b76;font-size:12px;vertical-align:top;">${escape(label)}</td><td style="padding:12px 14px;border-bottom:1px solid #eee6ec;color:#29232b;font-size:13px;font-weight:bold;word-break:break-word;">${escape(value)}</td></tr>`).join('');
   const text = `${greeting}\n\n${title}\n${intro}\n\n${details.map(([key, value]) => `${key}: ${value}`).join('\n')}\n\n${received ? 'Your issue' : 'Resolution'}:\n${received ? ticket.description || '' : ticket.resolution || ''}\n\n${received ? 'Keep your ticket reference handy when contacting support.' : 'If you need further assistance, contact our support team and quote your ticket reference.'}\nView your tickets: ${link}\n\nWarm regards,\nClient Support Team\nZumar Law Firm\nHelpline: 051-8445095\nEmail: team@zumarlawfirm.com`;

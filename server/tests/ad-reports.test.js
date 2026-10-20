@@ -50,7 +50,7 @@ test('PDF export enforces employee ownership and produces a PDF', async () => {
     assert.equal(response.status, 200);
     assert.equal(captured.employee, '507f1f77bcf86cd799439022');
     assert.equal(captured.dealingService, 'Trademark Registration');
-    assert.equal(captured.reviewedAt, null);
+    assert.equal(captured.$and[0].$or[0].reviewStatus, 'pending');
     assert.equal(captured.$or[0].employeeName.$regex, 'Client\\+');
     assert.equal(response.headers.get('content-type'), 'application/pdf');
     const bytes = Buffer.from(await response.arrayBuffer());

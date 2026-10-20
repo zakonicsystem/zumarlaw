@@ -41,7 +41,7 @@ const Navbar = () => {
 
         {isLoggedIn && (
           <div className="flex items-center gap-2 sm:gap-6">
-            <Link to="/support" className={getLinkStyles('/support')} title="Support Tickets" aria-label="Support Tickets" aria-current={isActive('/support') ? 'page' : undefined}><FaTicketAlt className="text-2xl" /><span className="hidden sm:inline ml-2 text-sm font-medium">Support Tickets</span></Link>
+            <Link to="/support" className={getLinkStyles('/support')} title="Submit Complaint" aria-label="Submit Complaint" aria-current={isActive('/support') ? 'page' : undefined}><FaTicketAlt className="text-2xl" /><span className="hidden sm:inline ml-2 text-sm font-medium">Submit Complaint</span></Link>
             <Link to="/" className={getLinkStyles('/')}> 
               <FaHome className="text-2xl" />
             </Link>

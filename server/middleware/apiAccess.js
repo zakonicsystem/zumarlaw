@@ -24,7 +24,9 @@ export const apiAccess = (req, res, next) => {
   const path = (req.path.replace(/\/$/, '') || '/').toLowerCase();
   if (req.method === 'OPTIONS' || publicRoutes.has(req.method + ' ' + path)) return next();
   return verifyJWT(req, res, () => {
+    if (path === '/admin/logout' && req.method === 'GET') return requireAdminRole(req, res, next);
     if (/^\/(support-tickets|ad-reports)(?:\/|$)/.test(path)) return next();
+    if (path === '/admin/customers' && req.method === 'GET' && req.query.lookup === 'complaint') return requireAdminRole(req, res, next);
     if (/^\/auth\/(admin-register|mark-admin|user\/)/.test(path)) return authenticateAdmin(req, res, next);
     if (/^\/admin\/roles(?:\/|$)/.test(path)) {
       if (req.method !== 'GET') return authenticateAdmin(req, res, next);
