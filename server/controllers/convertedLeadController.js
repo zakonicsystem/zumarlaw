@@ -1,5 +1,5 @@
 // Edit a specific payment for a converted lead
-import { notifyPaymentReceived } from '../utils/paymentNotification.js';
+import { notifyPaymentReceived, notifyUnpaidInvoice } from '../utils/paymentNotification.js';
 import { getCertificateEmailLogoAttachment } from '../utils/certificateEmail.js';
 import { autoSendCompletedServiceCertificate } from '../utils/serviceCertificateEmail.js';
 import { buildPaymentInvoiceEmail, resolvePaymentInvoiceAmounts } from '../utils/paymentInvoiceEmail.js';
@@ -209,7 +209,8 @@ export const createConvertedLead = async (req, res) => {
 
     paymentFields.forEach((field) => {
       // Accept both camelCase and snake_case
-      let value = req.body[field] || req.body[`pricing.${field}`] || (req.body.pricing && req.body.pricing[field]);
+      let value = [req.body[field], req.body[`pricing.${field}`], req.body.pricing?.[field]]
+        .find(value => value !== undefined && value !== null && value !== '');
       if (typeof value === 'undefined' || value === null || value === '') return;
       // Always use the last value if array (FormData can send arrays)
       if (Array.isArray(value)) value = value[value.length - 1];
@@ -242,8 +243,14 @@ export const createConvertedLead = async (req, res) => {
         pricing[field] = value;
       }
     });
+    // An explicit zero is a valid advance; advancePayment is also accepted as an alias.
+    initialPayment = initialPayment ?? pricing.advancePayment ?? 0;
+    if (!Number.isFinite(Number(initialPayment)) || Number(initialPayment) < 0) {
+      return res.status(400).json({ success: false, error: 'Advance payment must be a non-negative amount' });
+    }
+    pricing.currentReceivingPayment = Number(initialPayment);
     // If remainingAmount is not set, calculate it
-    if (typeof pricing.remainingAmount === 'undefined' && typeof pricing.totalPayment === 'number' && typeof pricing.currentReceivingPayment === 'number') {
+    if ((typeof pricing.remainingAmount === 'undefined' || Number(initialPayment) === 0) && typeof pricing.totalPayment === 'number' && typeof pricing.currentReceivingPayment === 'number') {
       pricing.remainingAmount = Math.max(pricing.totalPayment - pricing.currentReceivingPayment, 0);
     }
 
@@ -323,6 +330,8 @@ export const createConvertedLead = async (req, res) => {
         userId: lead._id,
         serviceId: lead._id,
       });
+    } else {
+      await notifyUnpaidInvoice(lead);
     }
 
     // Remove the original lead from Lead model if originalLeadId is provided

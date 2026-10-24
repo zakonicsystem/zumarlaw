@@ -6,6 +6,17 @@ const formatAmount = (value) => {
   return number.toLocaleString('en-US', { maximumFractionDigits: 0 });
 };
 
+export const notifyUnpaidInvoice = async (doc) => {
+  const recipient = String(doc.email || '').trim();
+  if (!recipient) return;
+  const { totalAmount } = resolvePaymentInvoiceAmounts(doc);
+  await enqueueNotification({
+    key: notificationKey(doc._id, 0, 0, 'email'), channel: 'email', recipient, serviceId: String(doc._id),
+    payload: buildPaymentInvoiceEmail({ recipientName: doc.name, serviceName: doc.service || doc.serviceType,
+      referenceId: doc._id, totalAmount, paidAmount: 0, remainingAmount: totalAmount, isCompleted: false }),
+  });
+};
+
 export const buildPaymentMessage = ({ amount, totalPayment, previousPaid, serviceName }) => {
   const paidAmount = Number(amount || 0);
   const total = Number(totalPayment || 0);
